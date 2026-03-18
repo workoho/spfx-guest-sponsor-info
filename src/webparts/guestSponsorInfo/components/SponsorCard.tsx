@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { Callout, DirectionalHint, Icon } from '@fluentui/react';
+import * as strings from 'GuestSponsorInfoWebPartStrings';
 import { ISponsor } from '../services/ISponsor';
 import styles from './GuestSponsorInfo.module.scss';
 
@@ -44,14 +45,14 @@ const PRESENCE_COLORS: Record<string, string> = {
 
 /** Maps Graph presence availability token → human-readable label. */
 const PRESENCE_LABELS: Record<string, string> = {
-  Available:       'Available',
-  AvailableIdle:   'Available, Idle',
-  Away:            'Away',
-  BeRightBack:     'Be Right Back',
-  Busy:            'Busy',
-  BusyIdle:        'Busy, Idle',
-  DoNotDisturb:    'Do Not Disturb',
-  Offline:         'Offline',
+  Available:       strings.PresenceAvailable,
+  AvailableIdle:   strings.PresenceAvailableIdle,
+  Away:            strings.PresenceAway,
+  BeRightBack:     strings.PresenceBeRightBack,
+  Busy:            strings.PresenceBusy,
+  BusyIdle:        strings.PresenceBusyIdle,
+  DoNotDisturb:    strings.PresenceDoNotDisturb,
+  Offline:         strings.PresenceOffline,
   PresenceUnknown: '',
 };
 
@@ -59,7 +60,7 @@ const PRESENCE_LABELS: Record<string, string> = {
  * Small copy-to-clipboard button shown at the trailing edge of each contact row.
  * Switches to a checkmark for 1.5 s after a successful copy.
  */
-const CopyButton: React.FC<{ value: string; label: string }> = ({ value, label }) => {
+const CopyButton: React.FC<{ value: string; ariaLabel: string }> = ({ value, ariaLabel }) => {
   const [copied, setCopied] = React.useState(false);
 
   const handleCopy = (e: React.MouseEvent | React.KeyboardEvent): void => {
@@ -77,8 +78,8 @@ const CopyButton: React.FC<{ value: string; label: string }> = ({ value, label }
       className={`${styles.copyButton}${copied ? ` ${styles.copyButtonCopied}` : ''}`}
       onClick={handleCopy}
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') handleCopy(e); }}
-      aria-label={copied ? 'Copied!' : `Copy ${label}`}
-      title={copied ? 'Copied!' : `Copy ${label}`}
+      aria-label={copied ? strings.CopiedFeedback : ariaLabel}
+      title={copied ? strings.CopiedFeedback : ariaLabel}
     >
       <Icon iconName={copied ? 'Accept' : 'Copy'} className={styles.copyIcon} aria-hidden="true" />
     </button>
@@ -163,7 +164,7 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
           isBeakVisible={false}
           gapSpace={8}
           role="dialog"
-          aria-label={`Contact details for ${sponsor.displayName}`}
+          aria-label={strings.ContactDetailsAriaLabel.replace('{0}', sponsor.displayName)}
           setInitialFocus={false}
         >
           <div
@@ -209,17 +210,17 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
 
             {/* ── Action buttons row ───────────────────────────────── */}
             {(sponsor.mail || primaryPhone) && (
-              <div className={styles.richActions} role="toolbar" aria-label="Contact actions">
+              <div className={styles.richActions} role="toolbar" aria-label={strings.ContactActionsAriaLabel}>
                 {sponsor.mail && (
                   <a
                     href={`https://teams.cloud.microsoft/l/chat/0/0?users=${encodeURIComponent(sponsor.mail)}`}
                     className={styles.richAction}
                     target="_blank"
                     rel="noreferrer noopener"
-                    title="Chat via your home Teams account"
+                    title={strings.ChatTitle}
                   >
                     <Icon iconName="TeamsLogo" className={styles.richActionIcon} aria-hidden="true" />
-                    <span className={styles.richActionLabel}>Chat</span>
+                    <span className={styles.richActionLabel}>{strings.ChatLabel}</span>
                   </a>
                 )}
                 {sponsor.mail && (
@@ -228,76 +229,76 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
                     className={styles.richAction}
                     target="_blank"
                     rel="noreferrer noopener"
-                    title="Chat as guest in sponsor's tenant"
+                    title={strings.ChatGuestTitle}
                   >
                     <Icon iconName="Chat" className={styles.richActionIcon} aria-hidden="true" />
-                    <span className={styles.richActionLabel}>Chat (guest)</span>
+                    <span className={styles.richActionLabel}>{strings.ChatGuestLabel}</span>
                   </a>
                 )}
                 {sponsor.mail && (
                   <a
                     href={`mailto:${sponsor.mail}`}
                     className={styles.richAction}
-                    title="Send email"
+                    title={strings.EmailTitle}
                   >
                     <Icon iconName="Mail" className={styles.richActionIcon} aria-hidden="true" />
-                    <span className={styles.richActionLabel}>Email</span>
+                    <span className={styles.richActionLabel}>{strings.EmailLabel}</span>
                   </a>
                 )}
                 {primaryPhone && (
                   <a
                     href={`tel:${primaryPhone}`}
                     className={styles.richAction}
-                    title="Call"
+                    title={strings.CallTitle}
                   >
                     <Icon iconName="Phone" className={styles.richActionIcon} aria-hidden="true" />
-                    <span className={styles.richActionLabel}>Call</span>
+                    <span className={styles.richActionLabel}>{strings.CallLabel}</span>
                   </a>
                 )}
               </div>
             )}
 
             {/* ── Contact information section ──────────────────────── */}
-            <div className={styles.richSectionTitle}>Contact information</div>
+            <div className={styles.richSectionTitle}>{strings.ContactInfoSection}</div>
             <div className={styles.richSection}>
               {sponsor.mail && (
                 <div className={styles.richInfoRow}>
                   <Icon iconName="Mail" className={styles.richInfoIcon} aria-hidden="true" />
                   <div className={styles.richInfoText}>
-                    <div className={styles.richInfoMeta}>Email</div>
+                    <div className={styles.richInfoMeta}>{strings.EmailFieldLabel}</div>
                     <a href={`mailto:${sponsor.mail}`} className={styles.richInfoValue}>{sponsor.mail}</a>
                   </div>
-                  <CopyButton value={sponsor.mail} label="email address" />
+                  <CopyButton value={sponsor.mail} ariaLabel={strings.CopyEmailAriaLabel} />
                 </div>
               )}
               {sponsor.businessPhones?.map(phone => (
                 <div key={phone} className={styles.richInfoRow}>
                   <Icon iconName="Phone" className={styles.richInfoIcon} aria-hidden="true" />
                   <div className={styles.richInfoText}>
-                    <div className={styles.richInfoMeta}>Work phone</div>
+                    <div className={styles.richInfoMeta}>{strings.WorkPhoneFieldLabel}</div>
                     <a href={`tel:${phone}`} className={styles.richInfoValue}>{phone}</a>
                   </div>
-                  <CopyButton value={phone} label="work phone" />
+                  <CopyButton value={phone} ariaLabel={strings.CopyWorkPhoneAriaLabel} />
                 </div>
               ))}
               {sponsor.mobilePhone && (
                 <div className={styles.richInfoRow}>
                   <Icon iconName="CellPhone" className={styles.richInfoIcon} aria-hidden="true" />
                   <div className={styles.richInfoText}>
-                    <div className={styles.richInfoMeta}>Mobile</div>
+                    <div className={styles.richInfoMeta}>{strings.MobileFieldLabel}</div>
                     <a href={`tel:${sponsor.mobilePhone}`} className={styles.richInfoValue}>{sponsor.mobilePhone}</a>
                   </div>
-                  <CopyButton value={sponsor.mobilePhone} label="mobile number" />
+                  <CopyButton value={sponsor.mobilePhone} ariaLabel={strings.CopyMobileAriaLabel} />
                 </div>
               )}
               {sponsor.officeLocation && (
                 <div className={styles.richInfoRow}>
                   <Icon iconName="MapPin" className={styles.richInfoIcon} aria-hidden="true" />
                   <div className={styles.richInfoText}>
-                    <div className={styles.richInfoMeta}>Work location</div>
+                    <div className={styles.richInfoMeta}>{strings.WorkLocationFieldLabel}</div>
                     <div className={styles.richInfoValue}>{sponsor.officeLocation}</div>
                   </div>
-                  <CopyButton value={sponsor.officeLocation} label="work location" />
+                  <CopyButton value={sponsor.officeLocation} ariaLabel={strings.CopyLocationAriaLabel} />
                 </div>
               )}
             </div>
@@ -305,7 +306,7 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
             {/* ── Organization section (manager) ───────────────────── */}
             {sponsor.managerDisplayName && (
               <>
-                <div className={styles.richSectionTitle}>Organization</div>
+                <div className={styles.richSectionTitle}>{strings.OrganizationSection}</div>
                 <div className={styles.richSection}>
                   <div className={styles.managerRow}>
                     <div className={styles.managerAvatar}>
@@ -321,7 +322,7 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
                       )}
                     </div>
                     <div className={styles.managerText}>
-                      <div className={styles.managerLabel}>Manager</div>
+                      <div className={styles.managerLabel}>{strings.ManagerLabel}</div>
                       <div className={styles.managerName}>{sponsor.managerDisplayName}</div>
                       {sponsor.managerJobTitle && (
                         <div className={styles.managerJobTitle}>{sponsor.managerJobTitle}</div>

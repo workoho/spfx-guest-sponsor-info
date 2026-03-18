@@ -10,6 +10,41 @@ define([], function() {
     "EditModePlaceholder": "Guest Sponsor Info — switch to view mode to see sponsors.",
     "GuestOnlyPlaceholder": "This web part is only visible to guest users in view mode.",
     "MockModeFieldLabel": "Demo mode (mock data)",
-    "MockModePlaceholder": "Guest Sponsor Info — Demo mode active. Switch to view mode to see mock sponsors."
+    "MockModePlaceholder": "Guest Sponsor Info — Demo mode active. Switch to view mode to see mock sponsors.",
+
+    "PresenceAvailable": "Available",
+    "PresenceAvailableIdle": "Available, Idle",
+    "PresenceAway": "Away",
+    "PresenceBeRightBack": "Be Right Back",
+    "PresenceBusy": "Busy",
+    "PresenceBusyIdle": "Busy, Idle",
+    "PresenceDoNotDisturb": "Do Not Disturb",
+    "PresenceOffline": "Offline",
+
+    "ContactDetailsAriaLabel": "Contact details for {0}",
+    "ContactActionsAriaLabel": "Contact actions",
+    "ChatTitle": "Chat via your home Teams account",
+    "ChatGuestTitle": "Chat as guest in sponsor's tenant",
+    "EmailTitle": "Send email",
+    "CallTitle": "Call",
+    "ChatLabel": "Chat",
+    "ChatGuestLabel": "Chat (guest)",
+    "EmailLabel": "Email",
+    "CallLabel": "Call",
+
+    "ContactInfoSection": "Contact information",
+    "EmailFieldLabel": "Email",
+    "WorkPhoneFieldLabel": "Work phone",
+    "MobileFieldLabel": "Mobile",
+    "WorkLocationFieldLabel": "Work location",
+
+    "OrganizationSection": "Organization",
+    "ManagerLabel": "Manager",
+
+    "CopiedFeedback": "Copied!",
+    "CopyEmailAriaLabel": "Copy email address",
+    "CopyWorkPhoneAriaLabel": "Copy work phone",
+    "CopyMobileAriaLabel": "Copy mobile number",
+    "CopyLocationAriaLabel": "Copy work location"
   }
 });

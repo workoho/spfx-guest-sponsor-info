@@ -10,6 +10,41 @@ define([], function() {
     "EditModePlaceholder": "Gast-Sponsor-Info \u2014 wechseln Sie in den Anzeigemodus, um Sponsoren zu sehen.",
     "GuestOnlyPlaceholder": "Dieses Webpart ist im Anzeigemodus nur f\u00fcr Gastbenutzer sichtbar.",
     "MockModeFieldLabel": "Demo-Modus (Testdaten)",
-    "MockModePlaceholder": "Gast-Sponsor-Info \u2014 Demo-Modus aktiv. Wechseln Sie in den Anzeigemodus, um die Testdaten zu sehen."
+    "MockModePlaceholder": "Gast-Sponsor-Info \u2014 Demo-Modus aktiv. Wechseln Sie in den Anzeigemodus, um die Testdaten zu sehen.",
+
+    "PresenceAvailable": "Verf\u00fcgbar",
+    "PresenceAvailableIdle": "Verf\u00fcgbar, inaktiv",
+    "PresenceAway": "Abwesend",
+    "PresenceBeRightBack": "Gleich zur\u00fcck",
+    "PresenceBusy": "Besch\u00e4ftigt",
+    "PresenceBusyIdle": "Besch\u00e4ftigt, inaktiv",
+    "PresenceDoNotDisturb": "Nicht st\u00f6ren",
+    "PresenceOffline": "Offline",
+
+    "ContactDetailsAriaLabel": "Kontaktdetails f\u00fcr {0}",
+    "ContactActionsAriaLabel": "Kontaktaktionen",
+    "ChatTitle": "Chat \u00fcber Ihr Heim-Teams-Konto",
+    "ChatGuestTitle": "Chat als Gast im Mandanten des Sponsors",
+    "EmailTitle": "E-Mail senden",
+    "CallTitle": "Anrufen",
+    "ChatLabel": "Chat",
+    "ChatGuestLabel": "Chat (Gast)",
+    "EmailLabel": "E-Mail",
+    "CallLabel": "Anruf",
+
+    "ContactInfoSection": "Kontaktinformationen",
+    "EmailFieldLabel": "E-Mail",
+    "WorkPhoneFieldLabel": "Gesch\u00e4ftstelefon",
+    "MobileFieldLabel": "Mobil",
+    "WorkLocationFieldLabel": "Arbeitsort",
+
+    "OrganizationSection": "Organisation",
+    "ManagerLabel": "Vorgesetzte(r)",
+
+    "CopiedFeedback": "Kopiert!",
+    "CopyEmailAriaLabel": "E-Mail-Adresse kopieren",
+    "CopyWorkPhoneAriaLabel": "Gesch\u00e4ftstelefon kopieren",
+    "CopyMobileAriaLabel": "Mobilnummer kopieren",
+    "CopyLocationAriaLabel": "Arbeitsort kopieren"
   }
 });
