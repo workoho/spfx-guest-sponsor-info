@@ -63,12 +63,12 @@
     "@typescript-eslint/parser": "8.46.2",
     "css-loader": "~7.1.2",
     "eslint": "8.57.1",
-    "eslint-plugin-react-hooks": "4.3.0",
+    "eslint-plugin-react-hooks": "7.0.1",
     "husky": "9.1.7",
     "markdownlint-cli2": "0.21.0",
     "stylelint": "17.4.0",
     "stylelint-config-standard-scss": "17.0.0",
-    "typescript": "~5.8.0"
+    "typescript": "~5.9.3"
   },
   "overrides": {
     "@rushstack/heft": "1.1.2"
