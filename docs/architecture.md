@@ -5,16 +5,28 @@ For installation and build instructions see the [README](../README.md).
 
 ## Guest Detection
 
-**Assumption:** A Microsoft Entra guest account can be identified by the `#EXT#` marker in
-the SharePoint Login Name (UPN).
+**Primary signal:** `pageContext.user.isExternalGuestUser` — a boolean property on the SPFx
+page context that is set directly from the Entra authentication token and is available
+synchronously without any Graph call. This is the authoritative indicator for B2B guests.
 
-**Rationale:** Entra guest users are synced into the resource tenant with a UPN of the form
-`user_externaldomain.com#EXT#@tenant.onmicrosoft.com`. This is a stable, documented identifier
-that is available synchronously via `pageContext.user.loginName` without an extra Graph call.
+**Fallback signal:** The `#EXT#` marker in `pageContext.user.loginName`. Entra guest UPNs
+follow the form `user_externaldomain.com#EXT#@tenant.onmicrosoft.com`. This heuristic covers
+edge cases where `isExternalGuestUser` might not be populated (e.g. during first-load before
+the SPFx context is fully hydrated).
 
-**Risk:** If a tenant administrator renames or resets a guest UPN, the marker may be absent.
-In that case the Graph `userType` property (`GET /v1.0/me?$select=userType`) is the
-authoritative source. This can be added as a fallback in a future iteration.
+The combined check is: `isGuest = isExternalGuestUser || loginName.includes('#EXT#')`.
+
+**Known limitation:** When a guest user visits a SharePoint site for the first time, the call
+to `SP.UserProfile.ReadCacheOrCreate` may return HTTP 500 because the guest profile has not
+been created yet. This can cause `pageContext.user.loginName` to be empty. The
+`isExternalGuestUser` flag is populated from the Entra token and is unaffected by this
+user-profile failure, which is why it is used as the primary signal.
+
+**If the `#EXT#` marker is absent:** In unusual tenant configurations where a guest UPN has
+been reset or renamed, the Graph `userType` property (`GET /v1.0/me?$select=userType`)
+is the ground truth. This would require an async Graph call that is out of scope for the
+current implementation; `isExternalGuestUser` covers this gap for all standard Entra B2B
+configurations.
 
 ## Sponsor Retrieval
 
@@ -89,6 +101,37 @@ If this limitation becomes critical, a future iteration can:
 - Upgrade to `User.Read.All` and re-introduce the `accountEnabled` check, **or**
 - Use an admin-side automation to remove the sponsor assignment from the guest user
   object at the time of account deactivation.
+
+## App Catalog Access for Guest Users
+
+All JavaScript and CSS assets are bundled *inside* the `.sppkg` file
+(`includeClientSideAssets: true`). SharePoint re-hosts those assets on the **App Catalog
+site collection** and serves them from there at runtime.
+
+When a guest user loads a page that contains this web part, the browser requests the bundle
+from the App Catalog origin. Because guest users have no default access to the App Catalog,
+the request fails with HTTP 403 and the web part never initialises.
+
+**Required one-time tenant configuration (admin):**
+
+1. Verify that `ShowAllUsersClaim` is `$true` (it is the default on all modern tenants —
+   only needs attention on tenants provisioned before ~2018 or if it was explicitly disabled).
+2. **Enable external sharing on the App Catalog site** (SharePoint Admin Center → Sites →
+   Active sites → App Catalog → Policies → External sharing → *Existing guests*).
+   Without this, guests receive HTTP 403 even when Read permission has been granted.
+3. Grant *Read* permission on the App Catalog site to **All Users (membership)** or to a
+   specific security group that contains the guest accounts.
+   Note: *Everyone except external users* explicitly excludes B2B guests and will not work.
+
+This is entirely a SharePoint/Entra configuration concern and requires no code changes.
+See [README – Guest Access Requirements](../README.md#guest-access-requirements) for the
+full step-by-step procedure.
+
+**Why not `isDomainIsolated: true`?**
+Domain-isolated web parts use a separate Microsoft Entra application and an isolated frame.
+That model adds complexity and has known limitations with guest-user token acquisition;
+`isDomainIsolated: false` (the default) is the recommended approach for guest-facing
+solutions.
 
 ## Edit Mode Behaviour
 

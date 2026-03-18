@@ -48,8 +48,9 @@ The two Graph permissions must be approved by a tenant administrator in the
 
 | Scope | Resource | Reason |
 |---|---|---|
-| `User.Read` | Microsoft Graph | Read the signed-in user's own profile |
+| `User.Read` | Microsoft Graph | Read the signed-in user's own profile and sponsor list |
 | `User.ReadBasic.All` | Microsoft Graph | Fetch sponsor name, mail, job title, department, and phone |
+| `Presence.Read.All` | Microsoft Graph | Show the online presence status of sponsors |
 
 > **Why not `User.Read.All`?**
 > Sponsor profiles are publicly visible within the organisation.
@@ -65,9 +66,18 @@ The two Graph permissions must be approved by a tenant administrator in the
 
 1. Download the latest `guest-sponsor-info.sppkg` from [Releases](../../releases).
 2. Upload it to your SharePoint **App Catalog**.
-3. Approve the API permissions in
-   **SharePoint Admin Center → Advanced → API access**.
-4. Add the *Guest Sponsor Info* web part to a modern page.
+   Leave the *"Make this solution available to all sites in the organization"* checkbox
+   **unchecked** for a minimal-footprint deployment.
+   Then add the app manually to each target site: **Site Contents → New → App →
+   Guest Sponsor Info**.
+3. Check **SharePoint Admin Center → Advanced → API access** for any pending permission
+   requests and approve them if present.
+   In many tenants the required Graph permissions (`User.Read`, `User.ReadBasic.All`,
+   `Presence.Read.All`) are already pre-consented by the *SharePoint Online Client
+   Extensibility Web Application Principal* — the queue will simply be empty and no
+   action is needed.
+4. Follow the [Guest Access Requirements](#guest-access-requirements) steps below.
+5. Add the *Guest Sponsor Info* web part to a modern page.
 
 ### Build from source
 
@@ -92,7 +102,154 @@ per browser session, then open the hosted workbench URL printed on startup.
 See [docs/architecture.md](docs/architecture.md) for the different testing scenarios
 (hosted workbench as member vs. guest vs. full integration test).
 
-## All Build Commands
+## Guest Access Requirements
+
+Because the web part's JavaScript bundle is served from the **App Catalog site collection**,
+guest users must be able to reach that site.
+By default they cannot, which causes the web part to fail silently or show
+"Something went wrong" errors only for guests.
+
+### Step 1 – Verify the All Users claim (modern tenants: already enabled)
+
+`ShowAllUsersClaim` defaults to `$true` in all modern SharePoint Online tenants
+(provisioned after ~2018). No action is needed unless your tenant is unusually old or the
+setting was explicitly disabled.
+
+To verify the current value:
+
+```powershell
+Connect-SPOService -Url "https://<tenant>-admin.sharepoint.com"
+(Get-SPOTenant).ShowAllUsersClaim   # should return: True
+```
+
+If it returns `False`, re-enable it:
+
+```powershell
+Set-SPOTenant -ShowAllUsersClaim $true
+```
+
+This makes the **"All Users (membership)"** SharePoint claim available for use in permission
+assignments. That claim covers every authenticated user including B2B guests.
+
+### Step 2 – Grant guests Read access to the App Catalog
+
+Two things must be done: enable external sharing on the App Catalog site itself, then
+grant the Read permission.
+
+#### Step 2a – Enable external sharing on the App Catalog site
+
+The App Catalog is a regular site collection and obeys SharePoint's site-level sharing
+settings. If external sharing is disabled on it, guests receive HTTP 403 even after the
+permission in Step 2b has been granted.
+
+1. Go to **SharePoint Admin Center → Sites → Active sites**.
+2. Open the App Catalog site (typically named `appcatalog`).
+3. Click **Policies** → **External sharing** and set it to at least **Existing guests**.
+
+#### Step 2b – Grant Read permission
+
+1. Navigate to your App Catalog site
+   (typically `https://<tenant>.sharepoint.com/sites/appcatalog`).
+2. **Site Settings → People and Groups → App Catalog Visitors**.
+3. **New → Add Users** and add one of the following:
+   - **All Users (membership)** – covers every authenticated user including B2B guests.
+     This is the broadest option and the simplest to configure.
+   - A **specific Microsoft 365 or security group** that contains the guest accounts
+     who need access. This is the more targeted, least-privilege alternative.
+4. Set the permission level to **Read**.
+
+> **Pitfall – "Everyone except external users"**
+> SharePoint shows two similarly named built-in groups. *Everyone except external users*
+> explicitly **excludes** B2B guests — despite the name sounding inclusive.
+> Only *All Users (membership)* (or a named group that contains your guests) will work.
+
+This allows authenticated guest users to download the web part bundle from the App Catalog.
+
+> **Why is this needed?**
+> `includeClientSideAssets: true` packages all JavaScript and CSS directly into the `.sppkg`.
+> SharePoint then re-hosts those assets on the App Catalog site collection.
+> A guest user loading the web part will make a request to the App Catalog to fetch that bundle;
+> without Read access the request returns 403 and the web part never loads.
+
+### Step 3 – Verify external sharing on the landing page site
+
+External sharing must be enabled at both the tenant level and at each relevant site:
+
+- **SharePoint Admin Center → Policies → Sharing** – set to at least *New and existing guests*.
+- Open each site where the web part is placed and confirm external sharing is enabled
+  there too (same setting, per-site).
+- The **App Catalog site** is covered by Step 2a above.
+
+### Security assessment of these settings
+
+**`ShowAllUsersClaim`**
+This setting only controls whether the *All Users (membership)* claim is selectable in
+SharePoint permission UIs — it does not grant anyone any new access by itself.
+It is `True` by default on all modern tenants, so enabling it does not change the
+security posture for the vast majority of organizations. Without it, SharePoint admins
+cannot assign permissions to a group that includes guests; they would have to invite every
+guest account individually to the App Catalog.
+The blast radius is purely administrative: the claim becomes usable for permission
+assignments across the entire tenant.
+
+**Read permission for All Users (membership) on the App Catalog**
+"All Users (membership)" covers every authenticated identity accepted by the tenant:
+full members, licensed guests, and B2B guests who have accepted their invitation.
+Anonymous (unauthenticated) users are explicitly excluded.
+
+With Read permission on the App Catalog, authenticated guests can:
+
+- Download the compiled JavaScript/CSS bundle — the explicit goal of this step.
+- Browse the App Catalog site and see the list of deployed SPFx solutions (names, versions,
+  deployment dates). This is low-sensitivity metadata: it reveals which tools the tenant uses,
+  but contains no business data or secrets.
+
+Guests cannot:
+
+- Install, retract, or manage any apps (that requires Site Collection Admin or higher).
+- Access any content on any other site collection.
+- Modify App Catalog contents.
+
+The compiled bundle itself contains no secrets. Environment-specific values such as Graph
+endpoints are public Microsoft URLs; tenant-specific IDs (used for Teams deep links) are
+obtained at runtime from `pageContext` and never hard-coded in the bundle.
+
+**Overall risk level: Low.**
+The configuration widens read access to non-sensitive deployment metadata for authenticated
+identities only. Regular security reviews of the App Catalog Visitors group are recommended
+to ensure no overly broad permissions accumulate over time.
+
+### Tenant-wide deployment vs. per-site-collection
+
+The deployment dialog offers a checkbox
+*"Make this solution available to all sites in the organization"*.
+**For a minimal-footprint deployment, leave this unchecked** and add the app manually only
+to the sites where guests actually land.
+
+Here is the practical trade-off:
+
+| | Per site collection (recommended) | Tenant-wide |
+|---|---|---|
+| Web part appears in toolbox | Only sites where admin added the app | Every modern site |
+| Admin effort | Once per target site (Site Contents → Add an app) | Once, at upload |
+| App Catalog Read requirement | Same — required either way | Same — required either way |
+| Guest data exposure | None | None — web part renders nothing for member users |
+| Adding after new sites are created | Manual per site | Automatic |
+
+The App Catalog Read permission (Step 2) applies regardless of the deployment model —
+guests must be able to fetch the bundle from the App Catalog no matter which sites the
+solution is active on.
+
+**Per-site is the recommended default** because:
+
+- It follows the least-privilege principle: the web part is only available where it is
+  explicitly needed.
+- Guest landing sites are typically a known, stable set (intranet home, welcome page).
+
+If you expect guest-accessible sites to grow over time and prefer to avoid per-site admin
+steps, the tenant-wide option works equally well — the web part renders `null` for
+non-guest users so there is no data exposure on member-only sites. Check the
+*"Make this solution available to all sites in the organization"* checkbox during upload.
 
 | Command | Description |
 |---|---|
