@@ -1,7 +1,7 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
   "solution": {
-    "name": "guest-sponsor-info-client-side-solution",
+    "name": "Guest Sponsor Info",
     "id": "6cdf9494-9c67-40af-8ac8-7b36be245848",
     "version": "0.1.0.0",
     "includeClientSideAssets": true,
@@ -10,7 +10,7 @@
     "iconPath": "images/icon.png",
     "developer": {
       "name": "Julian Pawlowski",
-      "websiteUrl": "",
+      "websiteUrl": "https://github.com/jpawlowski/spfx-guest-sponsor-info",
       "privacyUrl": "",
       "termsOfUseUrl": "",
       "mpnId": ""
@@ -24,7 +24,9 @@
       },
       "screenshotPaths": [],
       "videoUrl": "",
-      "categories": []
+      "categories": [
+        "Collaboration"
+      ]
     },
     "webApiPermissionRequests": [
       {
@@ -34,12 +36,16 @@
       {
         "resource": "Microsoft Graph",
         "scope": "User.ReadBasic.All"
+      },
+      {
+        "resource": "Microsoft Graph",
+        "scope": "Presence.Read.All"
       }
     ],
     "features": [
       {
-        "title": "guest-sponsor-info Feature",
-        "description": "The feature that activates elements of the guest-sponsor-info solution.",
+        "title": "Guest Sponsor Info",
+        "description": "The feature that activates elements of the Guest Sponsor Info web part.",
         "id": "b7d00abc-0ce7-45d6-9b8e-ffd7b2139cee",
         "version": "0.1.0.0"
       }

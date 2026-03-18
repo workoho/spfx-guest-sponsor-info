@@ -70,19 +70,24 @@
   outline: none;
   background: transparent;
   transition: background-color 120ms ease;
-  z-index: 0; // Establish stacking context so hover raises above siblings
 
   &:hover,
   &:focus-within {
     background: "[theme:neutralLighter, default: #f3f2f1]";
     background: var(--neutralLighter);
-    z-index: 10; // Raise above sibling cards so the details popup is not clipped
   }
 
   &:focus-visible {
     box-shadow: 0 0 0 2px "[theme:themePrimary, default: #0078d4]";
     box-shadow: 0 0 0 2px var(--themePrimary);
   }
+}
+
+/* ─── Avatar wrapper (relative-positioned to anchor the presence dot) ────── */
+
+.avatarWrapper {
+  position: relative;
+  display: inline-flex;
 }
 
 /* ─── Avatar (photo or initials) ─────────────────────────────────────────── */
@@ -139,9 +144,9 @@
 .detailsCard {
   // position/top/left/width/z-index are set via inline style (fixed viewport coords)
   // so the popup escapes any overflow:hidden ancestor in the SharePoint page.
-  background-color: #ffffff; // explicit fallback
+  background-color: #fff; // explicit fallback
   background-color: "[theme:white, default: #ffffff]";
-  background-color: var(--white, #ffffff);
+  background-color: var(--white, #fff);
   border-radius: 4px;
   border: 1px solid "[theme:neutralLight, default: #edebe9]";
   border: 1px solid var(--neutralLight, #edebe9);
@@ -202,4 +207,228 @@
     color: "[theme:linkHovered, default: #106ebe]";
     color: var(--linkHovered);
   }
+}
+
+/* ─── Presence dot on card thumbnail ────────────────────────────────────── */
+
+.presenceDot {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid "[theme:white, default: #ffffff]";
+  border: 2px solid var(--white, #fff);
+}
+
+/* ─── Rich contact card (renders inside Fluent UI Callout portal) ─────────── */
+
+.richCard {
+  width: 320px;
+  max-height: 480px;
+  overflow-y: auto;
+  background-color: "[theme:white, default: #ffffff]";
+  background-color: var(--white, #fff);
+  border-radius: 4px;
+}
+
+/* Header: large avatar + name / title / presence */
+
+.richHeader {
+  display: flex;
+  gap: 14px;
+  padding: 20px;
+  background-color: "[theme:neutralLighter, default: #f3f2f1]";
+  background-color: var(--neutralLighter, #f3f2f1);
+  border-bottom: 1px solid "[theme:neutralLight, default: #edebe9]";
+  border-bottom: 1px solid var(--neutralLight, #edebe9);
+}
+
+.richAvatarWrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.richAvatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.richPresenceDot {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 3px solid "[theme:white, default: #ffffff]";
+  border: 3px solid var(--white, #fff);
+}
+
+.richHeaderText {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0; // prevent text from pushing container wider
+}
+
+.richName {
+  font-size: 18px;
+  font-weight: 600;
+  color: "[theme:bodyText, default: #323130]";
+  color: var(--bodyText);
+  overflow-wrap: break-word;
+}
+
+.richJobTitle {
+  font-size: 13px;
+  color: "[theme:neutralSecondary, default: #666666]";
+  color: var(--neutralSecondary);
+}
+
+.richDept {
+  font-size: 12px;
+  color: "[theme:neutralTertiary, default: #a19f9d]";
+  color: var(--neutralTertiary);
+}
+
+.richPresenceLabel {
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+/* Action buttons row */
+
+.richActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid "[theme:neutralLight, default: #edebe9]";
+  border-bottom: 1px solid var(--neutralLight, #edebe9);
+}
+
+.richAction {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  text-decoration: none;
+  color: "[theme:bodyText, default: #323130]";
+  color: var(--bodyText);
+  cursor: pointer;
+  min-width: 60px;
+
+  &:hover {
+    background-color: "[theme:neutralLight, default: #edebe9]";
+    background-color: var(--neutralLight, #edebe9);
+    text-decoration: none;
+  }
+}
+
+.richActionIcon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.richActionLabel {
+  font-size: 10px;
+  text-align: center;
+  color: "[theme:neutralSecondary, default: #666666]";
+  color: var(--neutralSecondary);
+  white-space: nowrap;
+}
+
+/* Section title */
+
+.richSectionTitle {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 14px 20px 6px;
+  color: "[theme:bodyText, default: #323130]";
+  color: var(--bodyText);
+}
+
+.richSection {
+  padding: 0 0 8px;
+}
+
+/* Info row: icon + meta label + value */
+
+.richInfoRow {
+  display: flex;
+  gap: 12px;
+  padding: 5px 20px;
+  align-items: flex-start;
+  text-decoration: none;
+  color: inherit;
+
+  &:hover {
+    background-color: "[theme:neutralLighter, default: #f3f2f1]";
+    background-color: var(--neutralLighter, #f3f2f1);
+  }
+}
+
+.richInfoIcon {
+  font-size: 16px;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+  margin-top: 3px;
+}
+
+.richInfoMeta {
+  font-size: 11px;
+  color: "[theme:neutralSecondary, default: #666666]";
+  color: var(--neutralSecondary);
+}
+
+.richInfoValue {
+  font-size: 13px;
+  color: "[theme:link, default: #0078d4]";
+  color: var(--link, #0078d4);
+  word-break: break-all;
+}
+
+/* Manager row */
+
+.managerRow {
+  display: flex;
+  gap: 12px;
+  padding: 6px 20px 14px;
+  align-items: center;
+}
+
+.managerAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.managerLabel {
+  font-size: 11px;
+  color: "[theme:neutralSecondary, default: #666666]";
+  color: var(--neutralSecondary);
+}
+
+.managerName {
+  font-size: 13px;
+  font-weight: 600;
+  color: "[theme:bodyText, default: #323130]";
+  color: var(--bodyText);
+}
+
+.managerJobTitle {
+  font-size: 11px;
+  color: "[theme:neutralSecondary, default: #666666]";
+  color: var(--neutralSecondary);
 }

@@ -18,4 +18,17 @@ export interface ISponsor {
   mobilePhone?: string;
   /** Data URL (base64-encoded JPEG) of the profile photo. Undefined when no photo is available. */
   photoUrl?: string;
+  /**
+   * Microsoft Graph presence availability string for this user.
+   * Possible values: Available, AvailableIdle, Away, BeRightBack, Busy, BusyIdle,
+   * DoNotDisturb, Offline, PresenceUnknown.
+   * Requires the Presence.Read.All delegated permission.
+   */
+  presence?: string;
+  /** Display name of the sponsor's direct manager. */
+  managerDisplayName?: string;
+  /** Job title of the sponsor's direct manager. */
+  managerJobTitle?: string;
+  /** Data URL (base64-encoded JPEG) of the manager's profile photo. */
+  managerPhotoUrl?: string;
 }

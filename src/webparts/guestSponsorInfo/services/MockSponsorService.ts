@@ -17,6 +17,10 @@ export const MOCK_SPONSORS: ISponsor[] = [
     businessPhones: ['+49 30 12345678'],
     mobilePhone: undefined,
     photoUrl: undefined,
+    presence: 'Available',
+    managerDisplayName: 'Thomas Schneider',
+    managerJobTitle: 'Head of IT',
+    managerPhotoUrl: undefined,
   },
   {
     id: 'mock-2',
@@ -28,5 +32,9 @@ export const MOCK_SPONSORS: ISponsor[] = [
     businessPhones: [],
     mobilePhone: '+49 151 98765432',
     photoUrl: undefined,
+    presence: 'Busy',
+    managerDisplayName: 'Sarah Webb',
+    managerJobTitle: 'VP Business Development',
+    managerPhotoUrl: undefined,
   },
 ];

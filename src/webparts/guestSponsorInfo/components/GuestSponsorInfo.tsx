@@ -8,6 +8,41 @@ import { isGuestUser, getSponsors } from '../services/SponsorService';
 import { MOCK_SPONSORS } from '../services/MockSponsorService';
 import SponsorCard from './SponsorCard';
 
+/**
+ * Renders the sponsor grid and owns the single shared "active card" state.
+ * Only one popup is ever visible at a time; switching cards cancels any
+ * pending hide-timeout from the previously active card so there is no
+ * overlap between the outgoing and incoming popup.
+ */
+const SponsorList: React.FC<{ sponsors: ISponsor[]; hostTenantId: string }> = ({ sponsors, hostTenantId }) => {
+  const [activeId, setActiveId] = React.useState<string | null>(null);
+  const hideTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const activate = (id: string): void => {
+    if (hideTimeout.current) { clearTimeout(hideTimeout.current); hideTimeout.current = null; }
+    setActiveId(id);
+  };
+  const scheduleDeactivate = (): void => {
+    hideTimeout.current = setTimeout(() => setActiveId(null), 150);
+  };
+
+  return (
+    <ul className={styles.sponsorGrid}>
+      {sponsors.map(sponsor => (
+        <li key={sponsor.id} className={styles.sponsorItem}>
+          <SponsorCard
+            sponsor={sponsor}
+            hostTenantId={hostTenantId}
+            isActive={activeId === sponsor.id}
+            onActivate={() => activate(sponsor.id)}
+            onScheduleDeactivate={scheduleDeactivate}
+          />
+        </li>
+      ))}
+    </ul>
+  );
+};
+
 const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   loginName,
   displayMode,
@@ -100,13 +135,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
         <p className={styles.statusMessage}>{strings.NoSponsorsMessage}</p>
       )}
       {!loading && !error && sponsors.length > 0 && (
-        <ul className={styles.sponsorGrid}>
-          {sponsors.map(sponsor => (
-            <li key={sponsor.id} className={styles.sponsorItem}>
-              <SponsorCard sponsor={sponsor} hostTenantId={hostTenantId} />
-            </li>
-          ))}
-        </ul>
+        <SponsorList sponsors={sponsors} hostTenantId={hostTenantId} />
       )}
     </section>
   );

@@ -73,6 +73,72 @@ async function userExists(client: MSGraphClientV3, userId: string): Promise<bool
  *                          It does NOT expose accountEnabled (which requires
  *                          User.Read.All and is therefore out of scope).
  */
+/**
+ * Fetches presence for a list of user IDs in a single batched Graph call.
+ * Requires the Presence.Read.All delegated permission.
+ * Returns a map of userId → availability string.
+ * Silently returns an empty map on any error (presence is non-critical).
+ */
+async function fetchPresences(
+  client: MSGraphClientV3,
+  userIds: string[]
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  if (userIds.length === 0) return map;
+  try {
+    const response = await client
+      .api('/communications/getPresencesByUserId')
+      .post({ ids: userIds });
+    if (response?.value) {
+      for (const entry of response.value as Array<{ id: string; availability: string }>) {
+        if (entry.id && entry.availability) {
+          map.set(entry.id, entry.availability);
+        }
+      }
+    }
+  } catch {
+    // Presence is supplemental — silently degrade when the call fails
+    // (e.g. permission not yet granted by tenant admin).
+  }
+  return map;
+}
+
+/**
+ * Fetches the manager of a user and their profile photo.
+ * Requires User.ReadBasic.All (delegated).
+ * Returns undefined fields when no manager is set or on any error.
+ */
+async function fetchManager(
+  client: MSGraphClientV3,
+  userId: string
+): Promise<{ managerDisplayName?: string; managerJobTitle?: string; managerPhotoUrl?: string }> {
+  try {
+    const manager = await client
+      .api(`/users/${userId}/manager`)
+      .select('id,displayName,jobTitle')
+      .get() as Record<string, unknown>;
+    const managerId = manager.id as string | undefined;
+    const managerDisplayName = (manager.displayName as string) || undefined;
+    const managerJobTitle = (manager.jobTitle as string) || undefined;
+    let managerPhotoUrl: string | undefined;
+    if (managerId) {
+      try {
+        const buffer: ArrayBuffer = await client
+          .api(`/users/${managerId}/photo/$value`)
+          .responseType(ResponseType.ARRAYBUFFER)
+          .get();
+        managerPhotoUrl = arrayBufferToDataUrl(buffer);
+      } catch {
+        // No manager photo — initials fallback.
+      }
+    }
+    return { managerDisplayName, managerJobTitle, managerPhotoUrl };
+  } catch {
+    // No manager set (404) or permission error — non-critical.
+    return {};
+  }
+}
+
 export async function getSponsors(client: MSGraphClientV3): Promise<ISponsorsResult> {
   const response = await client
     .api('/me/sponsors')
@@ -93,30 +159,37 @@ export async function getSponsors(client: MSGraphClientV3): Promise<ISponsorsRes
     mobilePhone: (item.mobilePhone as string) || undefined,
   }));
 
-  // For each sponsor, run the existence check and photo fetch concurrently.
-  // All sponsors are also processed in parallel with each other.
-  const results = await Promise.all(
-    candidates.map(async sponsor => {
-      const [exists, photoUrl] = await Promise.all([
-        userExists(client, sponsor.id),
-        (async (): Promise<string | undefined> => {
-          try {
-            const buffer: ArrayBuffer = await client
-              .api(`/users/${sponsor.id}/photo/$value`)
-              .responseType(ResponseType.ARRAYBUFFER)
-              .get();
-            return arrayBufferToDataUrl(buffer);
-          } catch {
-            // No photo available – initials fallback will be used.
-            return undefined;
-          }
-        })(),
-      ]);
-      return { sponsor: { ...sponsor, photoUrl }, exists };
-    })
-  );
+  const sponsorIds = candidates.map(s => s.id);
 
-  const activeSponsors = results.filter(r => r.exists).map(r => r.sponsor);
-  const unavailableCount = results.filter(r => !r.exists).length;
+  // Fetch presence for all sponsors in one batched call, concurrently with per-sponsor work.
+  const [presenceMap, perSponsorResults] = await Promise.all([
+    fetchPresences(client, sponsorIds),
+    Promise.all(
+      candidates.map(async sponsor => {
+        const [exists, photoUrl, managerInfo] = await Promise.all([
+          userExists(client, sponsor.id),
+          (async (): Promise<string | undefined> => {
+            try {
+              const buffer: ArrayBuffer = await client
+                .api(`/users/${sponsor.id}/photo/$value`)
+                .responseType(ResponseType.ARRAYBUFFER)
+                .get();
+              return arrayBufferToDataUrl(buffer);
+            } catch {
+              // No photo available – initials fallback will be used.
+              return undefined;
+            }
+          })(),
+          fetchManager(client, sponsor.id),
+        ]);
+        return { sponsor: { ...sponsor, photoUrl, ...managerInfo }, exists };
+      })
+    ),
+  ]);
+
+  const activeSponsors = perSponsorResults
+    .filter(r => r.exists)
+    .map(r => ({ ...r.sponsor, presence: presenceMap.get(r.sponsor.id) }));
+  const unavailableCount = perSponsorResults.filter(r => !r.exists).length;
   return { activeSponsors, unavailableCount };
 }

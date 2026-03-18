@@ -13,7 +13,7 @@ export interface IGuestSponsorInfoProps {
   /**
    * When true, the web part behaves as if the current user is a guest and
    * renders fictitious sponsor cards from MockSponsorService instead of
-   * making live Graph calls.  Intended for local-workbench development only.
+   * making live Graph calls.
    */
   mockMode: boolean;
   /**
@@ -22,3 +22,4 @@ export interface IGuestSponsorInfoProps {
    */
   hostTenantId: string;
 }
+
