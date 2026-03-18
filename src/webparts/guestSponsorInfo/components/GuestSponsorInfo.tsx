@@ -45,6 +45,7 @@ const SponsorList: React.FC<{ sponsors: ISponsor[]; hostTenantId: string }> = ({
 
 const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   loginName,
+  isExternalGuestUser,
   displayMode,
   graphClient,
   title,
@@ -56,8 +57,14 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | undefined>(undefined);
 
-  const isGuest = isGuestUser(loginName);
+  // Primary signal: pageContext.user.isExternalGuestUser (authoritative, set from Entra token).
+  // Fallback: #EXT# in loginName (heuristic; may be absent when the SharePoint user profile
+  // has not yet been created for the guest, causing SP.UserProfile to return HTTP 500).
+  const isGuest = isExternalGuestUser || isGuestUser(loginName);
   const isEditMode = displayMode === DisplayMode.Edit;
+
+  // Diagnostic – remove once guest detection is confirmed stable.
+  console.log('[GuestSponsorInfo] loginName:', loginName, '| isExternalGuestUser:', isExternalGuestUser, '| isGuest:', isGuest);
 
   React.useEffect(() => {
     if (isEditMode) return;

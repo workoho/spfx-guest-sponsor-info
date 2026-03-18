@@ -251,18 +251,17 @@
 /* Action buttons row */
 
 .richActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0;
+  text-align: center;
   padding: 8px 12px;
   border-bottom: 1px solid "[theme:neutralLight, default: #edebe9]";
   border-bottom: 1px solid var(--neutralLight, #edebe9);
 }
 
 .richAction {
-  display: flex;
+  display: inline-flex;
   flex-direction: column;
   align-items: center;
+  vertical-align: top;
   gap: 4px;
   padding: 8px 12px;
   border-radius: 4px;
@@ -313,9 +312,10 @@
 .richInfoRow {
   display: flex;
   gap: 12px;
-  padding: 5px 20px;
+  padding: 5px 12px 5px 20px;
   align-items: center;
   color: inherit;
+  position: relative; // containing block for the ::before link overlay
 
   &:hover {
     background-color: "[theme:neutralLighter, default: #f3f2f1]";
@@ -354,18 +354,26 @@
   word-break: break-all;
   text-decoration: none;
 
-  &:hover {
-    text-decoration: underline;
+  // Stretch an invisible click target across the entire row so the user can
+  // click anywhere in the row (not just the text) to follow the link.
+  &[href]::before {
+    content: '';
+    position: absolute;
+    inset: 0;
   }
 }
 
 .copyButton {
+  // In-flow flex item; position:relative + z-index:1 ensures it renders above
+  // the ::before link overlay without depending on TooltipHost's container.
+  position: relative;
+  z-index: 1;
   flex-shrink: 0;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
   padding: 0;
   border: none;
   border-radius: 4px;

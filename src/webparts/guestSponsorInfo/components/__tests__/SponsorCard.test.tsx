@@ -202,16 +202,29 @@ describe('SponsorCard', () => {
       expect(links).toHaveLength(0);
     });
 
-    it('renders a Teams chat link with correct tenantId when mail is present', () => {
+    it('renders a Teams chat link and a Teams call link when mail is present', () => {
       const tenantId = 'aaaabbbb-0000-0000-0000-000000000001';
       render(BASE_SPONSOR, tenantId, true);
       const links = Array.from(container.querySelectorAll('[role="dialog"] a[href*="teams.microsoft.com"]'));
-      expect(links).toHaveLength(1);
-      expect(links[0].getAttribute('href')).toContain(`tenantId=${encodeURIComponent(tenantId)}`);
-      expect(links[0].getAttribute('href')).toContain(encodeURIComponent('alice@contoso.com'));
-      // tenantId must appear before users per the Teams deep link spec
-      const href = links[0].getAttribute('href')!;
-      expect(href.indexOf('tenantId')).toBeLessThan(href.indexOf('users'));
+      expect(links).toHaveLength(2);
+
+      const chatLink = links.find(l => l.getAttribute('href')!.includes('/l/chat/'));
+      const callLink = links.find(l => l.getAttribute('href')!.includes('/l/call/'));
+      expect(chatLink).not.toBeNull();
+      expect(callLink).not.toBeNull();
+
+      // Chat link: tenantId before users
+      const chatHref = chatLink!.getAttribute('href')!;
+      expect(chatHref).toContain(`tenantId=${encodeURIComponent(tenantId)}`);
+      expect(chatHref).toContain(encodeURIComponent('alice@contoso.com'));
+      expect(chatHref.indexOf('tenantId')).toBeLessThan(chatHref.indexOf('users'));
+
+      // Call link: Teams audio call deep link with withVideo=false
+      const callHref = callLink!.getAttribute('href')!;
+      expect(callHref).toContain(`tenantId=${encodeURIComponent(tenantId)}`);
+      expect(callHref).toContain(encodeURIComponent('alice@contoso.com'));
+      expect(callHref).toContain('withVideo=false');
+      expect(callHref.indexOf('tenantId')).toBeLessThan(callHref.indexOf('users'));
     });
 
     it('does not render Teams links when mail is absent', () => {

@@ -89,7 +89,7 @@ const CopyButton: React.FC<{ value: string; ariaLabel: string }> = ({ value, ari
 
 interface ISponsorCardProps {
   sponsor: ISponsor;
-  /** AAD tenant ID of the host tenant — used to build Teams guest-context deep links. */
+  /** Entra ID tenant ID of the host tenant — used to build Teams guest-context deep links. */
   hostTenantId: string;
   /** Controlled by the parent SponsorList — true when this card's rich popup should be visible. */
   isActive: boolean;
@@ -113,7 +113,6 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
   const presenceLabel = sponsor.presence ? (PRESENCE_LABELS[sponsor.presence] ?? '') : undefined;
   const managerInitials = sponsor.managerDisplayName ? getInitials(sponsor.managerDisplayName) : '';
   const managerBgColor = sponsor.managerDisplayName ? getInitialsColor(sponsor.managerDisplayName) : '#8A8886';
-  const primaryPhone = sponsor.businessPhones?.[0] ?? sponsor.mobilePhone;
 
   return (
     <>
@@ -210,7 +209,7 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
             </div>
 
             {/* ── Action buttons row ───────────────────────────────── */}
-            {(sponsor.mail || primaryPhone) && (
+            {sponsor.mail && (
               <div className={styles.richActions} role="toolbar" aria-label={strings.ContactActionsAriaLabel}>
                 {sponsor.mail && (
                   <TooltipHost content={strings.ChatTitle}>
@@ -236,17 +235,17 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
                     </a>
                   </TooltipHost>
                 )}
-                {primaryPhone && (
-                  <TooltipHost content={strings.CallTitle}>
-                    <a
-                      href={`tel:${primaryPhone}`}
-                      className={styles.richAction}
-                    >
-                      <Icon iconName="Phone" className={styles.richActionIcon} aria-hidden="true" />
-                      <span className={styles.richActionLabel}>{strings.CallLabel}</span>
-                    </a>
-                  </TooltipHost>
-                )}
+                <TooltipHost content={strings.CallTitle}>
+                  <a
+                    href={`https://teams.microsoft.com/l/call/0/0?tenantId=${encodeURIComponent(hostTenantId)}&users=${encodeURIComponent(sponsor.mail)}&withVideo=false`}
+                    className={styles.richAction}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                  >
+                    <Icon iconName="Phone" className={styles.richActionIcon} aria-hidden="true" />
+                    <span className={styles.richActionLabel}>{strings.CallLabel}</span>
+                  </a>
+                </TooltipHost>
               </div>
             )}
 

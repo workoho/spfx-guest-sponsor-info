@@ -28,6 +28,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
       GuestSponsorInfo,
       {
         loginName: this.context.pageContext.user.loginName,
+        isExternalGuestUser: this.context.pageContext.user.isExternalGuestUser,
         displayMode: this.displayMode,
         graphClient: this._graphClient, // undefined until onInit resolves
         title: this.properties.title,
