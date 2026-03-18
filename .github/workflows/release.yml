@@ -22,7 +22,7 @@ jobs:
           fetch-depth: 0 # Full git history required by git-cliff
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           # Pin to the major version required by the engines field in package.json.
           node-version: "22"
