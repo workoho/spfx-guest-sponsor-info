@@ -47,6 +47,7 @@
         "EditorConfig.EditorConfig",
         "esbenp.prettier-vscode",
         "GitHub.copilot-chat",
+        "github.vscode-github-actions",
         "ms-azuretools.vscode-docker",
         "openai.chatgpt",
         "SharePoint.deployToSPOnline",
