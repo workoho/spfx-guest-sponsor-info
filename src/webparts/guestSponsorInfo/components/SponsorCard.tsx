@@ -320,7 +320,7 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
                         </div>
                       )}
                     </div>
-                    <div>
+                    <div className={styles.managerText}>
                       <div className={styles.managerLabel}>Manager</div>
                       <div className={styles.managerName}>{sponsor.managerDisplayName}</div>
                       {sponsor.managerJobTitle && (
