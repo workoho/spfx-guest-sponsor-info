@@ -48,6 +48,7 @@ jobs:
         run: ./scripts/build.sh
 
       # Create the GitHub Release and attach the .sppkg as a downloadable asset.
+      # --clobber replaces an existing release with the same tag (idempotent on re-runs).
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -55,4 +56,5 @@ jobs:
           gh release create "${{ github.ref_name }}" \
             --title "v${{ steps.ver.outputs.semver }}" \
             --notes-file RELEASE_NOTES.md \
+            --clobber \
             sharepoint/solution/guest-sponsor-info.sppkg
