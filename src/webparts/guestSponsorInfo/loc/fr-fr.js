@@ -25,7 +25,7 @@ define([], function() {
     "ContactActionsAriaLabel": "Actions de contact",
     "ChatTitle": "Discuter dans Microsoft Teams",
     "EmailTitle": "Envoyer un e-mail",
-    "CallTitle": "Appeler",
+    "CallTitle": "Appel audio dans Microsoft Teams",
     "ChatLabel": "Chat",
     "EmailLabel": "E-mail",
     "CallLabel": "Appel",
