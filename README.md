@@ -272,7 +272,7 @@ tooling — this also works for updates (ARM deployments are idempotent):
 ```bash
 az deployment group create \
   --resource-group <your-resource-group> \
-  --template-uri https://raw.githubusercontent.com/jpawlowski/spfx-guest-sponsor-info/main/azure-function/infra/azuredeploy.json \
+  --template-uri https://github.com/jpawlowski/spfx-guest-sponsor-info/releases/latest/download/azuredeploy.json \
   --parameters \
       tenantId=<your-tenant-id> \
       tenantName=<your-tenant-name> \
@@ -292,7 +292,7 @@ is also possible with a single command.
 az stack group create \
   --name guest-sponsor-info \
   --resource-group <your-resource-group> \
-  --template-uri https://raw.githubusercontent.com/jpawlowski/spfx-guest-sponsor-info/main/azure-function/infra/azuredeploy.json \
+  --template-uri https://github.com/jpawlowski/spfx-guest-sponsor-info/releases/latest/download/azuredeploy.json \
   --parameters \
       tenantId=<your-tenant-id> \
       tenantName=<your-tenant-name> \
@@ -347,7 +347,7 @@ updates what has changed. From [Azure Cloud Shell](https://shell.azure.com):
 ```bash
 az deployment group create \
   --resource-group <your-resource-group> \
-  --template-uri https://raw.githubusercontent.com/jpawlowski/spfx-guest-sponsor-info/main/azure-function/infra/azuredeploy.json \
+  --template-uri https://github.com/jpawlowski/spfx-guest-sponsor-info/releases/latest/download/azuredeploy.json \
   --parameters \
       tenantId=<your-tenant-id> \
       tenantName=<your-tenant-name> \
@@ -365,7 +365,7 @@ automatically removes any resources that were deleted from the template in this 
 az stack group create \
   --name guest-sponsor-info \
   --resource-group <your-resource-group> \
-  --template-uri https://raw.githubusercontent.com/jpawlowski/spfx-guest-sponsor-info/main/azure-function/infra/azuredeploy.json \
+  --template-uri https://github.com/jpawlowski/spfx-guest-sponsor-info/releases/latest/download/azuredeploy.json \
   --parameters \
       tenantId=<your-tenant-id> \
       tenantName=<your-tenant-name> \
