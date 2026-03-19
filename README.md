@@ -266,6 +266,20 @@ Click the button below to open the Azure Portal with the ARM template pre-loaded
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fgithub.com%2Fjpawlowski%2Fspfx-guest-sponsor-info%2Freleases%2Flatest%2Fdownload%2Fazuredeploy.json)
 
+Alternatively, deploy from [Azure Cloud Shell](https://shell.azure.com) without any local
+tooling — this also works for updates (Bicep deployments are idempotent):
+
+```bash
+az deployment group create \
+  --resource-group <your-resource-group> \
+  --template-uri https://raw.githubusercontent.com/jpawlowski/spfx-guest-sponsor-info/main/azure-function/infra/main.bicep \
+  --parameters \
+      tenantId=<your-tenant-id> \
+      tenantName=<your-tenant-name> \
+      functionAppName=<globally-unique-name> \
+      functionClientId=<client-id-from-pre-step>
+```
+
 Fill in the parameters:
 
 | Parameter | Description |
@@ -300,7 +314,21 @@ In the property pane of the web part (edit the page → edit the web part → **
 
 #### Updating the function
 
-When a new release includes an updated function package:
+The simplest way to update is to re-run the deployment — it is idempotent and only
+updates what has changed. From [Azure Cloud Shell](https://shell.azure.com):
+
+```bash
+az deployment group create \
+  --resource-group <your-resource-group> \
+  --template-uri https://raw.githubusercontent.com/jpawlowski/spfx-guest-sponsor-info/main/azure-function/infra/main.bicep \
+  --parameters \
+      tenantId=<your-tenant-id> \
+      tenantName=<your-tenant-name> \
+      functionAppName=<your-function-app-name> \
+      functionClientId=<your-client-id>
+```
+
+Alternatively, update only the function package via the Azure Portal:
 
 1. Open the Function App in the Azure Portal.
 2. **Configuration → Application settings → `WEBSITE_RUN_FROM_PACKAGE`**.
