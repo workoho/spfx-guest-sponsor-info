@@ -102,4 +102,5 @@ jobs:
             --notes-file RELEASE_NOTES.md \
             sharepoint/solution/guest-sponsor-info.sppkg \
             azure-function/guest-sponsor-info-function.zip \
-            azure-function/infra/azuredeploy.json
+            azure-function/infra/azuredeploy.json \
+            azure-function/infra/main.bicep
