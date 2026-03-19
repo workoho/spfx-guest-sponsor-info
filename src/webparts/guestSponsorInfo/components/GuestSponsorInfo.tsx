@@ -103,18 +103,22 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   functionUrl,
   aadHttpClient,
 }) => {
-  const [sponsors, setSponsors] = React.useState<ISponsor[]>([]);
-  const [allUnavailable, setAllUnavailable] = React.useState(false);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | undefined>(undefined);
-  const [proxyStatus, setProxyStatus] = React.useState<ProxyStatus>('checking');
-  const [retryCount, setRetryCount] = React.useState(0);
-
   // Primary signal: pageContext.user.isExternalGuestUser (authoritative, set from Entra token).
   // Fallback: #EXT# in loginName (heuristic; may be absent when the SharePoint user profile
   // has not yet been created for the guest, causing SP.UserProfile to return HTTP 500).
   const isGuest = isExternalGuestUser || isGuestUser(loginName);
   const isEditMode = displayMode === DisplayMode.Edit;
+
+  const [sponsors, setSponsors] = React.useState<ISponsor[]>([]);
+  const [allUnavailable, setAllUnavailable] = React.useState(false);
+  // Start in loading state immediately for guests and demo mode so the shimmer
+  // is visible on the very first render — before the first useEffect tick.
+  // Without this, React paints a brief "no sponsors" flash before the effect
+  // can call setLoading(true).
+  const [loading, setLoading] = React.useState(!isEditMode && (mockMode || isGuest));
+  const [error, setError] = React.useState<string | undefined>(undefined);
+  const [proxyStatus, setProxyStatus] = React.useState<ProxyStatus>('checking');
+  const [retryCount, setRetryCount] = React.useState(0);
 
   // Edit-mode proxy health check: verify the Azure Function is reachable while the
   // page author has the web part selected. Only fires when functionUrl is configured.
