@@ -79,7 +79,7 @@ async function userExists(client: MSGraphClientV3, userId: string): Promise<bool
  * Returns a map of userId → availability string.
  * Silently returns an empty map on any error (presence is non-critical).
  */
-async function fetchPresences(
+export async function fetchPresences(
   client: MSGraphClientV3,
   userIds: string[]
 ): Promise<Map<string, string>> {

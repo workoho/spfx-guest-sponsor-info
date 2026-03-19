@@ -5,7 +5,7 @@ import * as strings from 'GuestSponsorInfoWebPartStrings';
 import styles from './GuestSponsorInfo.module.scss';
 import type { IGuestSponsorInfoProps } from './IGuestSponsorInfoProps';
 import { ISponsor } from '../services/ISponsor';
-import { isGuestUser, getSponsors, getSponsorsViaProxy, loadPhotosProgressively } from '../services/SponsorService';
+import { isGuestUser, getSponsors, getSponsorsViaProxy, loadPhotosProgressively, fetchPresences } from '../services/SponsorService';
 import { MOCK_SPONSORS } from '../services/MockSponsorService';
 import SponsorCard from './SponsorCard';
 
@@ -137,6 +137,10 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   const [proxyStatus, setProxyStatus] = React.useState<ProxyStatus>('checking');
   const [retryCount, setRetryCount] = React.useState(0);
 
+  // Ref that always holds the IDs of currently displayed sponsors.
+  // The presence refresh interval reads this without capturing sponsors in its closure.
+  const sponsorIdsRef = React.useRef<string[]>([]);
+
   // Edit-mode proxy health check: verify the Azure Function is reachable while the
   // page author has the web part selected. Only fires when functionUrl is configured.
   React.useEffect(() => {
@@ -180,6 +184,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
         if (!cancelled) {
           const active = result.activeSponsors;
           setSponsors(active);
+          sponsorIdsRef.current = active.map(s => s.id);
           // All unavailable = sponsors were assigned but every account is disabled/deleted.
           setAllUnavailable(active.length === 0 && result.unavailableCount > 0);
           setLoading(false);
@@ -223,31 +228,21 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
     return () => { cancelled = true; };
   }, [isGuest, isEditMode, graphClient, mockMode, functionUrl, aadHttpClient, retryCount]);
 
-  // Presence refresh: silently re-fetch sponsor data every 5 minutes so that
-  // presence indicators stay current without the user needing to reload the page.
-  // Only active in view mode after at least one successful load (sponsors or empty result).
+  // Presence refresh: re-fetch only presence every 5 minutes so that availability
+  // indicators stay current without a full sponsor reload.
+  // Uses graphClient directly for both proxy and direct paths — graphClient is
+  // always acquired in onInit regardless of whether the proxy is configured.
   const PRESENCE_REFRESH_MS = 5 * 60 * 1000;
   React.useEffect(() => {
     if (isEditMode || mockMode || !isGuest || loading || error) return;
-    const useProxy = functionUrl !== undefined && aadHttpClient !== undefined;
-    if (!useProxy && graphClient === undefined) return;
-
-    const loadFn = useProxy
-      ? () => getSponsorsViaProxy(functionUrl as string, aadHttpClient!)
-      : () => getSponsors(graphClient!);
+    if (!graphClient) return;
 
     const id = setInterval(() => {
-      loadFn()
-        .then(result => {
-          // Merge refreshed data with the photos already in state.
-          // loadPhotosProgressively only runs on initial load; the API never
-          // returns photoUrl/managerPhotoUrl, so a plain setSponsors() would
-          // discard the cached photos and show initials until the next reload.
-          setSponsors(prev => {
-            const photoMap = new Map(prev.map(s => [s.id, { photoUrl: s.photoUrl, managerPhotoUrl: s.managerPhotoUrl }]));
-            return result.activeSponsors.map(s => ({ ...s, ...photoMap.get(s.id) }));
-          });
-          setAllUnavailable(result.activeSponsors.length === 0 && result.unavailableCount > 0);
+      const ids = sponsorIdsRef.current;
+      if (ids.length === 0) return;
+      fetchPresences(graphClient, ids)
+        .then(presenceMap => {
+          setSponsors(prev => prev.map(s => ({ ...s, presence: presenceMap.get(s.id) ?? s.presence })));
         })
         .catch((err: unknown) => {
           // Presence refresh failures are silent — the existing data stays on screen.
@@ -256,7 +251,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
     }, PRESENCE_REFRESH_MS);
 
     return () => clearInterval(id);
-  }, [isEditMode, mockMode, isGuest, loading, error, graphClient, functionUrl, aadHttpClient]);
+  }, [isEditMode, mockMode, isGuest, loading, error, graphClient]);
 
   // Edit mode: always show a lightweight placeholder so page authors can position the web part.
   if (isEditMode) {
