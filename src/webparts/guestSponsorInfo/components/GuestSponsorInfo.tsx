@@ -61,6 +61,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | undefined>(undefined);
   const [proxyStatus, setProxyStatus] = React.useState<ProxyStatus>('checking');
+  const [retryCount, setRetryCount] = React.useState(0);
 
   // Primary signal: pageContext.user.isExternalGuestUser (authoritative, set from Entra token).
   // Fallback: #EXT# in loginName (heuristic; may be absent when the SharePoint user profile
@@ -102,7 +103,6 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
     let cancelled = false;
     setLoading(true);
     setError(undefined);
-
     const loadFn = useProxy
       ? () => getSponsorsViaProxy(functionUrl as string, aadHttpClient!)
       : () => getSponsors(graphClient!);
@@ -114,6 +114,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
           // All unavailable = sponsors were assigned but every account is disabled/deleted.
           setAllUnavailable(result.activeSponsors.length === 0 && result.unavailableCount > 0);
           setLoading(false);
+          setRetryCount(0);
         }
       })
       .catch((err: unknown) => {
@@ -122,13 +123,51 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
           // can see the exact status code and error message without opening the
           // network tab (useful when the web part is embedded in a guest session).
           console.error('[GuestSponsorInfo] getSponsors failed:', err);
-          setError(strings.ErrorMessage);
-          setLoading(false);
+          const status = (err as { statusCode?: number }).statusCode;
+          const is4xx = status !== undefined && status >= 400 && status < 500;
+          if (is4xx) {
+            // Permanent error (e.g. 401, 403): stop retrying and show the message.
+            setError(strings.ErrorMessage);
+            setLoading(false);
+          } else {
+            // Transient error: retry with exponential backoff capped at 5 minutes.
+            // Spinner stays visible — the user sees "Loading…" throughout.
+            const delay = Math.min(3000 * Math.pow(3, retryCount), 5 * 60 * 1000);
+            setTimeout(() => { if (!cancelled) setRetryCount(n => n + 1); }, delay);
+          }
         }
       });
 
     return () => { cancelled = true; };
-  }, [isGuest, isEditMode, graphClient, mockMode, functionUrl, aadHttpClient]);
+  }, [isGuest, isEditMode, graphClient, mockMode, functionUrl, aadHttpClient, retryCount]);
+
+  // Presence refresh: silently re-fetch sponsor data every 5 minutes so that
+  // presence indicators stay current without the user needing to reload the page.
+  // Only active in view mode after at least one successful load (sponsors or empty result).
+  const PRESENCE_REFRESH_MS = 5 * 60 * 1000;
+  React.useEffect(() => {
+    if (isEditMode || mockMode || !isGuest || loading || error) return;
+    const useProxy = functionUrl !== undefined && aadHttpClient !== undefined;
+    if (!useProxy && graphClient === undefined) return;
+
+    const loadFn = useProxy
+      ? () => getSponsorsViaProxy(functionUrl as string, aadHttpClient!)
+      : () => getSponsors(graphClient!);
+
+    const id = setInterval(() => {
+      loadFn()
+        .then(result => {
+          setSponsors(result.activeSponsors);
+          setAllUnavailable(result.activeSponsors.length === 0 && result.unavailableCount > 0);
+        })
+        .catch((err: unknown) => {
+          // Presence refresh failures are silent — the existing data stays on screen.
+          console.warn('[GuestSponsorInfo] Presence refresh failed:', err);
+        });
+    }, PRESENCE_REFRESH_MS);
+
+    return () => clearInterval(id);
+  }, [isEditMode, mockMode, isGuest, loading, error, graphClient, functionUrl, aadHttpClient]);
 
   // Edit mode: always show a lightweight placeholder so page authors can position the web part.
   if (isEditMode) {

@@ -199,8 +199,10 @@ describe('GuestSponsorInfo', () => {
       expect(container.textContent).not.toContain('no longer available');
     });
 
-    it('shows the error message when getSponsors rejects', async () => {
-      mockGetSponsors.mockRejectedValue(new Error('Graph unavailable'));
+    it('shows the error message when getSponsors rejects with a 4xx status', async () => {
+      // Transient (network) errors are retried silently; only 4xx errors surface immediately.
+      const err = Object.assign(new Error('Unauthorized'), { statusCode: 401 });
+      mockGetSponsors.mockRejectedValue(err);
       act(() => { renderWebPart({}); });
       await flushAsync();
       expect(container.textContent).toContain('Could not load sponsor information');
