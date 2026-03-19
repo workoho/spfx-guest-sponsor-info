@@ -3,12 +3,8 @@
   "id": "16be4020-0cfb-4b1b-9d50-d3d4af2e90e6",
   "alias": "GuestSponsorInfoWebPart",
   "componentType": "WebPart",
-  // The "*" signifies that the version should be taken from the package.json
   "version": "*",
   "manifestVersion": 2,
-  // If true, the component can only be installed on sites where Custom Script is allowed.
-  // Components that allow authors to embed arbitrary script code should set this to true.
-  // https://support.office.com/en-us/article/Turn-scripting-capabilities-on-or-off-1f2c515f-5d7e-448a-9fd7-835da935584f
   "requiresCustomScript": false,
   "supportedHosts": [
     "SharePointWebPart"
@@ -16,7 +12,7 @@
   "supportsThemeVariants": true,
   "preconfiguredEntries": [
     {
-      "groupId": "1edbd9a8-0bfb-4aa2-9afd-14b8c45dd489", // Communication
+      "groupId": "1edbd9a8-0bfb-4aa2-9afd-14b8c45dd489",
       "group": {
         "default": "Communication"
       },
