@@ -1,6 +1,6 @@
 {
   "name": "guest-sponsor-info-function",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "Azure Function proxy for /me/sponsors — serves guest sponsor data to the SPFx web part.",
   "scripts": {
     "build": "tsc",
