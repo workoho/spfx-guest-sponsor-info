@@ -368,7 +368,18 @@ function assignedPlansHaveTeams(plans: unknown): boolean {
  * with application permissions (User.Read.All, Presence.Read.All).
  * No client secrets are stored anywhere.
  */
-export async function getGuestSponsors(
+export /**
+ * Validates and normalizes HTTP status codes. Returns a valid HTTP status in the
+ * range 200–599; defaults to 500 if the provided code is undefined or out of range.
+ * This guards against GraphError or other exceptions providing invalid status codes
+ * that would crash the Azure Functions runtime.
+ */
+function getValidHttpStatus(code: unknown): number {
+  if (typeof code === 'number' && code >= 200 && code <= 599) return code;
+  return 500;
+}
+
+async function getGuestSponsors(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
@@ -604,9 +615,9 @@ export async function getGuestSponsors(
     }
     const status = error instanceof TimeoutError
       ? 504
-      : error instanceof GraphError
-        ? (error.statusCode ?? 500)
-        : ((error as { statusCode?: number }).statusCode ?? 500);
+      : getValidHttpStatus(
+        error instanceof GraphError ? error.statusCode : (error as { statusCode?: number }).statusCode
+      );
     return {
       status,
       body: JSON.stringify({ error: 'Failed to retrieve sponsor information.' }),
