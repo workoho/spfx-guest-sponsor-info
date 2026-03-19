@@ -1,6 +1,6 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { ManagedIdentityCredential } from '@azure/identity';
-import { Client, MiddlewareFactory } from '@microsoft/microsoft-graph-client';
+import { Client, GraphError, MiddlewareFactory } from '@microsoft/microsoft-graph-client';
 import { TokenCredentialAuthenticationProvider } from '@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials';
 
 /**
@@ -505,10 +505,24 @@ export async function getGuestSponsors(
     const result: ISponsorsResult = { activeSponsors, unavailableCount };
     return jsonResponse(result, 200, request);
   } catch (error) {
-    context.error('Error fetching sponsors:', error);
+    if (error instanceof GraphError) {
+      // GraphError is thrown by the Graph SDK for HTTP-level failures.
+      // requestId is the Graph correlation ID — log it so it can be looked up
+      // in Azure Monitor or provided to Microsoft Support for debugging.
+      context.error('Graph error fetching sponsors:', {
+        statusCode: error.statusCode,
+        code: error.code,
+        requestId: error.requestId,
+        message: error.message,
+      });
+    } else {
+      context.error('Error fetching sponsors:', error);
+    }
     const status = error instanceof TimeoutError
       ? 504
-      : ((error as { statusCode?: number }).statusCode ?? 500);
+      : error instanceof GraphError
+        ? (error.statusCode ?? 500)
+        : ((error as { statusCode?: number }).statusCode ?? 500);
     return {
       status,
       body: JSON.stringify({ error: 'Failed to retrieve sponsor information.' }),
