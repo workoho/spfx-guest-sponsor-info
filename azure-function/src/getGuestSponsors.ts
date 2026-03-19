@@ -38,7 +38,7 @@ const MAX_BODY_SIZE_BYTES = 1024;    // GET requests have no body; 1KB guards ag
  * undefined = not yet checked; true/false = result cached for the lifetime
  * of this warm function instance.
  */
-let cachedHasMailboxSettings: boolean | undefined;
+let cachedMailboxSettingsDetection: Promise<boolean> | undefined;
 
 /**
  * Inspects the JWT access token obtained by the Managed Identity to determine
@@ -49,6 +49,10 @@ let cachedHasMailboxSettings: boolean | undefined;
  * request is made.  The result is cached at module level so the check only
  * runs once per warm function instance.
  *
+ * The result is stored as a Promise so that concurrent invocations during
+ * a cold start share a single in-flight token inspection instead of each
+ * starting their own (eliminates the require-atomic-updates race pattern).
+ *
  * When this permission is present the caller can add mailboxSettings to the
  * per-sponsor $select and use userPurpose to filter out non-user mailboxes
  * (shared, room, equipment, …).  When it is absent the filter is silently
@@ -58,21 +62,26 @@ async function detectMailboxSettingsPermission(
   credential: ManagedIdentityCredential,
   context: InvocationContext
 ): Promise<boolean> {
-  if (cachedHasMailboxSettings !== undefined) return cachedHasMailboxSettings;
-  try {
-    const token = await credential.getToken('https://graph.microsoft.com/.default');
-    // JWT payload is the second segment, base64url-encoded.
-    const payloadJson = Buffer.from(token.token.split('.')[1], 'base64url').toString('utf8');
-    const payload = JSON.parse(payloadJson) as { roles?: unknown };
-    const roles = Array.isArray(payload.roles) ? (payload.roles as string[]) : [];
-    cachedHasMailboxSettings = roles.includes('MailboxSettings.Read');
-    context.log(`MailboxSettings.Read permission: ${cachedHasMailboxSettings}`);
-  } catch (error) {
-    // If token inspection fails for any reason, degrade gracefully.
-    context.warn('Could not inspect token roles — mailbox filter disabled.', error);
-    cachedHasMailboxSettings = false;
+  // Assign synchronously before any await so concurrent callers share one promise.
+  if (!cachedMailboxSettingsDetection) {
+    cachedMailboxSettingsDetection = (async (): Promise<boolean> => {
+      try {
+        const token = await credential.getToken('https://graph.microsoft.com/.default');
+        // JWT payload is the second segment, base64url-encoded.
+        const payloadJson = Buffer.from(token.token.split('.')[1], 'base64url').toString('utf8');
+        const payload = JSON.parse(payloadJson) as { roles?: unknown };
+        const roles = Array.isArray(payload.roles) ? (payload.roles as string[]) : [];
+        const result = roles.includes('MailboxSettings.Read');
+        context.log(`MailboxSettings.Read permission: ${result}`);
+        return result;
+      } catch (error) {
+        // If token inspection fails for any reason, degrade gracefully.
+        context.warn('Could not inspect token roles — mailbox filter disabled.', error);
+        return false;
+      }
+    })();
   }
-  return cachedHasMailboxSettings;
+  return cachedMailboxSettingsDetection;
 }
 
 function checkRateLimit(userId: string): { allowed: boolean; retryAfterSeconds?: number } {
@@ -421,19 +430,18 @@ export async function getGuestSponsors(
 
   context.log(`Fetching sponsors for caller ${redactGuid(callerOid)}`);
 
-  const credential = new ManagedIdentityCredential();
-  const hasMailboxSettings = await detectMailboxSettingsPermission(credential, context);
-  const authProvider = new TokenCredentialAuthenticationProvider(credential, {
-    scopes: ['https://graph.microsoft.com/.default'],
-  });
-  // Build a middleware chain that includes automatic retry with exponential
-  // back-off for 429 (throttled) and transient 5xx responses (up to 3 retries,
-  // starting at 3 s — the library default).  RedirectHandler and the auth
-  // handler are also included via the factory's default chain.
-  const middleware = MiddlewareFactory.getDefaultMiddlewareChain(authProvider);
-  const client = Client.initWithMiddleware({ middleware: middleware[0] });
-
   try {
+    const credential = new ManagedIdentityCredential();
+    const hasMailboxSettings = await detectMailboxSettingsPermission(credential, context);
+    const authProvider = new TokenCredentialAuthenticationProvider(credential, {
+      scopes: ['https://graph.microsoft.com/.default'],
+    });
+    // Build a middleware chain that includes automatic retry with exponential
+    // back-off for 429 (throttled) and transient 5xx responses (up to 3 retries,
+    // starting at 3 s — the library default).  RedirectHandler and the auth
+    // handler are also included via the factory's default chain.
+    const middleware = MiddlewareFactory.getDefaultMiddlewareChain(authProvider);
+    const client = Client.initWithMiddleware({ middleware: middleware[0] });
     const response = await withTimeout(
       client
         .api(`/users/${callerOid}/sponsors`)

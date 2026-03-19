@@ -60,9 +60,10 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
 
   protected async onInit(): Promise<void> {
     await super.onInit();
-    // Register the Fluent UI MDL2 icon font. This is safe to call multiple times;
-    // the implementation skips re-registration if already initialised.
-    initializeIcons();
+    // Register the Fluent UI MDL2 icon font. Passing disableWarnings suppresses
+    // the "icons re-registered" console warning that occurs when multiple web parts
+    // or the SharePoint page itself have already called initializeIcons().
+    initializeIcons(undefined, { disableWarnings: true });
     try {
       this._graphClient = await this.context.msGraphClientFactory.getClient('3');
     } catch {
