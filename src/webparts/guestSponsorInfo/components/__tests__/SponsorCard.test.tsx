@@ -15,6 +15,11 @@ jest.mock('@fluentui/react', () => ({
   // Render children directly; tooltip callout behaviour is tested in Fluent UI itself.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   TooltipHost: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Panel: ({ children, isOpen }: { children: React.ReactNode; isOpen?: boolean }) => (
+    isOpen ? <div role="dialog">{children}</div> : null
+  ),
+  PanelType: { custom: 'custom' },
 }));
 
 import * as React from 'react';
@@ -184,6 +189,14 @@ describe('SponsorCard', () => {
       const card = container.querySelector('[role="button"]') as HTMLElement;
       fireEvent(card, 'mouseleave');
       expect(onScheduleDeactivate).toHaveBeenCalled();
+    });
+
+    it('calls onActivate when the card is clicked (tap on touch devices)', () => {
+      const onActivate = jest.fn();
+      render(BASE_SPONSOR, 'test-tenant-id', false, onActivate);
+      const card = container.querySelector('[role="button"]') as HTMLElement;
+      act(() => { card.click(); });
+      expect(onActivate).toHaveBeenCalled();
     });
 
     it('shows the mobile phone when present and business phones are absent', () => {

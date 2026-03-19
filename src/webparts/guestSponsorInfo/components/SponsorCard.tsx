@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Callout, DirectionalHint, Icon, TooltipHost } from '@fluentui/react';
+import { Callout, DirectionalHint, Icon, Panel, PanelType, TooltipHost } from '@fluentui/react';
 import * as strings from 'GuestSponsorInfoWebPartStrings';
 import { ISponsor } from '../services/ISponsor';
 import styles from './GuestSponsorInfo.module.scss';
@@ -87,6 +87,24 @@ const CopyButton: React.FC<{ value: string; ariaLabel: string }> = ({ value, ari
   );
 };
 
+/**
+ * Returns true when the viewport is ≤ 480 px (phone-sized).
+ * Starts as false so it is safe in SSR and test environments (jsdom has no matchMedia).
+ * Updates reactively when the viewport resizes across the breakpoint.
+ */
+function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = React.useState(false);
+  React.useEffect(() => {
+    if (!window.matchMedia) return;
+    const mq = window.matchMedia('(max-width: 480px)');
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent): void => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return isMobile;
+}
+
 interface ISponsorCardProps {
   sponsor: ISponsor;
   /** Entra ID tenant ID of the host tenant — used to build Teams guest-context deep links. */
@@ -113,6 +131,170 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
   const presenceLabel = sponsor.presence ? (PRESENCE_LABELS[sponsor.presence] ?? '') : undefined;
   const managerInitials = sponsor.managerDisplayName ? getInitials(sponsor.managerDisplayName) : '';
   const managerBgColor = sponsor.managerDisplayName ? getInitialsColor(sponsor.managerDisplayName) : '#8A8886';
+  const isMobile = useIsMobile();
+
+  // The rich card body is defined here so it can be placed inside either
+  // a Callout (desktop) or a Panel (mobile) without duplicating the JSX.
+  const richBody = (
+    <div
+      className={styles.richCard}
+      style={isMobile ? { width: 'auto', maxHeight: 'none', backgroundColor: 'transparent' } : undefined}
+      onMouseEnter={!isMobile ? onActivate : undefined}
+      onMouseLeave={!isMobile ? onScheduleDeactivate : undefined}
+    >
+      {/* ── Header: large avatar + name / title / presence ─── */}
+      <div className={styles.richHeader}>
+        <div className={styles.richAvatarWrapper}>
+          <div className={styles.richAvatar}>
+            {sponsor.photoUrl ? (
+              <img src={sponsor.photoUrl} alt="" className={styles.photo} />
+            ) : (
+              <div className={styles.initials} style={{ backgroundColor: bgColor, fontSize: '30px' }}>
+                {initials}
+              </div>
+            )}
+          </div>
+          {presenceColor && (
+            <span
+              className={styles.richPresenceDot}
+              style={{ backgroundColor: presenceColor }}
+              aria-hidden="true"
+            />
+          )}
+        </div>
+        <div className={styles.richHeaderText}>
+          <div className={styles.richName}>{sponsor.displayName}</div>
+          {sponsor.jobTitle && (
+            <div className={styles.richJobTitle}>{sponsor.jobTitle}</div>
+          )}
+          {sponsor.department && (
+            <div className={styles.richDept}>{sponsor.department}</div>
+          )}
+          {presenceLabel && (
+            <div className={styles.richPresenceLabel} style={{ color: presenceColor }}>
+              {presenceLabel}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Action buttons row ───────────────────────────────── */}
+      {sponsor.mail && (
+        <div className={styles.richActions} role="toolbar" aria-label={strings.ContactActionsAriaLabel}>
+          {sponsor.mail && (
+            <TooltipHost content={strings.ChatTitle}>
+              <a
+                href={`https://teams.microsoft.com/l/chat/0/0?tenantId=${encodeURIComponent(hostTenantId)}&users=${encodeURIComponent(sponsor.mail)}`}
+                className={styles.richAction}
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                <Icon iconName="Chat" className={styles.richActionIcon} aria-hidden="true" />
+                <span className={styles.richActionLabel}>{strings.ChatLabel}</span>
+              </a>
+            </TooltipHost>
+          )}
+          {sponsor.mail && (
+            <TooltipHost content={strings.EmailTitle}>
+              <a
+                href={`mailto:${sponsor.mail}`}
+                className={styles.richAction}
+              >
+                <Icon iconName="Mail" className={styles.richActionIcon} aria-hidden="true" />
+                <span className={styles.richActionLabel}>{strings.EmailLabel}</span>
+              </a>
+            </TooltipHost>
+          )}
+          <TooltipHost content={strings.CallTitle}>
+            <a
+              href={`https://teams.microsoft.com/l/call/0/0?tenantId=${encodeURIComponent(hostTenantId)}&users=${encodeURIComponent(sponsor.mail)}&withVideo=false`}
+              className={styles.richAction}
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              <Icon iconName="Phone" className={styles.richActionIcon} aria-hidden="true" />
+              <span className={styles.richActionLabel}>{strings.CallLabel}</span>
+            </a>
+          </TooltipHost>
+        </div>
+      )}
+
+      {/* ── Contact information section ──────────────────────── */}
+      <div className={styles.richSectionTitle}>{strings.ContactInfoSection}</div>
+      <div className={styles.richSection}>
+        {sponsor.mail && (
+          <div className={styles.richInfoRow}>
+            <Icon iconName="Mail" className={styles.richInfoIcon} aria-hidden="true" />
+            <div className={styles.richInfoText}>
+              <div className={styles.richInfoMeta}>{strings.EmailFieldLabel}</div>
+              <a href={`mailto:${sponsor.mail}`} className={styles.richInfoValue}>{sponsor.mail}</a>
+            </div>
+            <CopyButton value={sponsor.mail} ariaLabel={strings.CopyEmailAriaLabel} />
+          </div>
+        )}
+        {sponsor.businessPhones?.map(phone => (
+          <div key={phone} className={styles.richInfoRow}>
+            <Icon iconName="Phone" className={styles.richInfoIcon} aria-hidden="true" />
+            <div className={styles.richInfoText}>
+              <div className={styles.richInfoMeta}>{strings.WorkPhoneFieldLabel}</div>
+              <a href={`tel:${phone}`} className={styles.richInfoValue}>{phone}</a>
+            </div>
+            <CopyButton value={phone} ariaLabel={strings.CopyWorkPhoneAriaLabel} />
+          </div>
+        ))}
+        {sponsor.mobilePhone && (
+          <div className={styles.richInfoRow}>
+            <Icon iconName="CellPhone" className={styles.richInfoIcon} aria-hidden="true" />
+            <div className={styles.richInfoText}>
+              <div className={styles.richInfoMeta}>{strings.MobileFieldLabel}</div>
+              <a href={`tel:${sponsor.mobilePhone}`} className={styles.richInfoValue}>{sponsor.mobilePhone}</a>
+            </div>
+            <CopyButton value={sponsor.mobilePhone} ariaLabel={strings.CopyMobileAriaLabel} />
+          </div>
+        )}
+        {sponsor.officeLocation && (
+          <div className={styles.richInfoRow}>
+            <Icon iconName="MapPin" className={styles.richInfoIcon} aria-hidden="true" />
+            <div className={styles.richInfoText}>
+              <div className={styles.richInfoMeta}>{strings.WorkLocationFieldLabel}</div>
+              <div className={styles.richInfoValue}>{sponsor.officeLocation}</div>
+            </div>
+            <CopyButton value={sponsor.officeLocation} ariaLabel={strings.CopyLocationAriaLabel} />
+          </div>
+        )}
+      </div>
+
+      {/* ── Organization section (manager) ───────────────────── */}
+      {sponsor.managerDisplayName && (
+        <>
+          <div className={styles.richSectionTitle}>{strings.OrganizationSection}</div>
+          <div className={styles.richSection}>
+            <div className={styles.managerRow}>
+              <div className={styles.managerAvatar}>
+                {sponsor.managerPhotoUrl ? (
+                  <img src={sponsor.managerPhotoUrl} alt="" className={styles.photo} />
+                ) : (
+                  <div
+                    className={styles.initials}
+                    style={{ backgroundColor: managerBgColor, fontSize: '14px' }}
+                  >
+                    {managerInitials}
+                  </div>
+                )}
+              </div>
+              <div className={styles.managerText}>
+                <div className={styles.managerLabel}>{strings.ManagerLabel}</div>
+                <div className={styles.managerName}>{sponsor.managerDisplayName}</div>
+                {sponsor.managerJobTitle && (
+                  <div className={styles.managerJobTitle}>{sponsor.managerJobTitle}</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
 
   return (
     <>
@@ -124,6 +306,7 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
         onMouseLeave={onScheduleDeactivate}
         onFocus={onActivate}
         onBlur={onScheduleDeactivate}
+        onClick={onActivate}
         tabIndex={0}
         role="button"
         aria-label={sponsor.displayName}
@@ -154,177 +337,35 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
         )}
       </div>
 
-      {/* ── Rich contact card (Fluent UI Callout, renders in portal) ─── */}
+      {/* ── Rich contact card (Panel on mobile, Callout on desktop) ─── */}
       {isActive && (
-        <Callout
-          target={cardRef}
-          onDismiss={onScheduleDeactivate}
-          directionalHint={DirectionalHint.rightTopEdge}
-          directionalHintForRTL={DirectionalHint.leftTopEdge}
-          isBeakVisible={false}
-          gapSpace={8}
-          role="dialog"
-          aria-label={strings.ContactDetailsAriaLabel.replace('{0}', sponsor.displayName)}
-          setInitialFocus={false}
-        >
-          <div
-            className={styles.richCard}
-            onMouseEnter={onActivate}
-            onMouseLeave={onScheduleDeactivate}
+        isMobile ? (
+          <Panel
+            isOpen
+            type={PanelType.custom}
+            customWidth="100%"
+            isLightDismiss
+            hasCloseButton
+            headerText={sponsor.displayName}
+            onDismiss={() => onScheduleDeactivate()}
           >
-            {/* ── Header: large avatar + name / title / presence ─── */}
-            <div className={styles.richHeader}>
-              <div className={styles.richAvatarWrapper}>
-                <div className={styles.richAvatar}>
-                  {sponsor.photoUrl ? (
-                    <img src={sponsor.photoUrl} alt="" className={styles.photo} />
-                  ) : (
-                    <div className={styles.initials} style={{ backgroundColor: bgColor, fontSize: '30px' }}>
-                      {initials}
-                    </div>
-                  )}
-                </div>
-                {presenceColor && (
-                  <span
-                    className={styles.richPresenceDot}
-                    style={{ backgroundColor: presenceColor }}
-                    aria-hidden="true"
-                  />
-                )}
-              </div>
-              <div className={styles.richHeaderText}>
-                <div className={styles.richName}>{sponsor.displayName}</div>
-                {sponsor.jobTitle && (
-                  <div className={styles.richJobTitle}>{sponsor.jobTitle}</div>
-                )}
-                {sponsor.department && (
-                  <div className={styles.richDept}>{sponsor.department}</div>
-                )}
-                {presenceLabel && (
-                  <div className={styles.richPresenceLabel} style={{ color: presenceColor }}>
-                    {presenceLabel}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* ── Action buttons row ───────────────────────────────── */}
-            {sponsor.mail && (
-              <div className={styles.richActions} role="toolbar" aria-label={strings.ContactActionsAriaLabel}>
-                {sponsor.mail && (
-                  <TooltipHost content={strings.ChatTitle}>
-                    <a
-                      href={`https://teams.microsoft.com/l/chat/0/0?tenantId=${encodeURIComponent(hostTenantId)}&users=${encodeURIComponent(sponsor.mail)}`}
-                      className={styles.richAction}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                    >
-                      <Icon iconName="Chat" className={styles.richActionIcon} aria-hidden="true" />
-                      <span className={styles.richActionLabel}>{strings.ChatLabel}</span>
-                    </a>
-                  </TooltipHost>
-                )}
-                {sponsor.mail && (
-                  <TooltipHost content={strings.EmailTitle}>
-                    <a
-                      href={`mailto:${sponsor.mail}`}
-                      className={styles.richAction}
-                    >
-                      <Icon iconName="Mail" className={styles.richActionIcon} aria-hidden="true" />
-                      <span className={styles.richActionLabel}>{strings.EmailLabel}</span>
-                    </a>
-                  </TooltipHost>
-                )}
-                <TooltipHost content={strings.CallTitle}>
-                  <a
-                    href={`https://teams.microsoft.com/l/call/0/0?tenantId=${encodeURIComponent(hostTenantId)}&users=${encodeURIComponent(sponsor.mail)}&withVideo=false`}
-                    className={styles.richAction}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                  >
-                    <Icon iconName="Phone" className={styles.richActionIcon} aria-hidden="true" />
-                    <span className={styles.richActionLabel}>{strings.CallLabel}</span>
-                  </a>
-                </TooltipHost>
-              </div>
-            )}
-
-            {/* ── Contact information section ──────────────────────── */}
-            <div className={styles.richSectionTitle}>{strings.ContactInfoSection}</div>
-            <div className={styles.richSection}>
-              {sponsor.mail && (
-                <div className={styles.richInfoRow}>
-                  <Icon iconName="Mail" className={styles.richInfoIcon} aria-hidden="true" />
-                  <div className={styles.richInfoText}>
-                    <div className={styles.richInfoMeta}>{strings.EmailFieldLabel}</div>
-                    <a href={`mailto:${sponsor.mail}`} className={styles.richInfoValue}>{sponsor.mail}</a>
-                  </div>
-                  <CopyButton value={sponsor.mail} ariaLabel={strings.CopyEmailAriaLabel} />
-                </div>
-              )}
-              {sponsor.businessPhones?.map(phone => (
-                <div key={phone} className={styles.richInfoRow}>
-                  <Icon iconName="Phone" className={styles.richInfoIcon} aria-hidden="true" />
-                  <div className={styles.richInfoText}>
-                    <div className={styles.richInfoMeta}>{strings.WorkPhoneFieldLabel}</div>
-                    <a href={`tel:${phone}`} className={styles.richInfoValue}>{phone}</a>
-                  </div>
-                  <CopyButton value={phone} ariaLabel={strings.CopyWorkPhoneAriaLabel} />
-                </div>
-              ))}
-              {sponsor.mobilePhone && (
-                <div className={styles.richInfoRow}>
-                  <Icon iconName="CellPhone" className={styles.richInfoIcon} aria-hidden="true" />
-                  <div className={styles.richInfoText}>
-                    <div className={styles.richInfoMeta}>{strings.MobileFieldLabel}</div>
-                    <a href={`tel:${sponsor.mobilePhone}`} className={styles.richInfoValue}>{sponsor.mobilePhone}</a>
-                  </div>
-                  <CopyButton value={sponsor.mobilePhone} ariaLabel={strings.CopyMobileAriaLabel} />
-                </div>
-              )}
-              {sponsor.officeLocation && (
-                <div className={styles.richInfoRow}>
-                  <Icon iconName="MapPin" className={styles.richInfoIcon} aria-hidden="true" />
-                  <div className={styles.richInfoText}>
-                    <div className={styles.richInfoMeta}>{strings.WorkLocationFieldLabel}</div>
-                    <div className={styles.richInfoValue}>{sponsor.officeLocation}</div>
-                  </div>
-                  <CopyButton value={sponsor.officeLocation} ariaLabel={strings.CopyLocationAriaLabel} />
-                </div>
-              )}
-            </div>
-
-            {/* ── Organization section (manager) ───────────────────── */}
-            {sponsor.managerDisplayName && (
-              <>
-                <div className={styles.richSectionTitle}>{strings.OrganizationSection}</div>
-                <div className={styles.richSection}>
-                  <div className={styles.managerRow}>
-                    <div className={styles.managerAvatar}>
-                      {sponsor.managerPhotoUrl ? (
-                        <img src={sponsor.managerPhotoUrl} alt="" className={styles.photo} />
-                      ) : (
-                        <div
-                          className={styles.initials}
-                          style={{ backgroundColor: managerBgColor, fontSize: '14px' }}
-                        >
-                          {managerInitials}
-                        </div>
-                      )}
-                    </div>
-                    <div className={styles.managerText}>
-                      <div className={styles.managerLabel}>{strings.ManagerLabel}</div>
-                      <div className={styles.managerName}>{sponsor.managerDisplayName}</div>
-                      {sponsor.managerJobTitle && (
-                        <div className={styles.managerJobTitle}>{sponsor.managerJobTitle}</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </Callout>
+            {richBody}
+          </Panel>
+        ) : (
+          <Callout
+            target={cardRef}
+            onDismiss={onScheduleDeactivate}
+            directionalHint={DirectionalHint.rightTopEdge}
+            directionalHintForRTL={DirectionalHint.leftTopEdge}
+            isBeakVisible={false}
+            gapSpace={8}
+            role="dialog"
+            aria-label={strings.ContactDetailsAriaLabel.replace('{0}', sponsor.displayName)}
+            setInitialFocus={false}
+          >
+            {richBody}
+          </Callout>
+        )
       )}
     </>
   );
