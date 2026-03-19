@@ -1,3 +1,6 @@
+metadata name = 'Guest Sponsor Info – Azure Function Proxy'
+metadata description = 'Deploys an Azure Function App that acts as a Graph API proxy for the Guest Sponsor Info SharePoint web part. Includes a Storage Account, App Service Plan, EasyAuth configuration, and Managed Identity role assignments.'
+
 @description('Azure region for all resources.')
 param location string = resourceGroup().location
 
