@@ -15,7 +15,7 @@
     "@microsoft/microsoft-graph-client": "^3.0.0"
   },
   "devDependencies": {
-    "@types/node": "22.x",
+    "@types/node": "24.x",
     "typescript": "~5.9.3"
   },
   "engines": {
