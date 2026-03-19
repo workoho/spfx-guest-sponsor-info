@@ -90,16 +90,16 @@ const sponsorCardShimmer = (
 );
 
 /**
- * Renders 3 shimmer placeholder cards in the same grid as the real sponsor list.
+ * Renders a single shimmer placeholder card in the same grid as the real sponsor list.
  * Shown instead of a loading text while Graph data is being fetched.
+ * Displaying only one card reduces layout shift on page load while still providing
+ * visual feedback that data is being fetched.
  */
 const SponsorGridSkeleton: React.FC = () => (
   <ul className={styles.sponsorGrid} aria-busy="true">
-    {[0, 1, 2].map(i => (
-      <li key={i} className={styles.sponsorItem}>
-        <Shimmer customElementsGroup={sponsorCardShimmer} width="136px" />
-      </li>
-    ))}
+    <li className={styles.sponsorItem}>
+      <Shimmer customElementsGroup={sponsorCardShimmer} width="136px" />
+    </li>
   </ul>
 );
 
