@@ -1,3 +1,5 @@
+targetScope = 'resourceGroup'
+
 metadata name = 'Guest Sponsor Info – Azure Function Proxy'
 metadata description = 'Deploys an Azure Function App that acts as a Graph API proxy for the Guest Sponsor Info SharePoint web part. Includes a Storage Account, App Service Plan, EasyAuth configuration, and Managed Identity role assignments.'
 
@@ -10,7 +12,9 @@ param tenantId string
 @description('Tenant name without domain suffix, e.g. "contoso".')
 param tenantName string
 
-@description('Globally unique name for the Function App.')
+@description('Globally unique name for the Function App (2–60 characters, letters, numbers, and hyphens only).')
+@minLength(2)
+@maxLength(60)
 param functionAppName string
 
 @description('Client ID of the App Registration created for EasyAuth.')
@@ -19,6 +23,9 @@ param functionClientId string
 @description('URL to the pre-built function ZIP package (GitHub Release asset).')
 param packageUrl string = 'https://github.com/jpawlowski/spfx-guest-sponsor-info/releases/latest/download/guest-sponsor-info-function.zip'
 
+@description('Resource tags to apply to all deployed resources.')
+param tags object = {}
+
 var storageAccountName = toLower(replace(functionAppName, '-', ''))
 var appServicePlanName = '${functionAppName}-plan'
 
@@ -26,6 +33,7 @@ var appServicePlanName = '${functionAppName}-plan'
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   name: length(storageAccountName) > 24 ? substring(storageAccountName, 0, 24) : storageAccountName
   location: location
+  tags: tags
   sku: {
     name: 'Standard_LRS'
   }
@@ -34,6 +42,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
     supportsHttpsTrafficOnly: true
     minimumTlsVersion: 'TLS1_2'
     allowBlobPublicAccess: false
+    allowSharedKeyAccess: false
   }
 }
 
@@ -41,6 +50,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
 resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' = {
   name: appServicePlanName
   location: location
+  tags: tags
   sku: {
     name: 'Y1'
     tier: 'Dynamic'
@@ -52,6 +62,7 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' = {
 resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
   name: functionAppName
   location: location
+  tags: tags
   kind: 'functionapp'
   identity: {
     type: 'SystemAssigned'

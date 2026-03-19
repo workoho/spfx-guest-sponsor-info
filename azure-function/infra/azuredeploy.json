@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "3101198359943504530"
+      "templateHash": "4549410961319418511"
     },
     "name": "Guest Sponsor Info – Azure Function Proxy",
     "description": "Deploys an Azure Function App that acts as a Graph API proxy for the Guest Sponsor Info SharePoint web part. Includes a Storage Account, App Service Plan, EasyAuth configuration, and Managed Identity role assignments."
@@ -32,8 +32,10 @@
     },
     "functionAppName": {
       "type": "string",
+      "minLength": 2,
+      "maxLength": 60,
       "metadata": {
-        "description": "Globally unique name for the Function App."
+        "description": "Globally unique name for the Function App (2–60 characters, letters, numbers, and hyphens only)."
       }
     },
     "functionClientId": {
@@ -47,6 +49,13 @@
       "defaultValue": "https://github.com/jpawlowski/spfx-guest-sponsor-info/releases/latest/download/guest-sponsor-info-function.zip",
       "metadata": {
         "description": "URL to the pre-built function ZIP package (GitHub Release asset)."
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Resource tags to apply to all deployed resources."
       }
     }
   },
@@ -63,6 +72,7 @@
       "apiVersion": "2023-01-01",
       "name": "[if(greater(length(variables('storageAccountName')), 24), substring(variables('storageAccountName'), 0, 24), variables('storageAccountName'))]",
       "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
       "sku": {
         "name": "Standard_LRS"
       },
@@ -70,7 +80,8 @@
       "properties": {
         "supportsHttpsTrafficOnly": true,
         "minimumTlsVersion": "TLS1_2",
-        "allowBlobPublicAccess": false
+        "allowBlobPublicAccess": false,
+        "allowSharedKeyAccess": false
       }
     },
     {
@@ -78,6 +89,7 @@
       "apiVersion": "2023-01-01",
       "name": "[variables('appServicePlanName')]",
       "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
       "sku": {
         "name": "Y1",
         "tier": "Dynamic"
@@ -89,6 +101,7 @@
       "apiVersion": "2023-01-01",
       "name": "[parameters('functionAppName')]",
       "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
       "kind": "functionapp",
       "identity": {
         "type": "SystemAssigned"
