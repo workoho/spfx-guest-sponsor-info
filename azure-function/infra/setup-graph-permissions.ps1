@@ -47,29 +47,43 @@ if (-not $graphSp) {
     throw "Could not find the Microsoft Graph service principal in tenant '$TenantId'."
 }
 
-$roleAssignments = @(
-    @{
-        Id   = 'df021288-bdef-4463-88db-98f22de89214'
-        Name = 'User.Read.All'
-    },
-    @{
-        Id   = '9c7a330d-35b3-4aa1-963d-cb2b055962cc'
-        Name = 'Presence.Read.All'
-    }
+# Resolve role IDs dynamically from the Graph service principal's app roles.
+# This avoids hardcoded GUIDs and correctly detects unavailable permissions.
+$requiredRoles = @(
+    @{ Name = 'User.Read.All'; Optional = $false }
+    @{ Name = 'Presence.Read.All'; Optional = $true }   # requires Microsoft Teams; function degrades gracefully without it
 )
 
-foreach ($role in $roleAssignments) {
+$assignedRoles = @()
+$skippedRoles  = @()
+
+foreach ($role in $requiredRoles) {
     Write-Host "Assigning $($role.Name) ..." -ForegroundColor Cyan
+
+    $appRole = $graphSp.AppRoles | Where-Object { $_.Value -eq $role.Name -and $_.AllowedMemberTypes -contains 'Application' }
+    if (-not $appRole) {
+        if ($role.Optional) {
+            Write-Host "  ⚠ $($role.Name) is not available as an Application permission in this tenant (Microsoft Teams may not be licensed). Skipping — sponsors will be shown without presence status." -ForegroundColor Yellow
+            $skippedRoles += $role.Name
+            continue
+        } else {
+            throw "Required permission '$($role.Name)' was not found on the Microsoft Graph service principal."
+        }
+    }
+
     try {
-        New-MgServicePrincipalAppRoleAssignment `
+        $null = New-MgServicePrincipalAppRoleAssignment `
             -ServicePrincipalId $ManagedIdentityObjectId `
             -PrincipalId $ManagedIdentityObjectId `
             -ResourceId $graphSp.Id `
-            -AppRoleId $role.Id | Out-Null
+            -AppRoleId $appRole.Id `
+            -ErrorAction Stop
         Write-Host "  ✓ $($role.Name) assigned." -ForegroundColor Green
+        $assignedRoles += $role.Name
     } catch {
         if ($_.Exception.Message -like "*Permission being assigned already exists*") {
             Write-Host "  ✓ $($role.Name) already assigned — skipping." -ForegroundColor Yellow
+            $assignedRoles += $role.Name
         } else {
             throw
         }
@@ -77,5 +91,12 @@ foreach ($role in $roleAssignments) {
 }
 
 Write-Host "`nDone. The Managed Identity can now call Microsoft Graph with:" -ForegroundColor Green
-Write-Host "  - User.Read.All" -ForegroundColor Green
-Write-Host "  - Presence.Read.All" -ForegroundColor Green
+foreach ($r in $assignedRoles) {
+    Write-Host "  - $r" -ForegroundColor Green
+}
+if ($skippedRoles.Count -gt 0) {
+    Write-Host "`nSkipped (not available in this tenant):" -ForegroundColor Yellow
+    foreach ($r in $skippedRoles) {
+        Write-Host "  - $r" -ForegroundColor Yellow
+    }
+}
