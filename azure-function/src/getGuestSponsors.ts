@@ -25,6 +25,15 @@ const RATE_LIMIT_WINDOW_MS = 60_000;
 const rateLimitMap = new Map<string, number[]>();
 
 /**
+ * Bot and scanner protection: detect and block suspicious User-Agent headers.
+ * Legitimate browser/SPFx clients have recognizable User-Agents; scanners often
+ * use minimal or no User-Agent, or use tools like curl, wget, Nmap, sqlmap, etc.
+ */
+const SUSPICIOUS_USER_AGENTS = /^(curl|wget|python|nmap|masscan|nikto|sqlmap|dirbuster|burpsuite|zaproxy|metasploit|nessus)|\b(bot|scraper|crawler|spider|scanner|recon)\b|^-?$/i;
+const MAX_HEADER_SIZE_BYTES = 8192;  // Per-header limit; browsers typically send <1KB
+const MAX_BODY_SIZE_BYTES = 1024;    // GET requests have no body; 1KB guards against malformed requests
+
+/**
  * Cached result of permission detection for MailboxSettings.Read.
  * undefined = not yet checked; true/false = result cached for the lifetime
  * of this warm function instance.
@@ -129,6 +138,47 @@ function getTimeoutMs(envVarName: string, defaultValue: number): number {
 function redactGuid(value: string): string {
   return `${value.slice(0, 8)}...${value.slice(-4)}`;
 }
+
+/**
+ * Evaluates whether a request looks suspicious based on User-Agent.
+ * Returns true for obvious scanner/bot signatures (curl, wget, nmap, etc.) and
+ * requests with missing or clearly malicious User-Agents.
+ */
+function isSuspiciousUserAgent(userAgent: string | null): boolean {
+  if (!userAgent || userAgent.trim().length === 0) {
+    return true;  // Missing User-Agent is suspicious in a browser context.
+  }
+  return SUSPICIOUS_USER_AGENTS.test(userAgent);
+}
+
+/**
+ * Validates that request headers do not exceed reasonable size (defence against
+ * header-injection and Denial of Service attacks via oversized headers).
+ */
+function validateRequestSize(headers: Record<string, string | string[]>): { valid: boolean; reason?: string } {
+  for (const [key, value] of Object.entries(headers)) {
+    const headerStr = typeof value === 'string' ? value : value.join(',');
+    if (headerStr.length > MAX_HEADER_SIZE_BYTES) {
+      return { valid: false, reason: `${key} exceeds max header size` };
+    }
+  }
+  return { valid: true };
+}
+
+/**
+ * Returns a short, loggable description of suspicious request patterns.
+ */
+function describeRequestAnomaly(userAgent: string | null, method: string): string {
+  const parts: string[] = [];
+  if (!userAgent || userAgent.trim().length === 0) {
+    parts.push('missing-user-agent');
+  } else if (SUSPICIOUS_USER_AGENTS.test(userAgent)) {
+    parts.push(`bot-like-ua:${userAgent.substring(0, 30)}`);
+  }
+  if (method !== 'GET' && method !== 'OPTIONS') {
+    parts.push(`non-get-method:${method}`);
+  }
+  return parts.join(' | ') || 'none';
 
 async function withTimeout<T>(
   promise: Promise<T>,
@@ -317,6 +367,31 @@ export async function getGuestSponsors(
     return {
       status: 204,
       headers: corsHeaders(request),
+    };
+  }
+
+  // Reject requests that are clearly not from a real browser/client.
+  const userAgent = request.headers.get('user-agent');
+  if (isSuspiciousUserAgent(userAgent)) {
+    const anomaly = describeRequestAnomaly(userAgent, request.method);
+    context.warn(`Suspicious request rejected. Anomalies: ${anomaly}`);
+    return {
+      status: 403,
+      body: JSON.stringify({ error: 'Forbidden' }),
+      headers: { 'Content-Type': 'application/json', ...corsHeaders(request) },
+    };
+  }
+
+  // Validate request header sizes (defence against injection and DoS via oversized headers).
+  const headerValidation = validateRequestSize(Object.fromEntries(
+    Array.from(request.headers.entries()).map(([k, v]) => [k, v ?? ''])
+  ));
+  if (!headerValidation.valid) {
+    context.warn(`Request validation failed: ${headerValidation.reason}`);
+    return {
+      status: 400,
+      body: JSON.stringify({ error: 'Bad Request' }),
+      headers: { 'Content-Type': 'application/json', ...corsHeaders(request) },
     };
   }
 
@@ -545,14 +620,23 @@ function jsonResponse(body: unknown, status: number, request: HttpRequest): Http
  * (e.g. "https://contoso.sharepoint.com"). When the env var is not set, no
  * Access-Control-Allow-Origin header is emitted — the Azure Function-level CORS
  * settings (if any) will handle enforcement instead.
+ *
+ * Also applies security hardening headers to prevent content type sniffing,
+ * clickjacking, browser cache issues, and enforce HTTPS transmission.
  */
 function corsHeaders(request: HttpRequest): Record<string, string> {
   const origin = request.headers.get('origin') ?? '';
   const allowedOrigin = process.env['CORS_ALLOWED_ORIGIN'] ?? '';
 
   const headers: Record<string, string> = {
+    // CORS
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+    // Security headers (defence-in-depth even without a WAF)
+    'X-Content-Type-Options': 'nosniff',           // Prevent content-type sniffing attacks
+    'X-Frame-Options': 'DENY',                      // Block framing in other sites
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',  // Enforce HTTPS
+    'X-XSS-Protection': '1; mode=block',            // Legacy XSS filter (for older browsers)
   };
 
   if (allowedOrigin && origin === allowedOrigin) {
