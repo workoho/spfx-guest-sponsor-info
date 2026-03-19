@@ -86,7 +86,8 @@ jobs:
           "$RUNNER_TEMP/bicep" --version
 
       - name: Compile Bicep to ARM JSON
-        run: "$RUNNER_TEMP/bicep" build azure-function/infra/main.bicep --outfile azure-function/infra/azuredeploy.json
+        run: |
+          "$RUNNER_TEMP/bicep" build azure-function/infra/main.bicep --outfile azure-function/infra/azuredeploy.json
 
       # Create the GitHub Release and attach the .sppkg as a downloadable asset.
       # Delete first if it already exists so the step is idempotent on re-runs
