@@ -56,6 +56,12 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
+    ignore:
+      # @types/node must stay aligned with the Node.js runtime version used by
+      # the Azure Function (currently Node 22 / WEBSITE_NODE_DEFAULT_VERSION ~22).
+      # Major bumps would expose newer Node APIs that don't exist in the runtime.
+      - dependency-name: "@types/node"
+        versions: [">=23"]
 
   # ── GitHub Actions ────────────────────────────────────────────────────────
   - package-ecosystem: github-actions
