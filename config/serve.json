@@ -2,6 +2,6 @@
   "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/spfx-serve.schema.json",
   "port": 4321,
   "https": true,
-  "hostname": "127.0.0.1",
-  "initialPage": "https://{tenantDomain}/_layouts/workbench.aspx"
+  "hostname": "localhost",
+  "initialPage": "https://{tenantDomain}.sharepoint.com/_layouts/workbench.aspx"
 }
