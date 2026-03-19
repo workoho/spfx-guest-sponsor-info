@@ -1,4 +1,4 @@
-import { MSGraphClientV3 } from '@microsoft/sp-http';
+import { MSGraphClientV3, AadHttpClient } from '@microsoft/sp-http';
 import { ResponseType } from '@microsoft/microsoft-graph-client';
 import { ISponsor } from './ISponsor';
 
@@ -192,4 +192,25 @@ export async function getSponsors(client: MSGraphClientV3): Promise<ISponsorsRes
     .map(r => ({ ...r.sponsor, presence: presenceMap.get(r.sponsor.id) }));
   const unavailableCount = perSponsorResults.filter(r => !r.exists).length;
   return { activeSponsors, unavailableCount };
+}
+
+/**
+ * Fetches sponsor data via the Azure Function proxy instead of calling Graph directly.
+ * The proxy authenticates the caller via EasyAuth and calls Graph with application
+ * permissions (User.Read.All, Presence.Read.All) using its Managed Identity.
+ *
+ * @param proxyUrl     - Full URL of the Azure Function endpoint.
+ * @param aadHttpClient - Pre-acquired AAD HTTP client scoped to the function App Registration.
+ */
+export async function getSponsorsViaProxy(
+  proxyUrl: string,
+  aadHttpClient: AadHttpClient
+): Promise<ISponsorsResult> {
+  const response = await aadHttpClient.get(proxyUrl, AadHttpClient.configurations.v1);
+  if (!response.ok) {
+    const err = new Error(`Proxy returned ${response.status}`);
+    (err as { statusCode?: number }).statusCode = response.status;
+    throw err;
+  }
+  return response.json() as Promise<ISponsorsResult>;
 }

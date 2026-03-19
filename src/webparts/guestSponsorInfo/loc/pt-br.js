@@ -43,6 +43,10 @@ define([], function() {
     "CopyEmailAriaLabel": "Copiar endere\u00e7o de e-mail",
     "CopyWorkPhoneAriaLabel": "Copiar telefone comercial",
     "CopyMobileAriaLabel": "Copiar n\u00famero de celular",
-    "CopyLocationAriaLabel": "Copiar local de trabalho"
+    "CopyLocationAriaLabel": "Copiar local de trabalho",
+
+    "FunctionGroupName": "Azure Function",
+    "FunctionUrlFieldLabel": "URL da API de patrocinadores (Azure Function)",
+    "FunctionClientIdFieldLabel": "ID do cliente da API de patrocinadores (Registro de aplicativo Azure Function)"
   }
 });

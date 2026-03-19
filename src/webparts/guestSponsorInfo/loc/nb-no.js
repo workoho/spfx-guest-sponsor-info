@@ -43,6 +43,10 @@ define([], function() {
     "CopyEmailAriaLabel": "Kopier e-postadresse",
     "CopyWorkPhoneAriaLabel": "Kopier jobbtelefon",
     "CopyMobileAriaLabel": "Kopier mobilnummer",
-    "CopyLocationAriaLabel": "Kopier arbeidssted"
+    "CopyLocationAriaLabel": "Kopier arbeidssted",
+
+    "FunctionGroupName": "Azure-funksjon",
+    "FunctionUrlFieldLabel": "Sponsor-API-URL (Azure-funksjon)",
+    "FunctionClientIdFieldLabel": "Sponsor-API-klient-ID (Azure Function-appregistrering)"
   }
 });

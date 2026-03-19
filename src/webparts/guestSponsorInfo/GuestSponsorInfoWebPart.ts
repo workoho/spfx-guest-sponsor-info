@@ -7,7 +7,7 @@ import {
   PropertyPaneCheckbox,
 } from '@microsoft/sp-property-pane';
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
-import { MSGraphClientV3 } from '@microsoft/sp-http';
+import { MSGraphClientV3, AadHttpClient } from '@microsoft/sp-http';
 import { initializeIcons } from '@fluentui/react';
 
 import * as strings from 'GuestSponsorInfoWebPartStrings';
@@ -17,11 +17,14 @@ import { IGuestSponsorInfoProps } from './components/IGuestSponsorInfoProps';
 export interface IGuestSponsorInfoWebPartProps {
   title: string;
   mockMode: boolean;
+  functionUrl: string;
+  functionClientId: string;
 }
 
 export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGuestSponsorInfoWebPartProps> {
 
   private _graphClient: MSGraphClientV3 | undefined;
+  private _aadHttpClient: AadHttpClient | undefined;
 
   public render(): void {
     const element: React.ReactElement<IGuestSponsorInfoProps> = React.createElement(
@@ -34,6 +37,9 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
         title: this.properties.title,
         mockMode: this.properties.mockMode ?? false,
         hostTenantId: this.context.pageContext.aadInfo.tenantId.toString(),
+        functionUrl: this.properties.functionUrl || undefined,
+        functionClientId: this.properties.functionClientId || undefined,
+        aadHttpClient: this._aadHttpClient,
       }
     );
 
@@ -49,6 +55,15 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
       this._graphClient = await this.context.msGraphClientFactory.getClient('3');
     } catch {
       // Graph client unavailable – the web part will still render in edit-mode placeholder state.
+    }
+    if (this.properties.functionClientId) {
+      try {
+        this._aadHttpClient = await this.context.aadHttpClientFactory.getClient(
+          this.properties.functionClientId
+        );
+      } catch {
+        // AAD HTTP client unavailable – will fall back to direct Graph path.
+      }
     }
   }
 
@@ -76,6 +91,17 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                 }),
                 PropertyPaneCheckbox('mockMode', {
                   text: strings.MockModeFieldLabel
+                })
+              ]
+            },
+            {
+              groupName: strings.FunctionGroupName,
+              groupFields: [
+                PropertyPaneTextField('functionUrl', {
+                  label: strings.FunctionUrlFieldLabel
+                }),
+                PropertyPaneTextField('functionClientId', {
+                  label: strings.FunctionClientIdFieldLabel
                 })
               ]
             }

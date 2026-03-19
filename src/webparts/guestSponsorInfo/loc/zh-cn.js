@@ -43,6 +43,10 @@ define([], function() {
     "CopyEmailAriaLabel": "\u590d\u5236\u7535\u5b50\u90ae\u4ef6\u5730\u5740",
     "CopyWorkPhoneAriaLabel": "\u590d\u5236\u5de5\u4f5c\u7535\u8bdd",
     "CopyMobileAriaLabel": "\u590d\u5236\u624b\u673a\u53f7\u7801",
-    "CopyLocationAriaLabel": "\u590d\u5236\u5de5\u4f5c\u5730\u70b9"
+    "CopyLocationAriaLabel": "\u590d\u5236\u5de5\u4f5c\u5730\u70b9",
+
+    "FunctionGroupName": "Azure \u51fd\u6570",
+    "FunctionUrlFieldLabel": "\u53d1\u8d77\u4eba API URL\uff08Azure \u51fd\u6570\uff09",
+    "FunctionClientIdFieldLabel": "\u53d1\u8d77\u4eba API \u5ba2\u6237\u7aef ID\uff08Azure \u51fd\u6570\u5e94\u7528\u6ce8\u518c\uff09"
   }
 });

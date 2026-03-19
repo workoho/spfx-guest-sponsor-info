@@ -43,6 +43,10 @@ define([], function() {
     "CopyEmailAriaLabel": "\u30e1\u30fc\u30eb \u30a2\u30c9\u30ec\u30b9\u3092\u30b3\u30d4\u30fc",
     "CopyWorkPhoneAriaLabel": "\u4f1a\u793e\u96fb\u8a71\u3092\u30b3\u30d4\u30fc",
     "CopyMobileAriaLabel": "\u643a\u5e2f\u96fb\u8a71\u756a\u53f7\u3092\u30b3\u30d4\u30fc",
-    "CopyLocationAriaLabel": "\u52e4\u52d9\u5730\u3092\u30b3\u30d4\u30fc"
+    "CopyLocationAriaLabel": "\u52e4\u52d9\u5730\u3092\u30b3\u30d4\u30fc",
+
+    "FunctionGroupName": "Azure \u95a2\u6570",
+    "FunctionUrlFieldLabel": "\u30b9\u30dd\u30f3\u30b5\u30fc API URL (Azure \u95a2\u6570)",
+    "FunctionClientIdFieldLabel": "\u30b9\u30dd\u30f3\u30b5\u30fc API \u30af\u30e9\u30a4\u30a2\u30f3\u30c8 ID (Azure \u95a2\u6570\u30a2\u30d7\u30ea\u767b\u9332)"
   }
 });

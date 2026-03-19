@@ -1,4 +1,4 @@
-import { MSGraphClientV3 } from '@microsoft/sp-http';
+import { MSGraphClientV3, AadHttpClient } from '@microsoft/sp-http';
 import { DisplayMode } from '@microsoft/sp-core-library';
 
 export interface IGuestSponsorInfoProps {
@@ -27,5 +27,11 @@ export interface IGuestSponsorInfoProps {
    * Used to generate Teams deep links that open in the guest-account context.
    */
   hostTenantId: string;
+  /** URL of the Azure Function proxy endpoint. Undefined when not configured. */
+  functionUrl: string | undefined;
+  /** Client ID of the App Registration used by the Azure Function proxy. Undefined when not configured. */
+  functionClientId: string | undefined;
+  /** Pre-acquired AAD HTTP client scoped to the function App Registration. Undefined when not configured. */
+  aadHttpClient: AadHttpClient | undefined;
 }
 

@@ -69,6 +69,9 @@ function renderWebPart(overrides: Partial<IGuestSponsorInfoProps> = {}): void {
     title: 'My Sponsors',
     mockMode: false,
     hostTenantId: 'aaaabbbb-0000-0000-0000-000000000001',
+    functionUrl: undefined,
+    functionClientId: undefined,
+    aadHttpClient: undefined,
   };
   ReactDOM.render(<GuestSponsorInfo {...defaults} {...overrides} />, container);
 }

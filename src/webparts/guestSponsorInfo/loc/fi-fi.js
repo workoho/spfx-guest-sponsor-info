@@ -43,6 +43,10 @@ define([], function() {
     "CopyEmailAriaLabel": "Kopioi s\u00e4hk\u00f6postiosoite",
     "CopyWorkPhoneAriaLabel": "Kopioi ty\u00f6puhelin",
     "CopyMobileAriaLabel": "Kopioi matkapuhelinnumero",
-    "CopyLocationAriaLabel": "Kopioi ty\u00f6paikka"
+    "CopyLocationAriaLabel": "Kopioi työpaikka",
+
+    "FunctionGroupName": "Azure-funktio",
+    "FunctionUrlFieldLabel": "Sponsori-API-URL (Azure-funktio)",
+    "FunctionClientIdFieldLabel": "Sponsori-API-asiakas-ID (Azure-funktiosovelluksen rekisteröinti)"
   }
 });

@@ -43,6 +43,10 @@ define([], function() {
     "CopyEmailAriaLabel": "E-mailadres kopi\u00ebren",
     "CopyWorkPhoneAriaLabel": "Zakelijk telefoonnummer kopi\u00ebren",
     "CopyMobileAriaLabel": "Mobiel nummer kopi\u00ebren",
-    "CopyLocationAriaLabel": "Werklocatie kopi\u00ebren"
+    "CopyLocationAriaLabel": "Werklocatie kopiëren",
+
+    "FunctionGroupName": "Azure-functie",
+    "FunctionUrlFieldLabel": "Sponsor API-URL (Azure-functie)",
+    "FunctionClientIdFieldLabel": "Sponsor API-client-ID (Azure-functie-app-registratie)"
   }
 });

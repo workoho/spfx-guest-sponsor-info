@@ -4,7 +4,7 @@ import * as strings from 'GuestSponsorInfoWebPartStrings';
 import styles from './GuestSponsorInfo.module.scss';
 import type { IGuestSponsorInfoProps } from './IGuestSponsorInfoProps';
 import { ISponsor } from '../services/ISponsor';
-import { isGuestUser, getSponsors } from '../services/SponsorService';
+import { isGuestUser, getSponsors, getSponsorsViaProxy } from '../services/SponsorService';
 import { MOCK_SPONSORS } from '../services/MockSponsorService';
 import SponsorCard from './SponsorCard';
 
@@ -51,6 +51,8 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   title,
   mockMode,
   hostTenantId,
+  functionUrl,
+  aadHttpClient,
 }) => {
   const [sponsors, setSponsors] = React.useState<ISponsor[]>([]);
   const [allUnavailable, setAllUnavailable] = React.useState(false);
@@ -63,9 +65,6 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   const isGuest = isExternalGuestUser || isGuestUser(loginName);
   const isEditMode = displayMode === DisplayMode.Edit;
 
-  // Diagnostic – remove once guest detection is confirmed stable.
-  console.log('[GuestSponsorInfo] loginName:', loginName, '| isExternalGuestUser:', isExternalGuestUser, '| isGuest:', isGuest);
-
   React.useEffect(() => {
     if (isEditMode) return;
 
@@ -77,14 +76,22 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
       return;
     }
 
-    // Only fetch sponsors when in view mode, the user is a guest, and a Graph client is ready.
-    if (!isGuest || graphClient === undefined) return;
+    // Only fetch sponsors when in view mode, the user is a guest, and a data source is ready.
+    if (!isGuest) return;
+
+    // Prefer the function proxy when configured; fall back to direct Graph.
+    const useProxy = functionUrl !== undefined && aadHttpClient !== undefined;
+    if (!useProxy && graphClient === undefined) return;
 
     let cancelled = false;
     setLoading(true);
     setError(undefined);
 
-    getSponsors(graphClient)
+    const loadFn = useProxy
+      ? () => getSponsorsViaProxy(functionUrl as string, aadHttpClient!)
+      : () => getSponsors(graphClient!);
+
+    loadFn()
       .then(result => {
         if (!cancelled) {
           setSponsors(result.activeSponsors);
@@ -93,15 +100,19 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
           setLoading(false);
         }
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         if (!cancelled) {
+          // Log the raw Graph error to the browser console so admins/developers
+          // can see the exact status code and error message without opening the
+          // network tab (useful when the web part is embedded in a guest session).
+          console.error('[GuestSponsorInfo] getSponsors failed:', err);
           setError(strings.ErrorMessage);
           setLoading(false);
         }
       });
 
     return () => { cancelled = true; };
-  }, [isGuest, isEditMode, graphClient, mockMode]);
+  }, [isGuest, isEditMode, graphClient, mockMode, functionUrl, aadHttpClient]);
 
   // Edit mode: always show a lightweight placeholder so page authors can position the web part.
   if (isEditMode) {
