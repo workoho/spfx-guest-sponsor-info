@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+name: guest-sponsor-info
+
+infra:
+  provider: bicep
+  path: azure-function/infra
+
+hooks:
+  # Creates the Entra App Registration required for EasyAuth, derives the
+  # SharePoint tenant name, and generates a default Function App name.
+  # Must run before Bicep so the client ID is available as a parameter.
+  preprovision:
+    posix:
+      shell: sh
+      run: azure-function/infra/hooks/pre-provision.sh
+      interactive: true
+    windows:
+      shell: pwsh
+      run: azure-function/infra/hooks/pre-provision.ps1
+      interactive: true
+
+  # Grants User.Read.All and Presence.Read.All to the Managed Identity that
+  # Bicep created, and prints the web part configuration values.
+  postprovision:
+    posix:
+      shell: sh
+      run: azure-function/infra/hooks/post-provision.sh
+    windows:
+      shell: pwsh
+      run: azure-function/infra/hooks/post-provision.ps1

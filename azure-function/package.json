@@ -1,0 +1,24 @@
+{
+    "name": "guest-sponsor-info-function",
+    "version": "1.0.0",
+    "description": "Azure Function proxy for /me/sponsors — serves guest sponsor data to the SPFx web part.",
+    "scripts": {
+        "build": "tsc",
+        "build:production": "npm run build && node -e \"require('fs').cpSync('host.json','dist/host.json')\"",
+        "start": "func start",
+        "package": "npm run build:production && cd dist && zip -r ../guest-sponsor-info-function.zip ."
+    },
+    "main": "dist/src/*.js",
+    "dependencies": {
+        "@azure/functions": "^4.0.0",
+        "@azure/identity": "^4.0.0",
+        "@microsoft/microsoft-graph-client": "^3.0.0"
+    },
+    "devDependencies": {
+        "typescript": "~5.3.0",
+        "@types/node": "^20.0.0"
+    },
+    "engines": {
+        "node": ">=20"
+    }
+}

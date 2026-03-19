@@ -1,0 +1,14 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "TENANT_ID": "<your-entra-tenant-id>",
+    "ALLOWED_AUDIENCE": "api://guest-sponsor-info-proxy/<function-client-id>",
+    "CORS_ALLOWED_ORIGIN": "https://<tenant>.sharepoint.com",
+    "SPONSOR_LOOKUP_TIMEOUT_MS": "5000",
+    "BATCH_TIMEOUT_MS": "4000",
+    "PRESENCE_TIMEOUT_MS": "2500",
+    "PHOTO_BATCH_TIMEOUT_MS": "2500"
+  }
+}
