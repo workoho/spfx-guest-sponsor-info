@@ -61,7 +61,10 @@ function render(
   hostTenantId = 'test-tenant-id',
   isActive = false,
   onActivate = jest.fn(),
-  onScheduleDeactivate = jest.fn()
+  onScheduleDeactivate = jest.fn(),
+  showPhones = true,
+  showWorkLocation = true,
+  showManager = true
 ): void {
   act(() => {
     ReactDOM.render(
@@ -71,6 +74,9 @@ function render(
         isActive={isActive}
         onActivate={onActivate}
         onScheduleDeactivate={onScheduleDeactivate}
+        showPhones={showPhones}
+        showWorkLocation={showWorkLocation}
+        showManager={showManager}
       />,
       container
     );

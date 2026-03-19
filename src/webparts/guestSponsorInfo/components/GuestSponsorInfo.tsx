@@ -15,7 +15,15 @@ import SponsorCard from './SponsorCard';
  * pending hide-timeout from the previously active card so there is no
  * overlap between the outgoing and incoming popup.
  */
-const SponsorList: React.FC<{ sponsors: ISponsor[]; hostTenantId: string }> = ({ sponsors, hostTenantId }) => {
+interface ISponsorListProps {
+  sponsors: ISponsor[];
+  hostTenantId: string;
+  showPhones: boolean;
+  showWorkLocation: boolean;
+  showManager: boolean;
+}
+
+const SponsorList: React.FC<ISponsorListProps> = ({ sponsors, hostTenantId, showPhones, showWorkLocation, showManager }) => {
   const [activeId, setActiveId] = React.useState<string | null>(null);
   const hideTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -37,6 +45,9 @@ const SponsorList: React.FC<{ sponsors: ISponsor[]; hostTenantId: string }> = ({
             isActive={activeId === sponsor.id}
             onActivate={() => activate(sponsor.id)}
             onScheduleDeactivate={scheduleDeactivate}
+            showPhones={showPhones}
+            showWorkLocation={showWorkLocation}
+            showManager={showManager}
           />
         </li>
       ))}
@@ -102,6 +113,9 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   hostTenantId,
   functionUrl,
   aadHttpClient,
+  showPhones,
+  showWorkLocation,
+  showManager,
 }) => {
   // Primary signal: pageContext.user.isExternalGuestUser (authoritative, set from Entra token).
   // Fallback: #EXT# in loginName (heuristic; may be absent when the SharePoint user profile
@@ -288,7 +302,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
         <p className={styles.statusMessage}>{strings.NoSponsorsMessage}</p>
       )}
       {!loading && !error && sponsors.length > 0 && (
-        <SponsorList sponsors={sponsors} hostTenantId={hostTenantId} />
+        <SponsorList sponsors={sponsors} hostTenantId={hostTenantId} showPhones={showPhones} showWorkLocation={showWorkLocation} showManager={showManager} />
       )}
     </section>
   );

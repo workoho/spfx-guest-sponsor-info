@@ -19,6 +19,12 @@ export interface IGuestSponsorInfoWebPartProps {
   mockMode: boolean;
   functionUrl: string;
   functionClientId: string;
+  /** Show phone numbers (business + mobile) in the contact card. Default: true. */
+  showPhones: boolean;
+  /** Show the work location field in the contact card. Default: true. */
+  showWorkLocation: boolean;
+  /** Show the manager section in the contact card. Default: true. */
+  showManager: boolean;
 }
 
 export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGuestSponsorInfoWebPartProps> {
@@ -40,6 +46,9 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
         functionUrl: this.properties.functionUrl || undefined,
         functionClientId: this.properties.functionClientId || undefined,
         aadHttpClient: this._aadHttpClient,
+        showPhones: this.properties.showPhones ?? true,
+        showWorkLocation: this.properties.showWorkLocation ?? true,
+        showManager: this.properties.showManager ?? true,
       }
     );
 
@@ -92,6 +101,23 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                 PropertyPaneCheckbox('mockMode', {
                   text: strings.MockModeFieldLabel
                 })
+              ]
+            },
+            {
+              groupName: strings.DisplayGroupName,
+              groupFields: [
+                PropertyPaneCheckbox('showPhones', {
+                  text: strings.ShowPhonesFieldLabel,
+                  checked: this.properties.showPhones ?? true,
+                }),
+                PropertyPaneCheckbox('showWorkLocation', {
+                  text: strings.ShowWorkLocationFieldLabel,
+                  checked: this.properties.showWorkLocation ?? true,
+                }),
+                PropertyPaneCheckbox('showManager', {
+                  text: strings.ShowManagerFieldLabel,
+                  checked: this.properties.showManager ?? true,
+                }),
               ]
             },
             {

@@ -45,6 +45,11 @@ define([], function() {
     "CopyMobileAriaLabel": "Copy mobile number",
     "CopyLocationAriaLabel": "Copy work location",
 
+    "DisplayGroupName": "Display",
+    "ShowPhonesFieldLabel": "Show phone numbers",
+    "ShowWorkLocationFieldLabel": "Show work location",
+    "ShowManagerFieldLabel": "Show manager",
+
     "FunctionGroupName": "Azure Function",
     "FunctionUrlFieldLabel": "Sponsor API URL (Azure Function)",
     "FunctionClientIdFieldLabel": "Sponsor API Client ID (Azure Function App Registration)",

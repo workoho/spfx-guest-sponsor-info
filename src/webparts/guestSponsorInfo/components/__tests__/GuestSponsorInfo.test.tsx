@@ -72,6 +72,9 @@ function renderWebPart(overrides: Partial<IGuestSponsorInfoProps> = {}): void {
     functionUrl: undefined,
     functionClientId: undefined,
     aadHttpClient: undefined,
+    showPhones: true,
+    showWorkLocation: true,
+    showManager: true,
   };
   ReactDOM.render(<GuestSponsorInfo {...defaults} {...overrides} />, container);
 }

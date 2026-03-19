@@ -11,6 +11,12 @@ declare interface IGuestSponsorInfoWebPartStrings {
   MockModeFieldLabel: string;
   MockModePlaceholder: string;
 
+  // Display toggles
+  DisplayGroupName: string;
+  ShowPhonesFieldLabel: string;
+  ShowWorkLocationFieldLabel: string;
+  ShowManagerFieldLabel: string;
+
   // Azure Function proxy
   FunctionGroupName: string;
   FunctionUrlFieldLabel: string;

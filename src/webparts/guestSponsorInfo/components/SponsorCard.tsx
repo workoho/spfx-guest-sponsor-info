@@ -115,6 +115,12 @@ interface ISponsorCardProps {
   onActivate: () => void;
   /** Called when the mouse/focus leaves this card or its popup. Parent starts the hide timer. */
   onScheduleDeactivate: () => void;
+  /** Show phone numbers (business + mobile) in the contact details section. */
+  showPhones: boolean;
+  /** Show the work location row in the contact details section. */
+  showWorkLocation: boolean;
+  /** Show the manager section below the contact details. */
+  showManager: boolean;
 }
 
 const SponsorCard: React.FC<ISponsorCardProps> = ({
@@ -123,6 +129,9 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
   isActive,
   onActivate,
   onScheduleDeactivate,
+  showPhones,
+  showWorkLocation,
+  showManager,
 }) => {
   const cardRef = React.useRef<HTMLDivElement>(null);
   const initials = getInitials(sponsor.displayName);
@@ -233,7 +242,7 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
             <CopyButton value={sponsor.mail} ariaLabel={strings.CopyEmailAriaLabel} />
           </div>
         )}
-        {sponsor.businessPhones?.map(phone => (
+        {showPhones && sponsor.businessPhones?.map(phone => (
           <div key={phone} className={styles.richInfoRow}>
             <Icon iconName="Phone" className={styles.richInfoIcon} aria-hidden="true" />
             <div className={styles.richInfoText}>
@@ -243,7 +252,7 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
             <CopyButton value={phone} ariaLabel={strings.CopyWorkPhoneAriaLabel} />
           </div>
         ))}
-        {sponsor.mobilePhone && (
+        {showPhones && sponsor.mobilePhone && (
           <div className={styles.richInfoRow}>
             <Icon iconName="CellPhone" className={styles.richInfoIcon} aria-hidden="true" />
             <div className={styles.richInfoText}>
@@ -253,7 +262,7 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
             <CopyButton value={sponsor.mobilePhone} ariaLabel={strings.CopyMobileAriaLabel} />
           </div>
         )}
-        {sponsor.officeLocation && (
+        {showWorkLocation && sponsor.officeLocation && (
           <div className={styles.richInfoRow}>
             <Icon iconName="MapPin" className={styles.richInfoIcon} aria-hidden="true" />
             <div className={styles.richInfoText}>
@@ -266,7 +275,7 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
       </div>
 
       {/* ── Organization section (manager) ───────────────────── */}
-      {sponsor.managerDisplayName && (
+      {showManager && sponsor.managerDisplayName && (
         <>
           <div className={styles.richSectionTitle}>{strings.OrganizationSection}</div>
           <div className={styles.richSection}>
