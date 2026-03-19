@@ -15,6 +15,9 @@ declare interface IGuestSponsorInfoWebPartStrings {
   FunctionGroupName: string;
   FunctionUrlFieldLabel: string;
   FunctionClientIdFieldLabel: string;
+  ProxyStatusChecking: string;
+  ProxyStatusOk: string;
+  ProxyStatusError: string;
 
   // Presence labels
   PresenceAvailable: string;

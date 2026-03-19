@@ -47,6 +47,9 @@ define([], function() {
 
     "FunctionGroupName": "Azure-funktion",
     "FunctionUrlFieldLabel": "Sponsor-API-URL (Azure-funktion)",
-    "FunctionClientIdFieldLabel": "Sponsor-API-klient-ID (Azure Function-appregistrering)"
+    "FunctionClientIdFieldLabel": "Sponsor-API-klient-ID (Azure Function-appregistrering)",
+    "ProxyStatusChecking": "Tjekker Azure-funktion\u2026",
+    "ProxyStatusOk": "Azure-funktion er tilg\u00e6ngelig",
+    "ProxyStatusError": "Azure-funktion er ikke tilg\u00e6ngelig"
   }
 });

@@ -47,6 +47,9 @@ define([], function() {
 
     "FunctionGroupName": "Azure \u51fd\u6570",
     "FunctionUrlFieldLabel": "\u53d1\u8d77\u4eba API URL\uff08Azure \u51fd\u6570\uff09",
-    "FunctionClientIdFieldLabel": "\u53d1\u8d77\u4eba API \u5ba2\u6237\u7aef ID\uff08Azure \u51fd\u6570\u5e94\u7528\u6ce8\u518c\uff09"
+    "FunctionClientIdFieldLabel": "\u53d1\u8d77\u4eba API \u5ba2\u6237\u7aef ID\uff08Azure \u51fd\u6570\u5e94\u7528\u6ce8\u518c\uff09",
+    "ProxyStatusChecking": "\u6b63\u5728\u68c0\u67e5 Azure Function\u2026",
+    "ProxyStatusOk": "Azure Function \u53ef\u8bbf\u95ee",
+    "ProxyStatusError": "Azure Function \u65e0\u6cd5\u8bbf\u95ee"
   }
 });

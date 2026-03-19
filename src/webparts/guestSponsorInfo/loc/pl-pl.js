@@ -47,6 +47,9 @@ define([], function() {
 
     "FunctionGroupName": "Azure Function",
     "FunctionUrlFieldLabel": "Adres URL interfejsu API sponsorów (Azure Function)",
-    "FunctionClientIdFieldLabel": "Identyfikator klienta interfejsu API sponsorów (rejestracja aplikacji Azure Function)"
+    "FunctionClientIdFieldLabel": "Identyfikator klienta interfejsu API sponsor\u00f3w (rejestracja aplikacji Azure Function)",
+    "ProxyStatusChecking": "Sprawdzanie Azure Function\u2026",
+    "ProxyStatusOk": "Azure Function osi\u0105galna",
+    "ProxyStatusError": "Azure Function nieosi\u0105galna"
   }
 });

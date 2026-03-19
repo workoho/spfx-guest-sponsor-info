@@ -47,6 +47,9 @@ define([], function() {
 
     "FunctionGroupName": "Azure-funktio",
     "FunctionUrlFieldLabel": "Sponsori-API-URL (Azure-funktio)",
-    "FunctionClientIdFieldLabel": "Sponsori-API-asiakas-ID (Azure-funktiosovelluksen rekisteröinti)"
+    "FunctionClientIdFieldLabel": "Sponsori-API-asiakas-ID (Azure-funktiosovelluksen rekister\u00f6inti)",
+    "ProxyStatusChecking": "Tarkistetaan Azure-funktiota\u2026",
+    "ProxyStatusOk": "Azure-funktio tavoitettavissa",
+    "ProxyStatusError": "Azure-funktiota ei l\u00f6ydy"
   }
 });

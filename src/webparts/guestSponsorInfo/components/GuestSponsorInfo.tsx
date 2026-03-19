@@ -43,6 +43,8 @@ const SponsorList: React.FC<{ sponsors: ISponsor[]; hostTenantId: string }> = ({
   );
 };
 
+type ProxyStatus = 'checking' | 'ok' | 'error';
+
 const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   loginName,
   isExternalGuestUser,
@@ -58,12 +60,26 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   const [allUnavailable, setAllUnavailable] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | undefined>(undefined);
+  const [proxyStatus, setProxyStatus] = React.useState<ProxyStatus>('checking');
 
   // Primary signal: pageContext.user.isExternalGuestUser (authoritative, set from Entra token).
   // Fallback: #EXT# in loginName (heuristic; may be absent when the SharePoint user profile
   // has not yet been created for the guest, causing SP.UserProfile to return HTTP 500).
   const isGuest = isExternalGuestUser || isGuestUser(loginName);
   const isEditMode = displayMode === DisplayMode.Edit;
+
+  // Edit-mode proxy health check: verify the Azure Function is reachable while the
+  // page author has the web part selected. Only fires when functionUrl is configured.
+  React.useEffect(() => {
+    if (!isEditMode || !functionUrl) return;
+    if (!aadHttpClient) { setProxyStatus('error'); return; }
+    let cancelled = false;
+    setProxyStatus('checking');
+    getSponsorsViaProxy(functionUrl, aadHttpClient)
+      .then(() => { if (!cancelled) setProxyStatus('ok'); })
+      .catch(() => { if (!cancelled) setProxyStatus('error'); });
+    return () => { cancelled = true; };
+  }, [isEditMode, functionUrl, aadHttpClient]);
 
   React.useEffect(() => {
     if (isEditMode) return;
@@ -124,9 +140,26 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
     } else {
       placeholderText = strings.GuestOnlyPlaceholder;
     }
+    const proxyStatusClass = proxyStatus === 'ok'
+      ? styles.proxyStatusOk
+      : proxyStatus === 'error'
+        ? styles.proxyStatusError
+        : styles.proxyStatusChecking;
     return (
       <section className={styles.webPart}>
-        <div className={styles.editPlaceholder}>{placeholderText}</div>
+        <div className={styles.editPlaceholder}>
+          <span>{placeholderText}</span>
+          {functionUrl && (
+            <div className={`${styles.proxyStatus} ${proxyStatusClass}`}>
+              <span className={styles.proxyStatusDot} aria-hidden="true" />
+              <span>
+                {proxyStatus === 'checking' ? strings.ProxyStatusChecking
+                  : proxyStatus === 'ok' ? strings.ProxyStatusOk
+                  : strings.ProxyStatusError}
+              </span>
+            </div>
+          )}
+        </div>
       </section>
     );
   }
