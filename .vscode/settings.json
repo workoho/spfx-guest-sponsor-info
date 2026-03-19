@@ -8,7 +8,9 @@
     "**/coverage": true,
     "**/jest-output": true,
     "**/lib-amd": true,
-    "src/**/*.scss.ts": true
+    "src/**/*.scss.ts": true,
+    "azure-function/dist": true,
+    "azure-function/node_modules": true
   },
   // ── TypeScript ─────────────────────────────────────────────────────────────
   "typescript.tsdk": "./node_modules/typescript/lib",

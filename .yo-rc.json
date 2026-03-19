@@ -1,7 +1,7 @@
 {
   "@microsoft/generator-sharepoint": {
     "whichFolder": "subdir",
-    "solutionName": "guest-sponsor-info",
+    "solutionName": "Guest Sponsor Info",
     "environment": "spo",
     "packageManager": "npm",
     "skipFeatureDeployment": true,
