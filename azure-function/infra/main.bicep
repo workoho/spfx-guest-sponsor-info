@@ -1,7 +1,7 @@
 targetScope = 'resourceGroup'
 
 metadata name = 'Guest Sponsor Info – Azure Function Proxy'
-metadata description = 'Deploys an Azure Function App that acts as a Graph API proxy for the Guest Sponsor Info SharePoint web part. Includes a Storage Account, App Service Plan, EasyAuth configuration, and Managed Identity role assignments.'
+metadata description = 'Deploys an Azure Function App that acts as a Graph API proxy for the Guest Sponsor Info SharePoint web part. Includes a Storage Account, App Service Plan, EasyAuth configuration, Managed Identity role assignments, Log Analytics Workspace, and Application Insights.'
 
 @description('Azure region for all resources.')
 param location string = resourceGroup().location
@@ -28,6 +28,8 @@ param tags object = {}
 
 var storageAccountName = toLower(replace(functionAppName, '-', ''))
 var appServicePlanName = '${functionAppName}-plan'
+var logAnalyticsWorkspaceName = '${functionAppName}-logs'
+var appInsightsName = '${functionAppName}-insights'
 
 // ── Storage Account (required by Azure Functions runtime) ────────────────────
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
@@ -43,6 +45,44 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
     minimumTlsVersion: 'TLS1_2'
     allowBlobPublicAccess: false
     allowSharedKeyAccess: false
+  }
+}
+
+// ── Log Analytics Workspace ──────────────────────────────────────────────────
+// Backend for Application Insights. Workspace-based AppInsights is the modern
+// approach (classic components are deprecated).
+resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
+  name: logAnalyticsWorkspaceName
+  location: location
+  tags: tags
+  properties: {
+    sku: {
+      name: 'PerGB2018'
+    }
+    // 30 days is the minimum; first 5 GB/month per workspace is free.
+    retentionInDays: 30
+  }
+}
+
+// ── Application Insights ─────────────────────────────────────────────────────
+// When APPLICATIONINSIGHTS_CONNECTION_STRING is set, the Azure Functions Node.js
+// runtime instruments automatically — no code changes needed. Captured data:
+//   • invocations as "requests" (duration, success, HTTP status)
+//   • outbound Graph API calls as "dependencies" (URL, latency, status)
+//   • context.log/warn/error() as "traces" (incl. Graph requestId)
+//   • unhandled exceptions as "exceptions"
+resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
+  name: appInsightsName
+  location: location
+  tags: tags
+  kind: 'web'
+  properties: {
+    Application_Type: 'web'
+    WorkspaceResourceId: logAnalyticsWorkspace.id
+    RetentionInDays: 30
+    IngestionMode: 'LogAnalytics'
+    publicNetworkAccessForIngestion: 'Enabled'
+    publicNetworkAccessForQuery: 'Enabled'
   }
 }
 
@@ -126,6 +166,13 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
         {
           name: 'NODE_ENV'
           value: 'production'
+        }
+        {
+          // When set, the Azure Functions Node.js runtime automatically sends all
+          // invocation traces, outbound dependencies, and exceptions to AppInsights.
+          // No application code changes are required.
+          name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+          value: appInsights.properties.ConnectionString
         }
       ]
       cors: {
@@ -216,3 +263,6 @@ output sponsorApiUrl string = 'https://${functionApp.properties.defaultHostName}
 
 @description('Object ID of the system-assigned Managed Identity — needed for setup-graph-permissions.ps1.')
 output managedIdentityObjectId string = functionApp.identity.principalId
+
+@description('Name of the Application Insights component — open in the Azure Portal for live telemetry.')
+output appInsightsName string = appInsights.name
