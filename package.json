@@ -29,6 +29,10 @@
     "lint:scss": "stylelint \"src/**/*.scss\"",
     "lint:md": "markdownlint-cli2 --config .markdownlint.json README.md docs/**/*.md .github/copilot-instructions.md",
     "lint": "npm run lint:ts && npm run lint:scss && npm run lint:md",
+    "fix:ts": "eslint src --ext .ts,.tsx --fix",
+    "fix:scss": "stylelint \"src/**/*.scss\" --fix",
+    "fix:md": "markdownlint-cli2 --config .markdownlint.json --fix README.md docs/**/*.md .github/copilot-instructions.md",
+    "fix": "npm run fix:ts && npm run fix:scss && npm run fix:md",
     "prepare": "husky"
   },
   "dependencies": {
