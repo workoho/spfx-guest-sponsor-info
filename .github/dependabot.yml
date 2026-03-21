@@ -76,3 +76,11 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
+    groups:
+      actions-core:
+        patterns:
+          - "actions/*"
+      actions-release:
+        patterns:
+          - "softprops/action-gh-release"
+          - "anthony-c-martin/setup-bicep"

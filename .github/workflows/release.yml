@@ -18,10 +18,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
         with:
           node-version: "22"
           cache: "npm"
@@ -41,12 +41,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0 # Full git history required by git-cliff
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
         with:
           # Pin to the major version required by the engines field in package.json.
           node-version: "22"
@@ -79,7 +79,7 @@ jobs:
           npm run package
 
       - name: Set up Bicep
-        uses: Azure/setup-bicep@v2
+        uses: anthony-c-martin/setup-bicep@0f6b30d69264f211ac1229412a2ad4ed893c272f # v0.3
 
       # Compile the Bicep infra template to ARM JSON for the Deploy-to-Azure button.
       # Normally set-version.sh already does this locally before tagging, so the
@@ -111,7 +111,7 @@ jobs:
 
       # Create or update the GitHub Release and attach build artifacts.
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
         with:
           tag_name: ${{ github.ref_name }}
           name: v${{ steps.ver.outputs.semver }}
