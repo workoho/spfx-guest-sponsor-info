@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { Callout, DirectionalHint, Icon, Panel, PanelType, TooltipHost } from '@fluentui/react';
+import { ActionButton, Callout, DirectionalHint, Icon, IconButton, Link, Panel, PanelType, Persona, PersonaPresence, PersonaSize, TooltipHost } from '@fluentui/react';
+import type { IButtonStyles } from '@fluentui/react';
 import * as strings from 'GuestSponsorInfoWebPartStrings';
 import { ISponsor } from '../services/ISponsor';
 import styles from './GuestSponsorInfo.module.scss';
@@ -178,14 +179,47 @@ function formatPresenceActivity(activity: string): string {
 }
 
 /**
+ * Maps Graph presence availability and activity tokens to Fluent UI v8 Persona
+ * presence props. All standard states are handled natively by Persona; only
+ * Focusing requires a custom presence span (no Fluent enum equivalent).
+ */
+function graphPresenceToPersonaPresence(
+  availability: string | undefined,
+  activity: string | undefined
+): { presence: PersonaPresence; isOutOfOffice: boolean } {
+  if (activity === 'OutOfOffice') {
+    return { presence: PersonaPresence.away, isOutOfOffice: true };
+  }
+  if (activity === 'Focusing') {
+    return { presence: PersonaPresence.none, isOutOfOffice: false };
+  }
+  switch (availability) {
+    case 'Available':
+    case 'AvailableIdle':
+      return { presence: PersonaPresence.online, isOutOfOffice: false };
+    case 'Away':
+    case 'BeRightBack':
+      return { presence: PersonaPresence.away, isOutOfOffice: false };
+    case 'Busy':
+    case 'BusyIdle':
+      return { presence: PersonaPresence.busy, isOutOfOffice: false };
+    case 'DoNotDisturb':
+      return { presence: PersonaPresence.dnd, isOutOfOffice: false };
+    case 'Offline':
+      return { presence: PersonaPresence.offline, isOutOfOffice: false };
+    default:
+      return { presence: PersonaPresence.none, isOutOfOffice: false };
+  }
+}
+
+/**
  * Small copy-to-clipboard button shown at the trailing edge of each contact row.
  * Switches to a checkmark for 1.5 s after a successful copy.
  */
 const CopyButton: React.FC<{ value: string; ariaLabel: string }> = ({ value, ariaLabel }) => {
   const [copied, setCopied] = React.useState(false);
 
-  const handleCopy = (e: React.MouseEvent | React.KeyboardEvent): void => {
-    e.preventDefault();
+  const handleCopy = (e: React.MouseEvent<HTMLElement>): void => {
     e.stopPropagation();
     navigator.clipboard.writeText(value).then(() => {
       setCopied(true);
@@ -195,17 +229,60 @@ const CopyButton: React.FC<{ value: string; ariaLabel: string }> = ({ value, ari
 
   return (
     <TooltipHost content={copied ? strings.CopiedFeedback : ariaLabel}>
-      <button
-        type="button"
-        className={`${styles.copyButton}${copied ? ` ${styles.copyButtonCopied}` : ''}`}
+      <IconButton
+        iconProps={{ iconName: copied ? 'Accept' : 'Copy' }}
+        ariaLabel={copied ? strings.CopiedFeedback : ariaLabel}
         onClick={handleCopy}
-        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') handleCopy(e); }}
-        aria-label={copied ? strings.CopiedFeedback : ariaLabel}
-      >
-        <Icon iconName={copied ? 'Accept' : 'Copy'} className={styles.copyIcon} aria-hidden="true" />
-      </button>
+        className={`${styles.copyButton}${copied ? ` ${styles.copyButtonCopied}` : ''}`}
+        styles={{
+          root: { background: 'none', border: 'none', borderRadius: 4, color: 'inherit' },
+          rootHovered: { background: 'var(--neutralLight, #edebe9)' },
+          icon: { fontSize: 14, lineHeight: '1' },
+        }}
+      />
     </TooltipHost>
   );
+};
+
+/** Styles for the stacked (icon-above-label) action buttons in the rich card. */
+const actionButtonStyles: IButtonStyles = {
+  root: {
+    padding: '8px 12px',
+    borderRadius: 4,
+    minWidth: 60,
+    height: 'auto',
+    border: 'none',
+    background: 'none',
+  },
+  rootHovered: {
+    background: 'var(--neutralLight, #edebe9)',
+    textDecoration: 'none',
+  },
+  rootDisabled: {
+    opacity: 0.4,
+    background: 'none',
+  },
+  flexContainer: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '4px',
+  },
+  icon: {
+    fontSize: 20,
+    lineHeight: '1',
+    color: 'var(--themePrimary, #0078d4)',
+    margin: 0,
+    height: 'auto',
+  },
+  iconDisabled: {
+    color: 'var(--neutralTertiary, #a19f9d)',
+  },
+  label: {
+    fontSize: '10px',
+    margin: 0,
+    whiteSpace: 'nowrap',
+    color: 'var(--neutralSecondary, #666)',
+  },
 };
 
 /**
@@ -326,7 +403,14 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
 
   const initials = getInitials(resolvedName);
   const bgColor = getInitialsColor(resolvedName);
+  const isFocusing = sponsor.presenceActivity === 'Focusing';
   const isOof = sponsor.presenceActivity === 'OutOfOffice';
+  const { presence: personaPresence, isOutOfOffice: personaOof } = graphPresenceToPersonaPresence(
+    sponsor.presence, sponsor.presenceActivity
+  );
+  const showPresenceIndicator = showPresence && sponsor.hasTeams !== false;
+  const effectivePresence = showPresenceIndicator ? personaPresence : PersonaPresence.none;
+  const effectiveOof = showPresenceIndicator ? personaOof : false;
   const presenceColor = isOof
     ? PRESENCE_COLORS.OutOfOffice
     : sponsor.presence ? (PRESENCE_COLORS[sponsor.presence] ?? '#8A8886') : undefined;
@@ -420,18 +504,20 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
       {/* ── Header: large avatar + name / title / presence ─── */}
       <div className={styles.richHeader}>
         <div className={styles.richAvatarWrapper}>
-          <div className={styles.richAvatar}>
-            <div className={styles.initials} style={{ backgroundColor: bgColor, fontSize: '30px' }}>
-              {initials}
-            </div>
-            {sponsor.photoUrl && (
-              <img src={sponsor.photoUrl} alt="" className={styles.photo} />
-            )}
-          </div>
-          {presenceColor && showPresence && sponsor.hasTeams !== false && (
+          <Persona
+            size={PersonaSize.size72}
+            initialsColor={bgColor}
+            imageInitials={initials}
+            imageUrl={sponsor.photoUrl}
+            imageShouldFadeIn
+            presence={effectivePresence}
+            isOutOfOffice={effectiveOof}
+            hidePersonaDetails
+          />
+          {isFocusing && showPresenceIndicator && (
             <span
               className={styles.richPresenceDot}
-              style={{ backgroundColor: presenceColor }}
+              style={{ backgroundColor: PRESENCE_COLORS.Focusing }}
               aria-hidden="true"
             />
           )}
@@ -456,59 +542,40 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
       {sponsor.mail && (
         <div className={styles.richActions} role="toolbar" aria-label={strings.ContactActionsAriaLabel}>
           {sponsor.hasTeams !== false && sponsor.mail && (
-            guestHasTeamsAccess === false ? (
-              <TooltipHost content={fstr('TeamsNotReadyChatTooltip')}>
-                <span className={`${styles.richAction} ${styles.richActionDisabled}`} aria-disabled="true">
-                  <Icon iconName="Chat" className={`${styles.richActionIcon} ${styles.richActionIconDisabled}`} aria-hidden="true" />
-                  <span className={styles.richActionLabel}>{strings.ChatLabel}</span>
-                </span>
-              </TooltipHost>
-            ) : (
-              <TooltipHost content={strings.ChatTitle}>
-                <a
-                  href={`https://teams.microsoft.com/l/chat/0/0?tenantId=${encodeURIComponent(hostTenantId)}&users=${encodeURIComponent(sponsor.mail)}`}
-                  className={styles.richAction}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                >
-                  <Icon iconName="Chat" className={styles.richActionIcon} aria-hidden="true" />
-                  <span className={styles.richActionLabel}>{strings.ChatLabel}</span>
-                </a>
-              </TooltipHost>
-            )
+            <TooltipHost content={guestHasTeamsAccess === false ? fstr('TeamsNotReadyChatTooltip') : strings.ChatTitle}>
+              <ActionButton
+                href={guestHasTeamsAccess === false ? undefined : `https://teams.microsoft.com/l/chat/0/0?tenantId=${encodeURIComponent(hostTenantId)}&users=${encodeURIComponent(sponsor.mail)}`}
+                disabled={guestHasTeamsAccess === false}
+                iconProps={{ iconName: 'Chat' }}
+                text={strings.ChatLabel}
+                target="_blank"
+                rel="noreferrer noopener"
+                styles={actionButtonStyles}
+              />
+            </TooltipHost>
           )}
           {sponsor.mail && (
             <TooltipHost content={strings.EmailTitle}>
-              <a
+              <ActionButton
                 href={`mailto:${sponsor.mail}`}
-                className={styles.richAction}
-              >
-                <Icon iconName="Mail" className={styles.richActionIcon} aria-hidden="true" />
-                <span className={styles.richActionLabel}>{strings.EmailLabel}</span>
-              </a>
+                iconProps={{ iconName: 'Mail' }}
+                text={strings.EmailLabel}
+                styles={actionButtonStyles}
+              />
             </TooltipHost>
           )}
           {sponsor.hasTeams !== false && (
-            guestHasTeamsAccess === false ? (
-              <TooltipHost content={fstr('TeamsNotReadyCallTooltip')}>
-                <span className={`${styles.richAction} ${styles.richActionDisabled}`} aria-disabled="true">
-                  <Icon iconName="Phone" className={`${styles.richActionIcon} ${styles.richActionIconDisabled}`} aria-hidden="true" />
-                  <span className={styles.richActionLabel}>{strings.CallLabel}</span>
-                </span>
-              </TooltipHost>
-            ) : (
-              <TooltipHost content={strings.CallTitle}>
-                <a
-                  href={`https://teams.microsoft.com/l/call/0/0?tenantId=${encodeURIComponent(hostTenantId)}&users=${encodeURIComponent(sponsor.mail)}&withVideo=false`}
-                  className={styles.richAction}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                >
-                  <Icon iconName="Phone" className={styles.richActionIcon} aria-hidden="true" />
-                  <span className={styles.richActionLabel}>{strings.CallLabel}</span>
-                </a>
-              </TooltipHost>
-            )
+            <TooltipHost content={guestHasTeamsAccess === false ? fstr('TeamsNotReadyCallTooltip') : strings.CallTitle}>
+              <ActionButton
+                href={guestHasTeamsAccess === false ? undefined : `https://teams.microsoft.com/l/call/0/0?tenantId=${encodeURIComponent(hostTenantId)}&users=${encodeURIComponent(sponsor.mail)}&withVideo=false`}
+                disabled={guestHasTeamsAccess === false}
+                iconProps={{ iconName: 'Phone' }}
+                text={strings.CallLabel}
+                target="_blank"
+                rel="noreferrer noopener"
+                styles={actionButtonStyles}
+              />
+            </TooltipHost>
           )}
         </div>
       )}
@@ -521,7 +588,7 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
             <Icon iconName="Mail" className={styles.richInfoIcon} aria-hidden="true" />
             <div className={styles.richInfoText}>
               <div className={styles.richInfoMeta}>{strings.EmailFieldLabel}</div>
-              <a href={`mailto:${sponsor.mail}`} className={styles.richInfoValue}>{sponsor.mail}</a>
+              <Link href={`mailto:${sponsor.mail}`} className={styles.richInfoValue}>{sponsor.mail}</Link>
             </div>
             <CopyButton value={sponsor.mail} ariaLabel={strings.CopyEmailAriaLabel} />
           </div>
@@ -531,7 +598,7 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
             <Icon iconName="Phone" className={styles.richInfoIcon} aria-hidden="true" />
             <div className={styles.richInfoText}>
               <div className={styles.richInfoMeta}>{strings.WorkPhoneFieldLabel}</div>
-              <a href={`tel:${phone}`} className={styles.richInfoValue}>{phone}</a>
+              <Link href={`tel:${phone}`} className={styles.richInfoValue}>{phone}</Link>
             </div>
             <CopyButton value={phone} ariaLabel={strings.CopyWorkPhoneAriaLabel} />
           </div>
@@ -541,7 +608,7 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
             <Icon iconName="CellPhone" className={styles.richInfoIcon} aria-hidden="true" />
             <div className={styles.richInfoText}>
               <div className={styles.richInfoMeta}>{strings.MobileFieldLabel}</div>
-              <a href={`tel:${sponsor.mobilePhone}`} className={styles.richInfoValue}>{sponsor.mobilePhone}</a>
+              <Link href={`tel:${sponsor.mobilePhone}`} className={styles.richInfoValue}>{sponsor.mobilePhone}</Link>
             </div>
             <CopyButton value={sponsor.mobilePhone} ariaLabel={strings.CopyMobileAriaLabel} />
           </div>
@@ -645,17 +712,14 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
             {/* Manager row */}
             {showManager && sponsor.managerDisplayName && (
               <div className={styles.managerRow}>
-                <div className={styles.managerAvatar}>
-                  <div
-                    className={styles.initials}
-                    style={{ backgroundColor: managerBgColor, fontSize: '14px' }}
-                  >
-                    {managerInitials}
-                  </div>
-                  {sponsor.managerPhotoUrl && (
-                    <img src={sponsor.managerPhotoUrl} alt="" className={styles.photo} />
-                  )}
-                </div>
+                <Persona
+                  size={PersonaSize.size40}
+                  initialsColor={managerBgColor}
+                  imageInitials={managerInitials}
+                  imageUrl={sponsor.managerPhotoUrl}
+                  imageShouldFadeIn
+                  hidePersonaDetails
+                />
                 <div className={styles.managerText}>
                   <div className={styles.managerLabel}>{strings.ManagerLabel}</div>
                   <div className={styles.managerName}>{resolvedManagerName}</div>
@@ -696,18 +760,20 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
         aria-expanded={isActive}
       >
         <div className={styles.avatarWrapper}>
-          <div className={styles.avatar}>
-            <div className={styles.initials} style={{ backgroundColor: bgColor }}>
-              {initials}
-            </div>
-            {sponsor.photoUrl && (
-              <img src={sponsor.photoUrl} alt="" className={styles.photo} />
-            )}
-          </div>
-          {presenceColor && showPresence && sponsor.hasTeams !== false && (
+          <Persona
+            size={PersonaSize.size72}
+            initialsColor={bgColor}
+            imageInitials={initials}
+            imageUrl={sponsor.photoUrl}
+            imageShouldFadeIn
+            presence={effectivePresence}
+            isOutOfOffice={effectiveOof}
+            hidePersonaDetails
+          />
+          {isFocusing && showPresenceIndicator && (
             <span
               className={styles.presenceDot}
-              style={{ backgroundColor: presenceColor }}
+              style={{ backgroundColor: PRESENCE_COLORS.Focusing }}
               aria-hidden="true"
             />
           )}

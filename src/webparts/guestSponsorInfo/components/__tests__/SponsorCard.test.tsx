@@ -12,6 +12,42 @@ jest.mock('@fluentui/react', () => ({
   Icon: ({ iconName, className }: { iconName: string; className?: string }) => (
     <i className={className} data-icon-name={iconName} />
   ),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  IconButton: ({ iconProps, ariaLabel, onClick, className, disabled }: any) => (
+    <button type="button" aria-label={ariaLabel} onClick={onClick} className={className} disabled={disabled}>
+      <i data-icon-name={iconProps?.iconName} />
+    </button>
+  ),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ActionButton: ({ href, text, children, iconProps, disabled, target, rel, styles: _styles, ...rest }: any) => {
+    const iconEl = iconProps?.iconName ? <i data-icon-name={iconProps.iconName} /> : null;
+    const label = text || children;
+    if (href && !disabled) {
+      return <a href={href} target={target} rel={rel} {...rest}>{iconEl}{label}</a>;
+    }
+    return <span aria-disabled={disabled ? 'true' : undefined} {...rest}>{iconEl}{label}</span>;
+  },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Link: ({ href, children, className, styles: _styles, ...rest }: any) => (
+    <a href={href} className={className} {...rest}>{children}</a>
+  ),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Persona: ({ imageInitials, initialsColor, imageUrl, presence, isOutOfOffice, size, className, ...rest }: any) => (
+    <div
+      data-persona-size={size}
+      data-persona-presence={presence}
+      data-persona-ooo={isOutOfOffice}
+      className={className}
+      {...rest}
+    >
+      <div className="initials" style={{ backgroundColor: initialsColor }}>
+        {imageInitials}
+      </div>
+      {imageUrl && <img src={imageUrl} alt="" />}
+    </div>
+  ),
+  PersonaPresence: { none: 0, offline: 1, online: 2, away: 3, dnd: 4, blocked: 5, busy: 6 },
+  PersonaSize: { size40: 40, size72: 72 },
   // Render children directly; tooltip callout behaviour is tested in Fluent UI itself.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   TooltipHost: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -541,14 +577,18 @@ describe('SponsorCard', () => {
   });
 
   describe('presence indicator', () => {
-    it('renders a presence dot when presence is set', () => {
+    it('renders a presence indicator when presence is set', () => {
       render({ ...BASE_SPONSOR, presence: 'Available' });
-      expect(container.querySelector('[class="presenceDot"]')).not.toBeNull();
+      const persona = container.querySelector('[data-persona-presence]');
+      expect(persona).not.toBeNull();
+      expect(persona!.getAttribute('data-persona-presence')).not.toBe('0');
     });
 
-    it('does not render a presence dot when presence is absent', () => {
+    it('does not render a presence indicator when presence is absent', () => {
       render(BASE_SPONSOR);
-      expect(container.querySelector('[class="presenceDot"]')).toBeNull();
+      const persona = container.querySelector('[data-persona-presence]');
+      expect(persona).not.toBeNull();
+      expect(persona!.getAttribute('data-persona-presence')).toBe('0');
     });
 
     it('shows the presence label in the rich card when active', () => {
@@ -556,9 +596,11 @@ describe('SponsorCard', () => {
       expect(container.querySelector('[role="dialog"]')!.textContent).toContain('Away');
     });
 
-    it('does not render a presence dot when hasTeams is false', () => {
+    it('does not render a presence indicator when hasTeams is false', () => {
       render({ ...BASE_SPONSOR, presence: 'Available', hasTeams: false });
-      expect(container.querySelector('[class="presenceDot"]')).toBeNull();
+      const persona = container.querySelector('[data-persona-presence]');
+      expect(persona).not.toBeNull();
+      expect(persona!.getAttribute('data-persona-presence')).toBe('0');
     });
 
     it('does not show presence label in rich card when hasTeams is false', () => {

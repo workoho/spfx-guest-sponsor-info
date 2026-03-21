@@ -294,8 +294,20 @@ acquisition.
 | Guest | Text placeholder (no Graph calls) | Sponsor cards |
 | Non-guest | Text placeholder (different message) | Hidden (`null`) |
 
-Initials avatars use Fluent UI persona colours, deterministically derived from the
-display name. Rich contact card shown via Callout (desktop) or Panel (mobile).
+Initials avatars use Fluent UI `Persona` component with a project-specific 12-colour palette
+(hex strings passed via `initialsColor`). Presence indicators are rendered natively by Persona's
+`presence` and `isOutOfOffice` props for all standard Graph availability states; only *Focusing*
+(no Fluent enum equivalent) uses a custom-positioned `<span>` in Teams purple (`#6264A7`).
+Photo fade-in is handled by `Persona`'s `imageShouldFadeIn` prop.
+
+Action buttons (Chat, Email, Call) use Fluent `ActionButton` with a column-stacked layout
+via the `styles` prop. Copy-to-clipboard buttons use `IconButton`. Contact value links
+(mailto/tel) use Fluent `Link` with the `::before` full-row click overlay retained in CSS.
+Rich contact card shown via Callout (desktop) or Panel (mobile).
+
+**Retained custom CSS** covers structural layout only: grid dimensions, card sizing,
+rich card header/section layout, info row positioning, and the Focusing presence dot.
+All colours reference SPFx theme tokens via `var()` + `"[theme:]"` dual declarations.
 
 ## Development Testing
 

@@ -144,43 +144,6 @@
   display: inline-flex;
 }
 
-/* ─── Avatar (photo or initials) ─────────────────────────────────────────── */
-
-.avatar {
-  position: relative;
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-.photo {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  animation: photo-fade-in 300ms ease;
-}
-
-@keyframes photo-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-.initials {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  font-weight: 600;
-  color: #fff;
-  user-select: none;
-}
-
 /* ─── Card caption ───────────────────────────────────────────────────────── */
 
 .cardName {
@@ -239,14 +202,6 @@
   flex-shrink: 0;
 }
 
-.richAvatar {
-  position: relative;
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  overflow: hidden;
-}
-
 .richPresenceDot {
   position: absolute;
   bottom: 2px;
@@ -294,49 +249,13 @@
   transition: color 300ms ease;
 }
 
-/* Action buttons row */
+/* Action buttons row — layout handled by ActionButton styles prop */
 
 .richActions {
   text-align: center;
   padding: 8px 12px;
   border-bottom: 1px solid var(--neutralLight, #edebe9);
   border-bottom: 1px solid "[theme:neutralLight, default: #edebe9]";
-}
-
-.richAction {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  vertical-align: top;
-  gap: 4px;
-  padding: 8px 12px;
-  border-radius: 4px;
-  text-decoration: none;
-  color: var(--bodyText);
-  color: "[theme:bodyText, default: #323130]";
-  cursor: pointer;
-  min-width: 60px;
-
-  &:hover {
-    background-color: var(--neutralLight, #edebe9);
-    background-color: "[theme:neutralLight, default: #edebe9]";
-    text-decoration: none;
-  }
-}
-
-.richActionIcon {
-  font-size: 20px;
-  line-height: 1;
-  color: var(--themePrimary, #0078d4);
-  color: "[theme:themePrimary, default: #0078d4]";
-}
-
-.richActionLabel {
-  font-size: 10px;
-  text-align: center;
-  color: var(--neutralSecondary);
-  color: "[theme:neutralSecondary, default: #666666]";
-  white-space: nowrap;
 }
 
 /* Section title */
@@ -433,6 +352,11 @@
   word-break: break-all;
   text-decoration: none;
 
+  // Suppress the hover underline added by Fluent UI Link component.
+  &:hover {
+    text-decoration: none;
+  }
+
   // Stretch an invisible click target across the entire row so the user can
   // click anywhere in the row (not just the text) to follow the link.
   &[href]::before {
@@ -448,39 +372,12 @@
   position: relative;
   z-index: 1;
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: none;
-  border-radius: 4px;
-  background: none;
-  cursor: pointer;
   opacity: 0;
-  transition: opacity 80ms ease, background-color 80ms ease;
-  color: var(--neutralSecondary);
-  color: "[theme:neutralSecondary, default: #666666]";
-
-  &:hover {
-    background-color: var(--neutralLight, #edebe9);
-    background-color: "[theme:neutralLight, default: #edebe9]";
-    color: var(--bodyText, #323130);
-    color: "[theme:bodyText, default: #323130]";
-  }
+  transition: opacity 80ms ease;
 
   &:focus-visible {
     opacity: 1;
-    outline: 2px solid var(--themePrimary, #0078d4);
-    outline: 2px solid "[theme:themePrimary, default: #0078d4]";
-    outline-offset: 1px;
   }
-}
-
-.copyIcon {
-  font-size: 14px;
-  line-height: 1;
 }
 
 .copyButtonCopied {
@@ -496,15 +393,6 @@
   gap: 12px;
   padding: 6px 20px 14px;
   align-items: center;
-}
-
-.managerAvatar {
-  position: relative;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  overflow: hidden;
-  flex-shrink: 0;
 }
 
 .managerText {
@@ -558,14 +446,3 @@
   margin-top: 16px;
 }
 
-/* ─── Disabled action button (Teams not yet provisioned) ──────────────────── */
-
-.richActionDisabled {
-  cursor: not-allowed;
-  opacity: 0.4;
-}
-
-.richActionIconDisabled {
-  color: var(--neutralTertiary, #a19f9d) !important;
-  color: "[theme:neutralTertiary, default: #a19f9d]" !important;
-}
