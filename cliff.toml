@@ -21,37 +21,15 @@ body = """
 footer = """
 ---
 
-### Deployment
+### Artifacts
 
-> For full installation details see the [README](https://github.com/jpawlowski/spfx-guest-sponsor-info#readme).
+| File | Purpose |
+|---|---|
+| `guest-sponsor-info.sppkg` | SharePoint web part — upload to App Catalog |
+| `guest-sponsor-info-function.zip` | Azure Function proxy — deploy via ARM template or Azure Portal |
+| `azuredeploy.json` | ARM template for the Azure Function proxy |
 
-#### Web part (.sppkg)
-
-1. Download `guest-sponsor-info.sppkg` from the assets below.
-2. Upload it to your SharePoint **App Catalog**.
-3. In **SharePoint Admin Center → Advanced → API access**, approve the pending
-   Graph permissions (`User.Read` and `User.ReadBasic.All`).
-4. Add the **Guest Sponsor Info** web part to any SharePoint Online page.
-
-#### Guest access to web part assets
-
-Choose one option — Option A is recommended:
-
-- **Option A – SharePoint Public CDN** (recommended): enable the Public CDN
-  with the `*/CLIENTSIDEASSETS` origin. Guest users can access static assets
-  anonymously; no App Catalog permissions are needed.
-- **Option B – App Catalog permissions**: enable `ShowEveryoneClaim` on the
-  tenant, enable external sharing on the App Catalog site, and grant the
-  **Everyone** group Read access to the App Catalog.
-
-#### Sponsor API (optional but recommended)
-
-Without the proxy, guests cannot load their sponsor list due to a Microsoft
-restriction on delegated `User.ReadBasic.All` calls from guest accounts.
-
-1. Download `guest-sponsor-info-function.zip` from the assets below.
-2. Deploy with `azd up` or manually as a ZIP-deployed Azure Function App.
-3. Configure the **Sponsor API URL** and **Client ID** in the web part property pane.
+> First time deploying? See the [README](https://github.com/jpawlowski/spfx-guest-sponsor-info#readme) for step-by-step instructions.
 """
 trim = true
 
