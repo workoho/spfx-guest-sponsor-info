@@ -78,6 +78,9 @@ jobs:
           npm ci
           npm run package
 
+      - name: Set up Bicep
+        uses: Azure/setup-bicep@v2
+
       # Compile the Bicep infra template to ARM JSON for the Deploy-to-Azure button.
       # Normally set-version.sh already does this locally before tagging, so the
       # committed azuredeploy.json should already be up to date. This step is a
@@ -88,9 +91,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          curl -sLo "$RUNNER_TEMP/bicep" https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
-          chmod +x "$RUNNER_TEMP/bicep"
-          "$RUNNER_TEMP/bicep" build azure-function/infra/main.bicep --outfile "$RUNNER_TEMP/azuredeploy-fresh.json"
+          bicep build azure-function/infra/main.bicep --outfile "$RUNNER_TEMP/azuredeploy-fresh.json"
 
           if diff -q "$RUNNER_TEMP/azuredeploy-fresh.json" azure-function/infra/azuredeploy.json > /dev/null 2>&1; then
             echo "azuredeploy.json is already up to date — no action needed."
@@ -108,18 +109,15 @@ jobs:
             exit 0
           fi
 
-      # Create the GitHub Release and attach the .sppkg as a downloadable asset.
-      # Delete first if it already exists so the step is idempotent on re-runs
-      # (--clobber was removed from newer gh versions).
+      # Create or update the GitHub Release and attach build artifacts.
       - name: Create GitHub Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release delete "${{ github.ref_name }}" --yes 2>/dev/null || true
-          gh release create "${{ github.ref_name }}" \
-            --title "v${{ steps.ver.outputs.semver }}" \
-            --notes-file RELEASE_NOTES.md \
-            sharepoint/solution/guest-sponsor-info.sppkg \
-            azure-function/guest-sponsor-info-function.zip \
-            azure-function/infra/azuredeploy.json \
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: v${{ steps.ver.outputs.semver }}
+          body_path: RELEASE_NOTES.md
+          files: |
+            sharepoint/solution/guest-sponsor-info.sppkg
+            azure-function/guest-sponsor-info-function.zip
+            azure-function/infra/azuredeploy.json
             azure-function/infra/main.bicep
