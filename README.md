@@ -318,6 +318,48 @@ Fill in the parameters:
 | `packageUrl` | Leave as default (points to the latest GitHub Release ZIP) |
 | `location` | Azure region |
 
+Optional parameters for map preview:
+
+| Parameter | Description |
+|---|---|
+| `deployAzureMaps` | `true` by default. Deploys an Azure Maps account for inline address map preview. |
+| `azureMapsAccountName` | Optional custom Azure Maps account name. Leave empty for auto-generated name. |
+
+### Inline Address Map (Azure Maps) in the web part
+
+1. Deploy with `deployAzureMaps=true`.
+2. Get the key via Azure CLI:
+
+```bash
+az maps account keys list \
+  -g <resource-group> \
+  -n <azure-maps-account-name> \
+  --query primaryKey -o tsv
+```
+
+1. In the web part property pane:
+   - enable `Show address map preview`
+   - paste the key into `Azure Maps subscription key`
+   - choose fallback provider (`Bing`, `Google`, `Apple`, `OpenStreetMap`, `HERE`)
+
+If no Azure Maps key is configured (or geocoding fails), the card shows
+an external map link fallback using the selected provider.
+
+For CSP-restricted environments, allow at least:
+
+- `https://atlas.microsoft.com` (Azure Maps geocoding + static map image)
+- the selected external map provider domain for fallback links
+
+Quick decision guide:
+
+1. Default path: keep `deployAzureMaps=true` and deploy Azure Maps with the function stack.
+2. Enable map rendering in the web part only when needed by entering the Azure Maps key.
+3. No key configured (or lookup fails): external provider link fallback is shown automatically.
+
+Billing note: with Azure Maps, pricing is request-based and includes a free monthly quota
+(for example, first requests in S0). If the key is not configured in the web part,
+no Azure Maps requests are issued from the card.
+
 After deployment, note the **Managed Identity Object ID** shown in the output.
 
 #### Grant Graph permissions and configure the App Registration

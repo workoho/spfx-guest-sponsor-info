@@ -26,10 +26,19 @@ param packageUrl string = 'https://github.com/jpawlowski/spfx-guest-sponsor-info
 @description('Resource tags to apply to all deployed resources.')
 param tags object = {}
 
+@description('Deploy Azure Maps account for inline address map preview.')
+param deployAzureMaps bool = true
+
+@description('Optional custom Azure Maps account name. Leave empty to auto-generate.')
+param azureMapsAccountName string = ''
+
 var storageAccountName = toLower(replace(functionAppName, '-', ''))
 var appServicePlanName = '${functionAppName}-plan'
 var logAnalyticsWorkspaceName = '${functionAppName}-logs'
 var appInsightsName = '${functionAppName}-insights'
+var azureMapsName = empty(azureMapsAccountName)
+  ? toLower('maps${uniqueString(resourceGroup().id, functionAppName)}')
+  : toLower(azureMapsAccountName)
 
 // ── Storage Account (required by Azure Functions runtime) ────────────────────
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
@@ -96,6 +105,20 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' = {
     tier: 'Dynamic'
   }
   properties: {}
+}
+
+// ── Azure Maps account (optional; used by inline map preview in SPFx card) ───
+resource azureMapsAccount 'Microsoft.Maps/accounts@2023-06-01' = if (deployAzureMaps) {
+  name: azureMapsName
+  location: location
+  tags: tags
+  sku: {
+    name: 'G2'
+  }
+  kind: 'Gen2'
+  properties: {
+    disableLocalAuth: false
+  }
 }
 
 // ── Function App ─────────────────────────────────────────────────────────────
@@ -266,3 +289,11 @@ output managedIdentityObjectId string = functionApp.identity.principalId
 
 @description('Name of the Application Insights component — open in the Azure Portal for live telemetry.')
 output appInsightsName string = appInsights.name
+
+@description('Azure Maps account name (empty when deployAzureMaps=false).')
+output azureMapsAccountName string = deployAzureMaps ? azureMapsAccount.name : ''
+
+@description('Azure CLI command to fetch the Azure Maps primary key (empty when deployAzureMaps=false).')
+output azureMapsKeyCommand string = deployAzureMaps
+  ? 'az maps account keys list -g ${resourceGroup().name} -n ${azureMapsAccount.name} --query primaryKey -o tsv'
+  : ''

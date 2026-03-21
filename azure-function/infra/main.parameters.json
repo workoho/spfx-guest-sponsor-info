@@ -1,18 +1,24 @@
 {
-    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
-    "contentVersion": "1.0.0.0",
-    "parameters": {
-        "functionAppName": {
-            "value": "${AZURE_FUNCTION_APP_NAME}"
-        },
-        "tenantId": {
-            "value": "${AZURE_TENANT_ID}"
-        },
-        "tenantName": {
-            "value": "${AZURE_SHAREPOINT_TENANT_NAME}"
-        },
-        "functionClientId": {
-            "value": "${AZURE_FUNCTION_CLIENT_ID}"
-        }
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "functionAppName": {
+      "value": "${AZURE_FUNCTION_APP_NAME}"
+    },
+    "tenantId": {
+      "value": "${AZURE_TENANT_ID}"
+    },
+    "tenantName": {
+      "value": "${AZURE_SHAREPOINT_TENANT_NAME}"
+    },
+    "functionClientId": {
+      "value": "${AZURE_FUNCTION_CLIENT_ID}"
+    },
+    "deployAzureMaps": {
+      "value": true
+    },
+    "azureMapsAccountName": {
+      "value": ""
     }
+  }
 }
