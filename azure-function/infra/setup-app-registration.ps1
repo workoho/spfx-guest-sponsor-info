@@ -40,6 +40,9 @@ Write-Host "Checking for existing App Registration '$DisplayName'..." -Foregroun
 $existing = Get-MgApplication -Filter "displayName eq '$DisplayName'" -Top 1
 
 if ($existing) {
+    if ($existing.SignInAudience -ne 'AzureADMyOrg') {
+        throw "Existing App Registration '$DisplayName' is not single-tenant (SignInAudience=$($existing.SignInAudience)). Configure it to AzureADMyOrg before using this solution."
+    }
     $clientId = $existing.AppId
     Write-Host "App Registration already exists. Client ID: $clientId" -ForegroundColor Yellow
 } else {
@@ -59,6 +62,7 @@ if ($existing) {
     Write-Host "  Display Name : $DisplayName" -ForegroundColor Green
     Write-Host "  Client ID    : $clientId" -ForegroundColor Green
     Write-Host "  App ID URI   : $appIdUri" -ForegroundColor Green
+    Write-Host "  SignInAudience: AzureADMyOrg (single-tenant)" -ForegroundColor Green
 }
 
 Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan

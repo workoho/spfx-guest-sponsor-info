@@ -134,6 +134,10 @@ if (-not $app) {
     throw "Could not find App Registration with client ID '$FunctionAppClientId'. Verify the -FunctionAppClientId parameter."
 }
 
+if ($app.SignInAudience -ne 'AzureADMyOrg') {
+    throw "App Registration '$FunctionAppClientId' is not single-tenant (SignInAudience=$($app.SignInAudience)). Set it to AzureADMyOrg before continuing."
+}
+
 # Ensure the identifier URI is set — required for the api:// audience used by EasyAuth.
 $expectedUri = "api://guest-sponsor-info-proxy/$FunctionAppClientId"
 if ($app.IdentifierUris -notcontains $expectedUri) {
