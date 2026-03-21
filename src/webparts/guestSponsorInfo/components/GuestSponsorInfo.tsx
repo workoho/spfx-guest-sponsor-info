@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { DisplayMode } from '@microsoft/sp-core-library';
-import { Shimmer, ShimmerElementType, ShimmerElementsGroup } from '@fluentui/react';
+import { Shimmer, ShimmerElementType, ShimmerElementsGroup, MessageBar, MessageBarType } from '@fluentui/react';
 import * as strings from 'GuestSponsorInfoWebPartStrings';
 import styles from './GuestSponsorInfo.module.scss';
 import type { IGuestSponsorInfoProps } from './IGuestSponsorInfoProps';
@@ -22,10 +22,13 @@ interface ISponsorListProps {
   showMobilePhone: boolean;
   showWorkLocation: boolean;
   showManager: boolean;
+  useInformalAddress: boolean;
   onActiveCardChange?: (hasActiveCard: boolean) => void;
+  /** Propagated from ISponsorsResult — false shows disabled buttons in each card. */
+  guestHasTeamsAccess?: boolean;
 }
 
-const SponsorList: React.FC<ISponsorListProps> = ({ sponsors, hostTenantId, showBusinessPhones, showMobilePhone, showWorkLocation, showManager, onActiveCardChange }) => {
+const SponsorList: React.FC<ISponsorListProps> = ({ sponsors, hostTenantId, showBusinessPhones, showMobilePhone, showWorkLocation, showManager, useInformalAddress, onActiveCardChange, guestHasTeamsAccess }) => {
   const [activeId, setActiveId] = React.useState<string | null>(null);
   const hideTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -62,6 +65,8 @@ const SponsorList: React.FC<ISponsorListProps> = ({ sponsors, hostTenantId, show
             showMobilePhone={showMobilePhone}
             showWorkLocation={showWorkLocation}
             showManager={showManager}
+            useInformalAddress={useInformalAddress}
+            guestHasTeamsAccess={guestHasTeamsAccess}
           />
         </li>
       ))}
@@ -134,7 +139,19 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   showMobilePhone,
   showWorkLocation,
   showManager,
+  useInformalAddress,
 }) => {
+  // Helper: pick the informal string variant when useInformalAddress is enabled and
+  // the current locale provides one (languages with T-V distinction like de, fr, es, it, nl).
+  const fstr = <K extends keyof typeof strings>(key: K): string => {
+    if (useInformalAddress) {
+      const informalKey = `${key}Informal` as keyof typeof strings;
+      const informal = strings[informalKey];
+      if (informal) return informal as string;
+    }
+    return strings[key] as string;
+  };
+
   // Primary signal: pageContext.user.isExternalGuestUser (authoritative, set from Entra token).
   // Fallback: #EXT# in loginName (heuristic; may be absent when the SharePoint user profile
   // has not yet been created for the guest, causing SP.UserProfile to return HTTP 500).
@@ -152,6 +169,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   const [proxyStatus, setProxyStatus] = React.useState<ProxyStatus>('checking');
   const [retryCount, setRetryCount] = React.useState(0);
   const [hasActiveCard, setHasActiveCard] = React.useState(false);
+  const [guestHasTeamsAccess, setGuestHasTeamsAccess] = React.useState<boolean | undefined>(undefined);
 
   // Ref that always holds the IDs of currently displayed sponsors.
   // The presence refresh interval reads this without capturing sponsors in its closure.
@@ -191,6 +209,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
     let cancelled = false;
     setLoading(true);
     setError(undefined);
+    setGuestHasTeamsAccess(undefined);
     const loadFn = useProxy
       ? () => getSponsorsViaProxy(functionUrl as string, aadHttpClient!)
       : () => getSponsors(graphClient!);
@@ -205,6 +224,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
           sponsorIdsRef.current = active.map(s => s.id);
           // All unavailable = sponsors were assigned but every account is disabled/deleted.
           setAllUnavailable(active.length === 0 && result.unavailableCount > 0);
+          setGuestHasTeamsAccess(result.guestHasTeamsAccess);
           setLoading(false);
           setRetryCount(0);
 
@@ -233,7 +253,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
           if (is4xx || retryCount >= MAX_RETRIES) {
             // Permanent error (e.g. 401, 403) or retry limit reached:
             // stop retrying and show the error message so the shimmer disappears.
-            setError(strings.ErrorMessage);
+            setError(fstr('ErrorMessage'));
             setLoading(false);
           } else {
             // Transient error: retry with exponential backoff capped at 30 seconds.
@@ -357,10 +377,10 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
         <p className={styles.statusMessage}>{error}</p>
       )}
       {!loading && !error && sponsors.length === 0 && allUnavailable && (
-        <p className={styles.statusMessage}>{strings.SponsorUnavailableMessage}</p>
+        <p className={styles.statusMessage}>{fstr('SponsorUnavailableMessage')}</p>
       )}
       {!loading && !error && sponsors.length === 0 && !allUnavailable && (
-        <p className={styles.statusMessage}>{strings.NoSponsorsMessage}</p>
+        <p className={styles.statusMessage}>{fstr('NoSponsorsMessage')}</p>
       )}
       {!loading && !error && sponsors.length > 0 && (
         <SponsorList
@@ -370,8 +390,19 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
           showMobilePhone={showMobilePhone}
           showWorkLocation={showWorkLocation}
           showManager={showManager}
+          useInformalAddress={useInformalAddress}
           onActiveCardChange={setHasActiveCard}
+          guestHasTeamsAccess={guestHasTeamsAccess}
         />
+      )}
+      {!loading && !error && guestHasTeamsAccess === false && (
+        <MessageBar
+          messageBarType={MessageBarType.warning}
+          isMultiline
+          className={styles.teamsAccessBanner}
+        >
+          {fstr('TeamsAccessPendingMessage')}
+        </MessageBar>
       )}
     </section>
   );

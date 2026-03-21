@@ -535,3 +535,21 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ─── Teams access pending banner ────────────────────────────────────── */
+
+.teamsAccessBanner {
+  margin-top: 16px;
+}
+
+/* ─── Disabled action button (Teams not yet provisioned) ──────────────────── */
+
+.richActionDisabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.richActionIconDisabled {
+  color: var(--neutralTertiary, #a19f9d) !important;
+  color: "[theme:neutralTertiary, default: #a19f9d]" !important;
+}

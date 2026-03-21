@@ -76,6 +76,7 @@ function renderWebPart(overrides: Partial<IGuestSponsorInfoProps> = {}): void {
     showMobilePhone: true,
     showWorkLocation: true,
     showManager: true,
+    useInformalAddress: false,
   };
   ReactDOM.render(<GuestSponsorInfo {...defaults} {...overrides} />, container);
 }

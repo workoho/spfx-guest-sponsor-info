@@ -41,5 +41,7 @@ export interface IGuestSponsorInfoProps {
   showWorkLocation: boolean;
   /** Show the manager section in the contact card. */
   showManager: boolean;
+  /** Use informal address ("du"/"tu") instead of formal ("Sie"/"vous"). Default: false. */
+  useInformalAddress: boolean;
 }
 

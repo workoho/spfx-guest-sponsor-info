@@ -27,6 +27,8 @@ export interface IGuestSponsorInfoWebPartProps {
   showWorkLocation: boolean;
   /** Show the manager section in the contact card. Default: true. */
   showManager: boolean;
+  /** Use informal address ("du"/"tu") instead of formal ("Sie"/"vous"). Default: false. */
+  useInformalAddress: boolean;
 }
 
 export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGuestSponsorInfoWebPartProps> {
@@ -52,6 +54,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
         showMobilePhone: this.properties.showMobilePhone ?? true,
         showWorkLocation: this.properties.showWorkLocation ?? true,
         showManager: this.properties.showManager ?? true,
+        useInformalAddress: this.properties.useInformalAddress ?? false,
       }
     );
 
@@ -145,6 +148,9 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                 PropertyPaneCheckbox('showManager', {
                   text: strings.ShowManagerFieldLabel,
                   checked: this.properties.showManager ?? true,
+                }),
+                PropertyPaneCheckbox('useInformalAddress', {
+                  text: strings.UseInformalAddressFieldLabel,
                 }),
               ]
             },

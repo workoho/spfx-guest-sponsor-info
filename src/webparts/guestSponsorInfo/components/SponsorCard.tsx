@@ -177,6 +177,14 @@ interface ISponsorCardProps {
   showWorkLocation: boolean;
   /** Show the manager section below the contact details. */
   showManager: boolean;
+  /** Use informal address for user-facing tooltips. */
+  useInformalAddress: boolean;
+  /**
+   * Whether the signed-in guest's Teams service account has been provisioned.
+   * false = disable Teams Chat and Call buttons and show an explanatory tooltip.
+   * undefined = unknown (fail-open — buttons remain active).
+   */
+  guestHasTeamsAccess?: boolean;
 }
 
 const SponsorCard: React.FC<ISponsorCardProps> = ({
@@ -189,8 +197,21 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
   showMobilePhone,
   showWorkLocation,
   showManager,
+  useInformalAddress,
+  guestHasTeamsAccess,
 }) => {
   const cardRef = React.useRef<HTMLDivElement>(null);
+
+  // Pick informal string variant when the property is enabled and the locale provides one.
+  const fstr = <K extends keyof typeof strings>(key: K): string => {
+    if (useInformalAddress) {
+      const informalKey = `${key}Informal` as keyof typeof strings;
+      const informal = strings[informalKey];
+      if (informal) return informal as string;
+    }
+    return strings[key] as string;
+  };
+
   const initials = getInitials(sponsor.displayName);
   const bgColor = getInitialsColor(sponsor.displayName);
   const isOof = sponsor.presenceActivity === 'OutOfOffice';
@@ -263,17 +284,26 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
       {sponsor.mail && (
         <div className={styles.richActions} role="toolbar" aria-label={strings.ContactActionsAriaLabel}>
           {sponsor.hasTeams !== false && sponsor.mail && (
-            <TooltipHost content={strings.ChatTitle}>
-              <a
-                href={`https://teams.microsoft.com/l/chat/0/0?tenantId=${encodeURIComponent(hostTenantId)}&users=${encodeURIComponent(sponsor.mail)}`}
-                className={styles.richAction}
-                target="_blank"
-                rel="noreferrer noopener"
-              >
-                <Icon iconName="Chat" className={styles.richActionIcon} aria-hidden="true" />
-                <span className={styles.richActionLabel}>{strings.ChatLabel}</span>
-              </a>
-            </TooltipHost>
+            guestHasTeamsAccess === false ? (
+              <TooltipHost content={fstr('TeamsNotReadyChatTooltip')}>
+                <span className={`${styles.richAction} ${styles.richActionDisabled}`} aria-disabled="true">
+                  <Icon iconName="Chat" className={`${styles.richActionIcon} ${styles.richActionIconDisabled}`} aria-hidden="true" />
+                  <span className={styles.richActionLabel}>{strings.ChatLabel}</span>
+                </span>
+              </TooltipHost>
+            ) : (
+              <TooltipHost content={strings.ChatTitle}>
+                <a
+                  href={`https://teams.microsoft.com/l/chat/0/0?tenantId=${encodeURIComponent(hostTenantId)}&users=${encodeURIComponent(sponsor.mail)}`}
+                  className={styles.richAction}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                >
+                  <Icon iconName="Chat" className={styles.richActionIcon} aria-hidden="true" />
+                  <span className={styles.richActionLabel}>{strings.ChatLabel}</span>
+                </a>
+              </TooltipHost>
+            )
           )}
           {sponsor.mail && (
             <TooltipHost content={strings.EmailTitle}>
@@ -287,17 +317,26 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
             </TooltipHost>
           )}
           {sponsor.hasTeams !== false && (
-            <TooltipHost content={strings.CallTitle}>
-              <a
-                href={`https://teams.microsoft.com/l/call/0/0?tenantId=${encodeURIComponent(hostTenantId)}&users=${encodeURIComponent(sponsor.mail)}&withVideo=false`}
-                className={styles.richAction}
-                target="_blank"
-                rel="noreferrer noopener"
-              >
-                <Icon iconName="Phone" className={styles.richActionIcon} aria-hidden="true" />
-                <span className={styles.richActionLabel}>{strings.CallLabel}</span>
-              </a>
-            </TooltipHost>
+            guestHasTeamsAccess === false ? (
+              <TooltipHost content={fstr('TeamsNotReadyCallTooltip')}>
+                <span className={`${styles.richAction} ${styles.richActionDisabled}`} aria-disabled="true">
+                  <Icon iconName="Phone" className={`${styles.richActionIcon} ${styles.richActionIconDisabled}`} aria-hidden="true" />
+                  <span className={styles.richActionLabel}>{strings.CallLabel}</span>
+                </span>
+              </TooltipHost>
+            ) : (
+              <TooltipHost content={strings.CallTitle}>
+                <a
+                  href={`https://teams.microsoft.com/l/call/0/0?tenantId=${encodeURIComponent(hostTenantId)}&users=${encodeURIComponent(sponsor.mail)}&withVideo=false`}
+                  className={styles.richAction}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                >
+                  <Icon iconName="Phone" className={styles.richActionIcon} aria-hidden="true" />
+                  <span className={styles.richActionLabel}>{strings.CallLabel}</span>
+                </a>
+              </TooltipHost>
+            )
           )}
         </div>
       )}

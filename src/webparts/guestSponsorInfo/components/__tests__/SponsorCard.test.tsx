@@ -65,7 +65,8 @@ function render(
   showBusinessPhones = true,
   showMobilePhone = true,
   showWorkLocation = true,
-  showManager = true
+  showManager = true,
+  useInformalAddress = false
 ): void {
   act(() => {
     ReactDOM.render(
@@ -79,6 +80,7 @@ function render(
         showMobilePhone={showMobilePhone}
         showWorkLocation={showWorkLocation}
         showManager={showManager}
+        useInformalAddress={useInformalAddress}
       />,
       container
     );

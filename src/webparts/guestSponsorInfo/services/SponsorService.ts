@@ -14,6 +14,15 @@ export interface ISponsorsResult {
    * User.Read.All, which exceeds the declared permission scope.
    */
   unavailableCount: number;
+  /**
+   * Whether the guest user’s Teams service account has been provisioned in this
+   * tenant.  True = the guest can use Teams (chat/call buttons are functional).
+   * False = the guest has not yet been added to a Team and cannot use Teams.
+   * Undefined = could not be determined (function proxy not configured, or
+   * neither TeamMember.Read.All nor Presence.Read.All is granted); the client
+   * fails open and shows the buttons enabled.
+   */
+  guestHasTeamsAccess?: boolean;
 }
 
 interface IPresenceSnapshot {
