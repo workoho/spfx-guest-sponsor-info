@@ -79,7 +79,7 @@ The `.husky/pre-commit` hook automatically:
 
 Use Conventional Commits (enforced by `commitlint`):
 
-```
+```text
 chore(i18n): normalize locale files to UTF-8
 feat(sponsor): add sponsor card caching
 fix(graph): handle missing user profile gracefully
@@ -107,6 +107,22 @@ npx heft build
 
 # ✅ Use npm scripts instead
 npm run build
+```
+
+```bash
+# ❌ NEVER call the husky binary directly without -- separator.
+#    Husky v9 treats its first positional argument as a target directory.
+#    Running 'npx husky --version' (without --) makes husky create a
+#    '--version/_' directory and overwrite core.hooksPath, breaking all
+#    git hooks (commits and pushes will fail with "Illegal option --").
+npx husky --version   # ❌ breaks git hooks!
+npx husky list        # ❌ breaks git hooks!
+
+# ✅ Use npm scripts to manage hooks
+npm run prepare                           # (re-)install / reset git hooks
+
+# ✅ If you need the husky version, use the -- separator:
+node_modules/.bin/husky -- --version      # ✅ safe
 ```
 
 ## Code Validation Checklist

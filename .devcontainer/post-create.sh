@@ -38,7 +38,15 @@ fi
 npm install
 
 # Ensure Husky git hooks are properly initialized in dev-container.
+# Note: npm install already triggers the prepare script (which runs 'husky'),
+# but we call it explicitly here as a belt-and-suspenders measure.
 npm run prepare
+
+# Hard-enforce the correct hooksPath. 'husky' silently skips when HUSKY=0 is
+# set in the environment, which would leave core.hooksPath pointing to whatever
+# it was before (possibly a stale or incorrect value). Explicitly setting it
+# to the canonical value ensures git hooks are always active in the container.
+git config core.hooksPath .husky/_
 
 echo "Node version: $(node --version)"
 echo "npm version: $(npm --version)"

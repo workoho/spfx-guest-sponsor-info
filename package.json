@@ -82,6 +82,6 @@
   "lint-staged": {
     "src/**/*.{ts,tsx}": "eslint --fix",
     "src/**/*.scss": "stylelint --fix",
-    "*.md": "markdownlint --fix"
+    "*.md": "markdownlint-cli2 --fix"
   }
 }
