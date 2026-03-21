@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "7770143528431782284"
+      "templateHash": "17449951186294661586"
     },
     "name": "Guest Sponsor Info – Azure Function Proxy",
     "description": "Deploys an Azure Function App that acts as a Graph API proxy for the Guest Sponsor Info SharePoint web part. Includes a Storage Account, App Service Plan, EasyAuth configuration, Managed Identity role assignments, Log Analytics Workspace, and Application Insights."
@@ -57,6 +57,160 @@
       "metadata": {
         "description": "Resource tags to apply to all deployed resources."
       }
+    },
+    "deployAzureMaps": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Deploy Azure Maps account for inline address map preview."
+      }
+    },
+    "azureMapsAccountName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional custom Azure Maps account name. Leave empty to auto-generate."
+      }
+    },
+    "enableServiceOutageAlert": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable operational email alert for probable service outage (5xx/504 spike or low success rate)."
+      }
+    },
+    "enableAuthConfigRegressionAlert": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable operational email alert for auth/config regressions (AUTH_CONFIG_* reason codes)."
+      }
+    },
+    "enableLikelyAttackInfoAlert": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable info-only alert for likely attack/noise spikes (high 401/403 from many IPs)."
+      }
+    },
+    "alertEvaluationFrequencyInMinutes": {
+      "type": "int",
+      "defaultValue": 5,
+      "minValue": 1,
+      "metadata": {
+        "description": "KQL alert evaluation frequency in minutes."
+      }
+    },
+    "alertWindowInMinutes": {
+      "type": "int",
+      "defaultValue": 15,
+      "minValue": 5,
+      "metadata": {
+        "description": "KQL alert lookback window in minutes."
+      }
+    },
+    "serviceOutageMinRequests": {
+      "type": "int",
+      "defaultValue": 20,
+      "minValue": 1,
+      "metadata": {
+        "description": "Minimum total requests in window before service outage alert can fire."
+      }
+    },
+    "serviceOutageFailureCountThreshold": {
+      "type": "int",
+      "defaultValue": 10,
+      "minValue": 1,
+      "metadata": {
+        "description": "5xx/504 count threshold for service outage alert."
+      }
+    },
+    "serviceOutageSuccessRatePercentThreshold": {
+      "type": "int",
+      "defaultValue": 70,
+      "minValue": 1,
+      "maxValue": 99,
+      "metadata": {
+        "description": "Success-rate percentage threshold below which service outage alert can fire."
+      }
+    },
+    "authConfigRegressionHitsThreshold": {
+      "type": "int",
+      "defaultValue": 1,
+      "minValue": 1,
+      "metadata": {
+        "description": "AUTH_CONFIG_* trace count threshold for config-regression alert."
+      }
+    },
+    "likelyAttackDeniedCountThreshold": {
+      "type": "int",
+      "defaultValue": 50,
+      "minValue": 1,
+      "metadata": {
+        "description": "401/403 count threshold for likely-attack info alert."
+      }
+    },
+    "likelyAttackUniqueIpThreshold": {
+      "type": "int",
+      "defaultValue": 20,
+      "minValue": 1,
+      "metadata": {
+        "description": "Unique client IP threshold for likely-attack info alert."
+      }
+    },
+    "likelyAttackDenyRatePercentThreshold": {
+      "type": "int",
+      "defaultValue": 80,
+      "minValue": 1,
+      "maxValue": 100,
+      "metadata": {
+        "description": "Denied-rate percentage threshold for likely-attack info alert."
+      }
+    },
+    "likelyAttackMinSuccessThreshold": {
+      "type": "int",
+      "defaultValue": 1,
+      "minValue": 0,
+      "metadata": {
+        "description": "Minimum successful requests required before likely-attack info alert fires (avoid pure outage overlap)."
+      }
+    },
+    "operationalActionGroupResourceIds": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Action group resource IDs for operational email alerts. Leave empty to create alert rules without notifications."
+      }
+    },
+    "infoActionGroupResourceIds": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Action group resource IDs for info-only alerts. Leave empty to create alert rules without notifications."
+      }
+    },
+    "defaultAlertNotificationEmail": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional notification email used to auto-create default operational/info action groups. Leave empty to skip auto-creation."
+      }
+    },
+    "defaultOperationalActionGroupShortName": {
+      "type": "string",
+      "defaultValue": "GSIOps",
+      "maxLength": 12,
+      "metadata": {
+        "description": "Short name for the auto-created operational action group (max 12 chars)."
+      }
+    },
+    "defaultInfoActionGroupShortName": {
+      "type": "string",
+      "defaultValue": "GSIInfo",
+      "maxLength": 12,
+      "metadata": {
+        "description": "Short name for the auto-created info action group (max 12 chars)."
+      }
     }
   },
   "variables": {
@@ -64,11 +218,59 @@
     "appServicePlanName": "[format('{0}-plan', parameters('functionAppName'))]",
     "logAnalyticsWorkspaceName": "[format('{0}-logs', parameters('functionAppName'))]",
     "appInsightsName": "[format('{0}-insights', parameters('functionAppName'))]",
+    "azureMapsName": "[if(empty(parameters('azureMapsAccountName')), toLower(format('maps{0}', uniqueString(resourceGroup().id, parameters('functionAppName')))), toLower(parameters('azureMapsAccountName')))]",
+    "serviceOutageAlertQueryRaw": "let window = __WINDOW__m;\nlet req = requests\n| where timestamp > ago(window)\n| where name contains \"getGuestSponsors\";\nlet total = toscalar(req | count);\nlet failures5xx = toscalar(req | where resultCode startswith \"5\" or resultCode == \"504\" | count);\nlet success = toscalar(req | where resultCode startswith \"2\" | count);\nprint total=total, failures5xx=failures5xx, success=success,\n      successRatePct = iff(total == 0, 100.0, todouble(success) * 100.0 / todouble(total))\n| where total >= __MIN_REQUESTS__\n| where failures5xx >= __FAILURE_COUNT__ or successRatePct < __SUCCESS_RATE_PCT__\n",
+    "serviceOutageAlertQuery": "[replace(replace(replace(replace(variables('serviceOutageAlertQueryRaw'), '__WINDOW__', string(parameters('alertWindowInMinutes'))), '__MIN_REQUESTS__', string(parameters('serviceOutageMinRequests'))), '__FAILURE_COUNT__', string(parameters('serviceOutageFailureCountThreshold'))), '__SUCCESS_RATE_PCT__', string(parameters('serviceOutageSuccessRatePercentThreshold')))]",
+    "authConfigRegressionAlertQueryRaw": "let window = __WINDOW__m;\ntraces\n| where timestamp > ago(window)\n| where message has \"Client validation (\"\n| extend reasonCode = tostring(customDimensions.reasonCode)\n| where reasonCode in (\"AUTH_CONFIG_TENANT_MISSING\", \"AUTH_CONFIG_AUDIENCE_MISSING\")\n| summarize hits = count() by reasonCode\n| where hits >= __HITS_THRESHOLD__\n",
+    "authConfigRegressionAlertQuery": "[replace(replace(variables('authConfigRegressionAlertQueryRaw'), '__WINDOW__', string(parameters('alertWindowInMinutes'))), '__HITS_THRESHOLD__', string(parameters('authConfigRegressionHitsThreshold')))]",
+    "likelyAttackInfoAlertQueryRaw": "let window = __WINDOW__m;\nlet req = requests\n| where timestamp > ago(window)\n| where name contains \"getGuestSponsors\";\nlet denied = req\n| where resultCode in (\"401\", \"403\")\n| summarize deniedCount = count(), uniqueIps = dcount(client_IP);\nlet total = toscalar(req | count);\nlet success = toscalar(req | where resultCode startswith \"2\" | count);\ndenied\n| extend denyRatePct = iff(total == 0, 0.0, todouble(deniedCount) * 100.0 / todouble(total))\n| where deniedCount >= __DENIED_COUNT__\n| where uniqueIps >= __UNIQUE_IP__\n| where denyRatePct >= __DENY_RATE_PCT__\n| where success >= __MIN_SUCCESS__\n",
+    "likelyAttackInfoAlertQuery": "[replace(replace(replace(replace(replace(variables('likelyAttackInfoAlertQueryRaw'), '__WINDOW__', string(parameters('alertWindowInMinutes'))), '__DENIED_COUNT__', string(parameters('likelyAttackDeniedCountThreshold'))), '__UNIQUE_IP__', string(parameters('likelyAttackUniqueIpThreshold'))), '__DENY_RATE_PCT__', string(parameters('likelyAttackDenyRatePercentThreshold'))), '__MIN_SUCCESS__', string(parameters('likelyAttackMinSuccessThreshold')))]",
+    "createDefaultActionGroups": "[not(empty(parameters('defaultAlertNotificationEmail')))]",
+    "effectiveOperationalActionGroupResourceIds": "[if(variables('createDefaultActionGroups'), concat(parameters('operationalActionGroupResourceIds'), createArray(resourceId('Microsoft.Insights/actionGroups', format('{0}-ops-ag', parameters('functionAppName'))))), parameters('operationalActionGroupResourceIds'))]",
+    "effectiveInfoActionGroupResourceIds": "[if(variables('createDefaultActionGroups'), concat(parameters('infoActionGroupResourceIds'), createArray(resourceId('Microsoft.Insights/actionGroups', format('{0}-info-ag', parameters('functionAppName'))))), parameters('infoActionGroupResourceIds'))]",
     "storageBlobDataOwnerRoleId": "b7e6dc6d-f1e8-4753-8033-0f276bb0955b",
     "storageQueueDataContributorRoleId": "974c5e8b-45b9-4653-ba55-5f855dd0fb88",
     "storageTableDataContributorRoleId": "0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3"
   },
   "resources": [
+    {
+      "condition": "[variables('createDefaultActionGroups')]",
+      "type": "Microsoft.Insights/actionGroups",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}-ops-ag', parameters('functionAppName'))]",
+      "location": "global",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "groupShortName": "[parameters('defaultOperationalActionGroupShortName')]",
+        "enabled": true,
+        "emailReceivers": [
+          {
+            "name": "ops-email",
+            "emailAddress": "[parameters('defaultAlertNotificationEmail')]",
+            "useCommonAlertSchema": true
+          }
+        ]
+      }
+    },
+    {
+      "condition": "[variables('createDefaultActionGroups')]",
+      "type": "Microsoft.Insights/actionGroups",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}-info-ag', parameters('functionAppName'))]",
+      "location": "global",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "groupShortName": "[parameters('defaultInfoActionGroupShortName')]",
+        "enabled": true,
+        "emailReceivers": [
+          {
+            "name": "info-email",
+            "emailAddress": "[parameters('defaultAlertNotificationEmail')]",
+            "useCommonAlertSchema": true
+          }
+        ]
+      }
+    },
     {
       "type": "Microsoft.Storage/storageAccounts",
       "apiVersion": "2023-01-01",
@@ -129,6 +331,21 @@
         "tier": "Dynamic"
       },
       "properties": {}
+    },
+    {
+      "condition": "[parameters('deployAzureMaps')]",
+      "type": "Microsoft.Maps/accounts",
+      "apiVersion": "2023-06-01",
+      "name": "[variables('azureMapsName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "sku": {
+        "name": "G2"
+      },
+      "kind": "Gen2",
+      "properties": {
+        "disableLocalAuth": false
+      }
     },
     {
       "type": "Microsoft.Web/sites",
@@ -293,6 +510,114 @@
         "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]",
         "[resourceId('Microsoft.Storage/storageAccounts', if(greater(length(variables('storageAccountName')), 24), substring(variables('storageAccountName'), 0, 24), variables('storageAccountName')))]"
       ]
+    },
+    {
+      "condition": "[parameters('enableServiceOutageAlert')]",
+      "type": "Microsoft.Insights/scheduledQueryRules",
+      "apiVersion": "2021-08-01",
+      "name": "[format('{0}-service-outage-kql', parameters('functionAppName'))]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "description": "Operational email alert for probable service outage (5xx/504 spike or low success rate).",
+        "enabled": true,
+        "scopes": [
+          "[resourceId('Microsoft.Insights/components', variables('appInsightsName'))]"
+        ],
+        "evaluationFrequency": "[format('PT{0}M', parameters('alertEvaluationFrequencyInMinutes'))]",
+        "windowSize": "[format('PT{0}M', parameters('alertWindowInMinutes'))]",
+        "severity": 2,
+        "criteria": {
+          "allOf": [
+            {
+              "query": "[variables('serviceOutageAlertQuery')]",
+              "timeAggregation": "Count",
+              "operator": "GreaterThan",
+              "threshold": 0
+            }
+          ]
+        },
+        "actions": {
+          "actionGroups": "[variables('effectiveOperationalActionGroupResourceIds')]"
+        },
+        "autoMitigate": true
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Insights/components', variables('appInsightsName'))]",
+        "[resourceId('Microsoft.Insights/actionGroups', format('{0}-ops-ag', parameters('functionAppName')))]"
+      ]
+    },
+    {
+      "condition": "[parameters('enableAuthConfigRegressionAlert')]",
+      "type": "Microsoft.Insights/scheduledQueryRules",
+      "apiVersion": "2021-08-01",
+      "name": "[format('{0}-auth-config-regression-kql', parameters('functionAppName'))]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "description": "Operational email alert for auth/config regressions (AUTH_CONFIG_* reason codes).",
+        "enabled": true,
+        "scopes": [
+          "[resourceId('Microsoft.Insights/components', variables('appInsightsName'))]"
+        ],
+        "evaluationFrequency": "[format('PT{0}M', parameters('alertEvaluationFrequencyInMinutes'))]",
+        "windowSize": "[format('PT{0}M', parameters('alertWindowInMinutes'))]",
+        "severity": 2,
+        "criteria": {
+          "allOf": [
+            {
+              "query": "[variables('authConfigRegressionAlertQuery')]",
+              "timeAggregation": "Count",
+              "operator": "GreaterThan",
+              "threshold": 0
+            }
+          ]
+        },
+        "actions": {
+          "actionGroups": "[variables('effectiveOperationalActionGroupResourceIds')]"
+        },
+        "autoMitigate": true
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Insights/components', variables('appInsightsName'))]",
+        "[resourceId('Microsoft.Insights/actionGroups', format('{0}-ops-ag', parameters('functionAppName')))]"
+      ]
+    },
+    {
+      "condition": "[parameters('enableLikelyAttackInfoAlert')]",
+      "type": "Microsoft.Insights/scheduledQueryRules",
+      "apiVersion": "2021-08-01",
+      "name": "[format('{0}-likely-attack-info-kql', parameters('functionAppName'))]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "description": "Info-only alert for likely attack/noise spikes (high 401/403 from many IPs).",
+        "enabled": true,
+        "scopes": [
+          "[resourceId('Microsoft.Insights/components', variables('appInsightsName'))]"
+        ],
+        "evaluationFrequency": "[format('PT{0}M', parameters('alertEvaluationFrequencyInMinutes'))]",
+        "windowSize": "[format('PT{0}M', parameters('alertWindowInMinutes'))]",
+        "severity": 4,
+        "criteria": {
+          "allOf": [
+            {
+              "query": "[variables('likelyAttackInfoAlertQuery')]",
+              "timeAggregation": "Count",
+              "operator": "GreaterThan",
+              "threshold": 0
+            }
+          ]
+        },
+        "actions": {
+          "actionGroups": "[variables('effectiveInfoActionGroupResourceIds')]"
+        },
+        "autoMitigate": true
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Insights/components', variables('appInsightsName'))]",
+        "[resourceId('Microsoft.Insights/actionGroups', format('{0}-info-ag', parameters('functionAppName')))]"
+      ]
     }
   ],
   "outputs": {
@@ -323,6 +648,20 @@
         "description": "Name of the Application Insights component — open in the Azure Portal for live telemetry."
       },
       "value": "[variables('appInsightsName')]"
+    },
+    "azureMapsAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure Maps account name (empty when deployAzureMaps=false)."
+      },
+      "value": "[if(parameters('deployAzureMaps'), variables('azureMapsName'), '')]"
+    },
+    "azureMapsKeyCommand": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure CLI command to fetch the Azure Maps primary key (empty when deployAzureMaps=false)."
+      },
+      "value": "[if(parameters('deployAzureMaps'), format('az maps account keys list -g {0} -n {1} --query primaryKey -o tsv', resourceGroup().name, variables('azureMapsName')), '')]"
     }
   }
 }
