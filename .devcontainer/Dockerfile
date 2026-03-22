@@ -58,15 +58,4 @@ RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
 RUN npm install --global azure-functions-core-tools@4 \
   && npm cache clean --force
 
-# Bicep CLI — compiles azure-function/infra/main.bicep → azuredeploy.json.
-# Architecture-aware: matches the same amd64/arm64 handling as the Node install above.
-RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
-  && case "${arch}" in \
-  amd64|x86_64) bicep_arch="x64" ;; \
-  arm64|aarch64) bicep_arch="arm64" ;; \
-  *) echo "Unsupported architecture: ${arch}" >&2; exit 1 ;; \
-  esac \
-  && curl -fsSLo /usr/local/bin/bicep \
-  "https://github.com/Azure/bicep/releases/latest/download/bicep-linux-${bicep_arch}" \
-  && chmod +x /usr/local/bin/bicep
 

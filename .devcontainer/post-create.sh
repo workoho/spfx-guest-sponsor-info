@@ -48,8 +48,16 @@ npm run prepare
 # to the canonical value ensures git hooks are always active in the container.
 git config core.hooksPath .husky/_
 
+# Install/upgrade the Bicep CLI through the Azure CLI.
+# 'az bicep install' is idempotent and always fetches the latest release,
+# so the version is up to date on every container rebuild — no stale binary
+# baked into the image. Azure CLI is installed as a devcontainer feature and
+# therefore not available during the Dockerfile build; this is the right hook.
+az bicep install
+
 echo "Node version: $(node --version)"
 echo "npm version: $(npm --version)"
 echo "Yeoman version: $(yo --version)"
 echo "SPFx generator version: $(npm view @microsoft/generator-sharepoint version)"
+echo "Bicep version: $(az bicep version)"
 
