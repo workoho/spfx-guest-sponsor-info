@@ -452,6 +452,9 @@
   // No vertical padding — Fluent UI IconButton (CopyButton) has a natural height
   // of 32px (medium density). Adding padding on top inflates rows to 48px.
   // Let the button define the row height; we only supply horizontal indentation.
+  // min-height keeps rows without a CopyButton (e.g. department) at the same
+  // height as interactive rows.
+  min-height: 32px;
   padding: 0 24px;
   align-items: center;
   color: inherit;
