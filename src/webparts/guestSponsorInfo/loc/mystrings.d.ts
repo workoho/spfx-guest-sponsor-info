@@ -121,6 +121,9 @@ declare interface IGuestSponsorInfoWebPartStrings {
   // Version mismatch notice (shown when the web part and Azure Function run different versions)
   VersionMismatchMessage: string;
 
+  // Shown when the Azure Function managed identity is missing required Graph permissions
+  InsufficientPermissionsMessage: string;
+
   // Informal-address overrides (optional — only provided by locales with T-V distinction)
   LoadingMessageInformal?: string;
   NoSponsorsMessageInformal?: string;

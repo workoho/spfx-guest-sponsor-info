@@ -65,6 +65,7 @@ define([], function() {
     "TeamsNotReadyChatTooltip": "Chat non disponible ici — votre accès invité Teams n’a pas encore été configuré",
     "TeamsNotReadyCallTooltip": "Appel non disponible ici — votre accès invité Teams n’a pas encore été configuré",
     "VersionMismatchMessage": "Une mise à jour du composant WebPart est disponible. Demandez à votre administrateur de s'assurer que le composant WebPart et la fonction Azure utilisent la même version.",
+    "InsufficientPermissionsMessage": "Impossible de charger les informations sur les sponsors — une autorisation de service requise n'a pas été accordée. Veuillez contacter votre administrateur informatique.",
     "LoadingMessageInformal": "Chargement de tes sponsors…",
     "NoSponsorsMessageInformal": "Aucun sponsor trouvé pour ton compte.",
     "SponsorUnavailableMessageInformal": "Ton sponsor/propriétaire n’est plus disponible. Contacte ton responsable de projet pour qu’un nouveau sponsor/propriétaire te soit attribué.",

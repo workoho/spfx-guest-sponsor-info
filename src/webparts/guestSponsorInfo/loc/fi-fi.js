@@ -66,6 +66,7 @@ define([], function() {
     "TeamsNotReadyCallTooltip": "Puhelu ei käytettävissä täällä — Teams-vierasoikeuksiasi ei ole vielä määritetty",
 
     "VersionMismatchMessage": "Verkko-osalle on saatavana päivitys. Pyydä järjestelmänvalvojaasi varmistamaan, että verkko-osa ja Azure Function käyttävät samaa versiota.",
+    "InsufficientPermissionsMessage": "Sponsoritietoja ei voitu ladata — vaadittua palvelulupaa ei ole myönnetty. Ota yhteyttä IT-järjestelmänvalvojaasi.",
 
     "DisplayGroupName": "Näyttö",
     "ShowBusinessPhonesFieldLabel": "Näytä työpuhelin",

@@ -66,6 +66,7 @@ define([], function() {
     "TeamsNotReadyCallTooltip": "此组织中通话不可用 — 您的 Teams 来宾访问权限尚未设置",
 
     "VersionMismatchMessage": "此 Web 部件有可用更新。请联系管理员确保 Web 部件和 Azure Function 运行相同版本。",
+    "InsufficientPermissionsMessage": "无法加载赞助商信息 — 尚未授予所需的服务权限。请联系您的 IT 管理员。",
 
     "DisplayGroupName": "显示",
     "ShowBusinessPhonesFieldLabel": "显示工作电话",

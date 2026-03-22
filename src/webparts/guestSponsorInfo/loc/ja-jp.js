@@ -66,6 +66,7 @@ define([], function() {
     "TeamsNotReadyCallTooltip": "この組織では通話を利用できません — Teams ゲストアクセスがまだ設定されていません",
 
     "VersionMismatchMessage": "Web パーツの更新プログラムが利用可能です。管理者に Web パーツと Azure Function が同じバージョンを実行していることを確認するよう依頼してください。",
+    "InsufficientPermissionsMessage": "スポンサー情報を読み込めませんでした — 必要なサービスのアクセス許可が付与されていません。IT 管理者にお問い合わせください。",
 
     "DisplayGroupName": "表示",
     "ShowBusinessPhonesFieldLabel": "会社電話を表示",

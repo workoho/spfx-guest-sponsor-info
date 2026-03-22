@@ -93,6 +93,28 @@ async function detectOptionalPermissions(
           `Directory.Read.All=${hasDirectoryReadAll}, MailboxSettings.Read=${hasMailboxSettings}, ` +
           `TeamMember.Read.All=${hasTeamMemberReadAll}, count=${roles.length}`
         );
+        // The minimum permission required for sponsor lookups is User.ReadBasic.All.
+        // If none of the covering permissions are present the very next Graph call will
+        // return 403.  Surface this immediately in Application Insights so an admin
+        // does not have to hunt for the root cause.
+        if (!hasUserReadBasicAll && !hasUserReadAll && !hasDirectoryReadAll) {
+          context.error(
+            'GRAPH_PERMISSION_DENIED: Managed identity is missing required Microsoft Graph ' +
+            'application permissions. Every sponsor lookup will fail with HTTP 403 until fixed.\n' +
+            'REQUIRED (at least one): User.ReadBasic.All | User.Read.All | Directory.Read.All\n' +
+            'OPTIONAL:               Presence.Read.All | MailboxSettings.Read | TeamMember.Read.All\n' +
+            `CURRENTLY GRANTED:      ${roles.length > 0 ? roles.join(', ') : '(none)'}\n` +
+            'FIX: Run infra/setup-graph-permissions.ps1 as Global Administrator or ' +
+            'Privileged Role Administrator — it grants User.ReadBasic.All and the optional roles.\n' +
+            '     Then restart the Function App so it retrieves a fresh token.',
+            {
+              requiredPermissions: ['User.ReadBasic.All', 'User.Read.All', 'Directory.Read.All'],
+              optionalPermissions: ['Presence.Read.All', 'MailboxSettings.Read', 'TeamMember.Read.All'],
+              grantedRoles: roles,
+              fixAction: 'Run infra/setup-graph-permissions.ps1 and restart the Function App',
+            }
+          );
+        }
         return { hasMailboxSettings, hasPresenceReadAll, hasTeamMemberReadAll };
       } catch (error) {
         // If token inspection fails for any reason, degrade gracefully.
@@ -1043,6 +1065,45 @@ export async function getGuestSponsors(
     return jsonResponse(result, 200, request, correlationId);
   } catch (error) {
     if (error instanceof GraphError) {
+      if (error.statusCode === 403) {
+        // HTTP 403 from Graph means the managed identity was never granted the required
+        // application permissions.  Log the exact missing permission so the ops team
+        // knows precisely what to fix without reading Microsoft's generic error messages.
+        context.error(
+          'GRAPH_PERMISSION_DENIED: Microsoft Graph returned HTTP 403 Forbidden.\n' +
+          'CAUSE: The managed identity has not been granted the Microsoft Graph application\n' +
+          '       permission "User.ReadBasic.All" (minimum required for sponsor lookups).\n' +
+          'REQUIRED (at least one of):\n' +
+          '  • User.ReadBasic.All  — read basic profile of any user (displayName, mail, photo)\n' +
+          '  • User.Read.All       — read full profile of any user\n' +
+          '  • Directory.Read.All  — read all directory data\n' +
+          'OPTIONAL (for additional features):\n' +
+          '  • Presence.Read.All   — real-time Teams presence indicators\n' +
+          '  • MailboxSettings.Read — filter shared/room mailboxes out of sponsor list\n' +
+          '  • TeamMember.Read.All — detect Teams provisioning for guests\n' +
+          'FIX: Run infra/setup-graph-permissions.ps1 as Global Administrator or\n' +
+          '     Privileged Role Administrator. The script grants all roles above.\n' +
+          '     Then restart the Function App to pick up the new token.',
+          {
+            statusCode: error.statusCode,
+            code: error.code,
+            requestId: error.requestId,
+            correlationId,
+            requiredPermissions: ['User.ReadBasic.All', 'User.Read.All', 'Directory.Read.All'],
+            fixAction: 'Run infra/setup-graph-permissions.ps1 and restart the Function App',
+          }
+        );
+        return jsonErrorResponse(
+          request,
+          403,
+          correlationId,
+          'Forbidden',
+          'GRAPH_PERMISSION_DENIED',
+          'The function managed identity is missing required Microsoft Graph permissions. ' +
+          'Contact your administrator to run setup-graph-permissions.ps1.',
+          false
+        );
+      }
       // GraphError is thrown by the Graph SDK for HTTP-level failures.
       // requestId is the Graph correlation ID — log it so it can be looked up
       // in Azure Monitor or provided to Microsoft Support for debugging.

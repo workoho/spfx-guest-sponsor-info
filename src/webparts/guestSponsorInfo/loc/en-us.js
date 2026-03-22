@@ -65,6 +65,7 @@ define([], function() {
     "TeamsNotReadyChatTooltip": "Chat not available in this organization — your Teams guest access hasn’t been set up yet",
     "TeamsNotReadyCallTooltip": "Call not available in this organization — your Teams guest access hasn’t been set up yet",
     "VersionMismatchMessage": "A web part update is available. Ask your administrator to ensure the web part and the Azure Function are running the same version.",
+    "InsufficientPermissionsMessage": "Could not load sponsor information — a required service permission has not been granted. Please contact your IT administrator.",
     "DisplayGroupName": "Display",
     "ShowBusinessPhonesFieldLabel": "Show business phone numbers",
     "ShowMobilePhoneFieldLabel": "Show mobile phone number",

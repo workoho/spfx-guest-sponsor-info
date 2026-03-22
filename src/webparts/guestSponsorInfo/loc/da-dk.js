@@ -66,6 +66,7 @@ define([], function() {
     "TeamsNotReadyCallTooltip": "Opkald ikke tilgængeligt her — din Teams-gæsteadgang er endnu ikke konfigureret",
 
     "VersionMismatchMessage": "Der er en opdatering tilgængelig til denne webdel. Bed din administrator om at sikre, at webdelen og Azure Function kører den samme version.",
+    "InsufficientPermissionsMessage": "Det var ikke muligt at indlæse sponsoroplysninger — en påkrævet servicetilladelse er ikke tildelt. Kontakt din IT-administrator.",
 
     "DisplayGroupName": "Visning",
     "ShowBusinessPhonesFieldLabel": "Vis arbejdstelefonnumre",

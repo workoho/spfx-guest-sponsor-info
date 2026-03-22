@@ -207,6 +207,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   // can call setLoading(true).
   const [loading, setLoading] = React.useState(!isEditMode && (mockMode || isGuest));
   const [error, setError] = React.useState<string | undefined>(undefined);
+  const [isPermissionError, setIsPermissionError] = React.useState(false);
   const [proxyStatus, setProxyStatus] = React.useState<ProxyStatus>('checking');
   const [retryCount, setRetryCount] = React.useState(0);
   const [hasActiveCard, setHasActiveCard] = React.useState(false);
@@ -251,6 +252,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
     let cancelled = false;
     setLoading(true);
     setError(undefined);
+    setIsPermissionError(false);
     setVersionMismatch(false);
     setGuestHasTeamsAccess(undefined);
     const loadFn = useProxy
@@ -310,8 +312,13 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
           if (!shouldRetry || retryCount >= MAX_RETRIES) {
             // Permanent error (e.g. 401, 403) or retry limit reached:
             // stop retrying and show the error message so the shimmer disappears.
-            const supportRef = referenceId ? ` (Ref: ${referenceId})` : '';
-            setError(`${fstr('ErrorMessage')}${supportRef}`);
+            if (reasonCode === 'GRAPH_PERMISSION_DENIED') {
+              setIsPermissionError(true);
+              setError(strings.InsufficientPermissionsMessage);
+            } else {
+              const supportRef = referenceId ? ` (Ref: ${referenceId})` : '';
+              setError(`${fstr('ErrorMessage')}${supportRef}`);
+            }
             setLoading(false);
           } else {
             // Transient error: retry with exponential backoff capped at 30 seconds.
@@ -431,8 +438,13 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
     <section className={contentClassNames}>
       {title && <h2 className={styles.title}>{title}</h2>}
       {loading && <SponsorGridSkeleton />}
-      {!loading && error && (
+      {!loading && error && !isPermissionError && (
         <p className={styles.statusMessage}>{error}</p>
+      )}
+      {!loading && isPermissionError && error && (
+        <MessageBar messageBarType={MessageBarType.error} isMultiline>
+          {error}
+        </MessageBar>
       )}
       {!loading && !error && sponsors.length === 0 && allUnavailable && (
         <p className={styles.statusMessage}>{fstr('SponsorUnavailableMessage')}</p>

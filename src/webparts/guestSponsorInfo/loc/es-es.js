@@ -65,8 +65,7 @@ define([], function() {
     "TeamsNotReadyChatTooltip": "Chat no disponible aquí — su acceso de invitado de Teams aún no se ha configurado",
     "TeamsNotReadyCallTooltip": "Llamada no disponible aquí — su acceso de invitado de Teams aún no se ha configurado",
 
-    "VersionMismatchMessage": "Hay una actualización disponible para este elemento web. Solicite a su administrador que compruebe que el elemento web y la Función de Azure usan la misma versión.",
-
+    "VersionMismatchMessage": "Hay una actualización disponible para este elemento web. Solicite a su administrador que compruebe que el elemento web y la Función de Azure usan la misma versión.",    "InsufficientPermissionsMessage": "No se pudo cargar la información del patrocinador — no se ha concedido un permiso de servicio requerido. Póngase en contacto con su administrador de TI.",
     "LoadingMessageInformal": "Cargando tus patrocinadores…",
     "NoSponsorsMessageInformal": "No se encontraron patrocinadores para tu cuenta.",
     "SponsorUnavailableMessageInformal": "Tu patrocinador/propietario ya no está disponible. Ponte en contacto con tu responsable del proyecto para que se te asigne un nuevo patrocinador/propietario.",

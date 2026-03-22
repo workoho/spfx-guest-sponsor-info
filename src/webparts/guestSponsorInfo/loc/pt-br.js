@@ -66,6 +66,7 @@ define([], function() {
     "TeamsNotReadyCallTooltip": "Chamada indisponível aqui — seu acesso de convidado do Teams ainda não foi configurado",
 
     "VersionMismatchMessage": "Há uma atualização disponível para esta web part. Peça ao seu administrador para garantir que a web part e o Azure Function estejam executando a mesma versão.",
+    "InsufficientPermissionsMessage": "Não foi possível carregar as informações do patrocinador — uma permissão de serviço necessária não foi concedida. Entre em contato com seu administrador de TI.",
 
     "DisplayGroupName": "Exibição",
     "ShowBusinessPhonesFieldLabel": "Mostrar telefone comercial",

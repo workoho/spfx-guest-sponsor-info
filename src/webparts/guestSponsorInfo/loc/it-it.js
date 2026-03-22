@@ -66,6 +66,7 @@ define([], function() {
     "TeamsNotReadyCallTooltip": "Chiamata non disponibile qui — il Suo accesso ospite Teams non è ancora stato configurato",
 
     "VersionMismatchMessage": "È disponibile un aggiornamento della web part. Chiedere all'amministratore di verificare che la web part e la Funzione di Azure utilizzino la stessa versione.",
+    "InsufficientPermissionsMessage": "Impossibile caricare le informazioni sugli sponsor — un'autorizzazione di servizio richiesta non è stata concessa. Contattare l'amministratore IT.",
 
     "NoSponsorsMessageInformal": "Nessuno sponsor trovato per il tuo account.",
     "SponsorUnavailableMessageInformal": "Il tuo sponsor/proprietario non è più disponibile. Contatta il tuo referente di progetto per richiedere l’assegnazione di un nuovo sponsor/proprietario.",

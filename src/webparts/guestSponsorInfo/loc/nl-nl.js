@@ -66,6 +66,7 @@ define([], function() {
     "TeamsNotReadyCallTooltip": "Bellen hier niet beschikbaar — uw Teams-gasttoegang is nog niet ingesteld",
 
     "VersionMismatchMessage": "Er is een update beschikbaar voor dit webonderdeel. Vraag uw beheerder om te controleren of het webonderdeel en de Azure Function dezelfde versie gebruiken.",
+    "InsufficientPermissionsMessage": "Kan sponsorinformatie niet laden — een vereiste servicemachtiging is niet verleend. Neem contact op met uw IT-beheerder.",
 
     "NoSponsorsMessageInformal": "Er zijn geen sponsors gevonden voor je account.",
     "SponsorUnavailableMessageInformal": "Je sponsor/eigenaar is niet langer beschikbaar. Neem contact op met je projectverantwoordelijke om een nieuwe sponsor/eigenaar aan je account te koppelen.",

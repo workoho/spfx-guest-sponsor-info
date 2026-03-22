@@ -66,6 +66,7 @@ define([], function() {
     "TeamsNotReadyCallTooltip": "Połączenie niedostępne w tej organizacji — Twój dostęp gościa Teams nie został jeszcze skonfigurowany",
 
     "VersionMismatchMessage": "Dostępna jest aktualizacja tego składnika Web Part. Poproś administratora, aby upewnił się, że składnik Web Part i usługa Azure Function używają tej samej wersji.",
+    "InsufficientPermissionsMessage": "Nie można załadować informacji o sponsorze — wymagane uprawnienie usługi nie zostało przyznane. Skontaktuj się z administratorem IT.",
 
     "DisplayGroupName": "Wyświetlanie",
     "ShowBusinessPhonesFieldLabel": "Pokaż telefon służbowy",
