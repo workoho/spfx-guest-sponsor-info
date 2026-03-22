@@ -77,7 +77,16 @@ The `.husky/pre-commit` hook automatically:
 
 ### Commit Message Format
 
-Use Conventional Commits (enforced by `commitlint`):
+Use Conventional Commits (enforced by `commitlint` via `.husky/commit-msg`).
+See `.github/instructions/commit-message.instructions.md` for the full ruleset.
+
+**Hard limits** (violations abort the commit):
+
+- Header ≤ **100 characters**
+- Every body/footer line ≤ **100 characters** — wrap prose manually
+- Subject must be **lower-case**, no trailing period
+- Type must be one of: `fix` `feat` `build` `chore` `ci` `docs` `perf`
+  `refactor` `revert` `style` `test`
 
 ```text
 chore(i18n): normalize locale files to UTF-8
