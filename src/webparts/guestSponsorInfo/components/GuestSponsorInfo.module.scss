@@ -170,22 +170,6 @@
 
 /* ─── Presence dot on card thumbnail ────────────────────────────────────── */
 
-.presenceDot {
-  position: absolute;
-  bottom: 2px;
-  right: 2px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 2px solid var(--white, #fff);
-  border: 2px solid "[theme:white, default: #ffffff]";
-  transition: background-color 300ms ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 8px;
-}
-
 /* ─── Compact layout (horizontal row variant) ────────────────────────────── */
 
 .sponsorGridCompact {
@@ -233,22 +217,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.presenceDotCompact {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  border: 2px solid var(--white, #fff);
-  border: 2px solid "[theme:white, default: #ffffff]";
-  transition: background-color 300ms ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 6px;
 }
 
 /* ─── Rich contact card (renders inside Fluent UI Callout portal) ─────────── */

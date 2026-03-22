@@ -761,19 +761,9 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
             imageInitials={initials}
             imageUrl={sponsor.photoUrl}
             imageShouldFadeIn
-            presence={effectivePresence}
-            isOutOfOffice={effectiveOof}
+            presence={PersonaPresence.none}
             hidePersonaDetails
           />
-          {useCustomPresenceDot && (
-            <span
-              className={compact ? styles.presenceDotCompact : styles.presenceDot}
-              style={{ backgroundColor: customDotColor }}
-              aria-hidden="true"
-            >
-              {isOffline && <span className={styles.presenceX} aria-hidden="true">×</span>}
-            </span>
-          )}
         </div>
         <div className={compact ? styles.cardNameCompact : styles.cardName}>
           {resolvedName}

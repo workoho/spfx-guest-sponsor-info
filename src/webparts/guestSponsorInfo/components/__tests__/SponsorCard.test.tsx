@@ -665,15 +665,8 @@ describe('SponsorCard', () => {
   });
 
   describe('presence indicator', () => {
-    it('renders a presence indicator on the tile only when card is active', () => {
+    it('never renders a presence dot on the tile, regardless of card state', () => {
       render({ ...BASE_SPONSOR, presence: 'Available' }, 'test-tenant-id', true);
-      const persona = container.querySelector('[data-persona-presence]');
-      expect(persona).not.toBeNull();
-      expect(persona!.getAttribute('data-persona-presence')).not.toBe('0');
-    });
-
-    it('does not render a presence indicator on the tile when card is closed', () => {
-      render({ ...BASE_SPONSOR, presence: 'Available' });
       const persona = container.querySelector('[data-persona-presence]');
       expect(persona).not.toBeNull();
       expect(persona!.getAttribute('data-persona-presence')).toBe('0');
