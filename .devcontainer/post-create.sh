@@ -4,6 +4,7 @@ set -euo pipefail
 workspace_dir="${containerWorkspaceFolder:-$(pwd)}"
 
 git config --global --add safe.directory "${workspace_dir}"
+git config --global pull.rebase true
 npm config set save-exact true --location=user
 
 # Enable npm tab-completion in bash.
