@@ -69,6 +69,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
 
   private _graphClient: MSGraphClientV3 | undefined;
   private _aadHttpClient: AadHttpClient | undefined;
+  private _proxyStatus: 'checking' | 'ok' | 'error' = 'checking';
 
   public render(): void {
     const element: React.ReactElement<IGuestSponsorInfoProps> = React.createElement(
@@ -113,6 +114,12 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
         showManagerDepartment: this.properties.showManagerDepartment ?? false,
         useInformalAddress: this.properties.useInformalAddress ?? false,
         clientVersion: this.manifest.version,
+        onProxyStatusChange: (status: 'checking' | 'ok' | 'error') => {
+          this._proxyStatus = status;
+          if (this.context.propertyPane.isPropertyPaneOpen()) {
+            this.context.propertyPane.refresh();
+          }
+        },
       }
     );
 
@@ -358,7 +365,14 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                 }),
                 PropertyPaneTextField('functionClientId', {
                   label: strings.FunctionClientIdFieldLabel
-                })
+                }),
+                ...(this.properties.functionUrl ? [
+                  PropertyPaneLabel('proxyStatusLabel', {
+                    text: this._proxyStatus === 'ok' ? strings.ProxyStatusOk
+                      : this._proxyStatus === 'error' ? strings.ProxyStatusError
+                      : strings.ProxyStatusChecking
+                  })
+                ] : [])
               ]
             }
           ]

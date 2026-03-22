@@ -92,5 +92,11 @@ export interface IGuestSponsorInfoProps {
    * a warning when client and server versions differ.
    */
   clientVersion: string;
+  /**
+   * Called whenever the Azure Function proxy connectivity status changes (edit mode only).
+   * Allows the web part class to reflect the status in the property pane without
+   * holding the proxyStatus state in both the component and the web part.
+   */
+  onProxyStatusChange?: (status: 'checking' | 'ok' | 'error') => void;
 }
 

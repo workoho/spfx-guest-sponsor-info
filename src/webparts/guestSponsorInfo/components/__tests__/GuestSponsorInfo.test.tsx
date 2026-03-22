@@ -113,12 +113,12 @@ describe('GuestSponsorInfo', () => {
   // ── Edit mode ───────────────────────────────────────────────────────────────
 
   describe('edit mode', () => {
-    it('shows the edit placeholder for a guest author', () => {
+    it('shows mock sponsor cards for a guest author', () => {
       act(() => { renderWebPart({ displayMode: DisplayMode.Edit }); });
-      expect(container.textContent).toContain('switch to view mode');
+      expect(container.textContent).toContain('Anna Müller');
     });
 
-    it('shows the "guest only" placeholder for a non-guest author', () => {
+    it('shows mock sponsor cards even for a non-guest author', () => {
       mockIsGuestUser.mockReturnValue(false);
       act(() => {
         renderWebPart({
@@ -127,7 +127,7 @@ describe('GuestSponsorInfo', () => {
           isExternalGuestUser: false,
         });
       });
-      expect(container.textContent).toContain('only visible to guest users');
+      expect(container.textContent).toContain('Anna Müller');
     });
 
     it('never calls getSponsors in edit mode', () => {

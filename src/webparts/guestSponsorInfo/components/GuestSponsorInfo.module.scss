@@ -26,69 +26,6 @@
 }
 
 
-/* ─── Edit-mode placeholder ──────────────────────────────────────────────── */
-
-.editPlaceholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 80px;
-  padding: 16px;
-  border: 1px dashed var(--neutralTertiary);
-  border: 1px dashed "[theme:neutralTertiary, default: #a19f9d]";
-  border-radius: 4px;
-  color: var(--neutralSecondary);
-  color: "[theme:neutralSecondary, default: #666666]";
-  font-size: 14px;
-  text-align: center;
-}
-
-/* ─── Azure Function status indicator (edit mode) ────────────────────────── */
-
-.proxyStatus {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 10px;
-  font-size: 12px;
-}
-
-.proxyStatusDot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.proxyStatusOk {
-  color: #107c10;
-
-  .proxyStatusDot { background: #107c10; }
-}
-
-.proxyStatusError {
-  color: #c50f1f;
-
-  .proxyStatusDot { background: #c50f1f; }
-}
-
-.proxyStatusChecking {
-  color: var(--neutralSecondary);
-  color: "[theme:neutralSecondary, default: #666666]";
-
-  .proxyStatusDot {
-    background: var(--neutralSecondary);
-    background: "[theme:neutralSecondary, default: #666666]";
-    animation: dot-pulse 1.5s ease-in-out infinite;
-  }
-}
-
-@keyframes dot-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.25; }
-}
-
 /* ─── Sponsor card grid ──────────────────────────────────────────────────── */
 
 .sponsorGrid {
@@ -572,11 +509,6 @@
 
   .sponsorGrid {
     gap: 8px;
-  }
-
-  .editPlaceholder {
-    padding: 12px;
-    font-size: 12px;
   }
 
   .teamsAccessBanner {

@@ -170,8 +170,6 @@ const SponsorGridSkeleton: React.FC<{ compact: boolean }> = ({ compact }) => (
 /** Maximum number of transient-error retries before giving up and showing an error. */
 const MAX_RETRIES = 3;
 
-type ProxyStatus = 'checking' | 'ok' | 'error';
-
 const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   loginName,
   isExternalGuestUser,
@@ -205,6 +203,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   showManagerPhoto,
   useInformalAddress,
   clientVersion,
+  onProxyStatusChange,
 }) => {
   // Helper: pick the informal string variant when useInformalAddress is enabled and
   // the current locale provides one (languages with T-V distinction like de, fr, es, it, nl).
@@ -232,7 +231,6 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   const [loading, setLoading] = React.useState(!isEditMode && (mockMode || isGuest));
   const [error, setError] = React.useState<string | undefined>(undefined);
   const [isPermissionError, setIsPermissionError] = React.useState(false);
-  const [proxyStatus, setProxyStatus] = React.useState<ProxyStatus>('checking');
   const [retryCount, setRetryCount] = React.useState(0);
   const [hasActiveCard, setHasActiveCard] = React.useState(false);
   const [guestHasTeamsAccess, setGuestHasTeamsAccess] = React.useState<boolean | undefined>(undefined);
@@ -250,12 +248,12 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   // so the check works for any authenticated user — not just guests.
   React.useEffect(() => {
     if (!isEditMode || !pingUrl) return;
-    if (!aadHttpClient) { setProxyStatus('error'); return; }
+    if (!aadHttpClient) { onProxyStatusChange?.('error'); return; }
     let cancelled = false;
-    setProxyStatus('checking');
+    onProxyStatusChange?.('checking');
     pingProxy(pingUrl, aadHttpClient)
-      .then(() => { if (!cancelled) setProxyStatus('ok'); })
-      .catch(() => { if (!cancelled) setProxyStatus('error'); });
+      .then(() => { if (!cancelled) { onProxyStatusChange?.('ok'); } })
+      .catch(() => { if (!cancelled) { onProxyStatusChange?.('error'); } });
     return () => { cancelled = true; };
   }, [isEditMode, pingUrl, aadHttpClient]);
 
@@ -441,36 +439,39 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   // populated strings object.
   if (!(strings as unknown as object | undefined)) return null;
 
-  // Edit mode: always show a lightweight placeholder so page authors can position the web part.
+  // Edit mode: always show a live preview using mock sponsor cards so page authors
+  // can see the real layout and adjust display settings before going live.
   if (isEditMode) {
-    let placeholderText: string;
-    if (mockMode) {
-      placeholderText = strings.MockModePlaceholder;
-    } else if (isGuest) {
-      placeholderText = strings.EditModePlaceholder;
-    } else {
-      placeholderText = strings.GuestOnlyPlaceholder;
-    }
-    const proxyStatusClass = proxyStatus === 'ok'
-      ? styles.proxyStatusOk
-      : proxyStatus === 'error'
-        ? styles.proxyStatusError
-        : styles.proxyStatusChecking;
+    const mockCompact = cardLayout === 'compact' || (cardLayout === 'auto' && MOCK_SPONSORS.length > 2);
     return (
       <section className={styles.webPart}>
-        <div className={styles.editPlaceholder}>
-          <span>{placeholderText}</span>
-          {functionUrl && (
-            <div className={`${styles.proxyStatus} ${proxyStatusClass}`}>
-              <span className={styles.proxyStatusDot} aria-hidden="true" />
-              <span>
-                {proxyStatus === 'checking' ? strings.ProxyStatusChecking
-                  : proxyStatus === 'ok' ? strings.ProxyStatusOk
-                  : strings.ProxyStatusError}
-              </span>
-            </div>
-          )}
-        </div>
+        {title && <h2 className={styles.title}>{title}</h2>}
+        <SponsorList
+          sponsors={MOCK_SPONSORS}
+          hostTenantId={hostTenantId}
+          compact={mockCompact}
+          showBusinessPhones={showBusinessPhones}
+          showMobilePhone={showMobilePhone}
+          showWorkLocation={showWorkLocation}
+          showCity={showCity}
+          showCountry={showCountry}
+          showStreetAddress={showStreetAddress}
+          showPostalCode={showPostalCode}
+          showState={showState}
+          azureMapsSubscriptionKey={azureMapsSubscriptionKey}
+          externalMapProvider={externalMapProvider}
+          showManager={showManager}
+          showPresence={showPresence}
+          showSponsorJobTitle={showSponsorJobTitle}
+          showManagerJobTitle={showManagerJobTitle}
+          showSponsorDepartment={showSponsorDepartment}
+          showManagerDepartment={showManagerDepartment}
+          showSponsorPhoto={showSponsorPhoto}
+          showManagerPhoto={showManagerPhoto}
+          useInformalAddress={useInformalAddress}
+          onActiveCardChange={() => undefined}
+          guestHasTeamsAccess={false}
+        />
       </section>
     );
   }
