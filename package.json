@@ -1,6 +1,6 @@
 {
   "name": "guest-sponsor-info",
-  "version": "0.17.0",
+  "version": "0.17.1",
   "description": "SharePoint Online web part that shows the Microsoft Entra sponsors of the signed-in guest user",
   "license": "MIT",
   "author": "Julian Pawlowski",
