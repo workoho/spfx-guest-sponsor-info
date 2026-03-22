@@ -58,6 +58,17 @@ param deployAzureMaps bool = true
 @description('Optional custom Azure Maps account name. Leave empty to auto-generate.')
 param azureMapsAccountName string = ''
 
+@description('Azure region for the Azure Maps account. Must be one of the regions supported by Microsoft.Maps/accounts (westeurope, northeurope, westus2, eastus, westcentralus, global). Defaults to westeurope. Required when the resource group location is not supported by Azure Maps (e.g. germanywestcentral).')
+@allowed([
+  'westeurope'
+  'northeurope'
+  'westus2'
+  'eastus'
+  'westcentralus'
+  'global'
+])
+param azureMapsLocation string = 'westeurope'
+
 @description('Enable operational email alert for probable service outage (5xx/504 spike or low success rate).')
 param enableServiceOutageAlert bool = true
 
@@ -466,7 +477,7 @@ resource deployZipScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = if
 // ── Azure Maps account (optional; used by inline map preview in SPFx card) ───
 resource azureMapsAccount 'Microsoft.Maps/accounts@2023-06-01' = if (deployAzureMaps) {
   name: azureMapsName
-  location: location
+  location: azureMapsLocation
   tags: effectiveTags
   sku: {
     name: 'G2'

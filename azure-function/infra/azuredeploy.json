@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "11269861126656093781"
+      "templateHash": "466819652955457450"
     },
     "name": "Guest Sponsor Info – Azure Function Proxy",
     "description": "Deploys an Azure Function App that acts as a Graph API proxy for the Guest Sponsor Info SharePoint web part. Includes a Storage Account, App Service Plan, EasyAuth configuration, Managed Identity role assignments, Log Analytics Workspace, and Application Insights.",
@@ -119,6 +119,21 @@
       "defaultValue": "",
       "metadata": {
         "description": "Optional custom Azure Maps account name. Leave empty to auto-generate."
+      }
+    },
+    "azureMapsLocation": {
+      "type": "string",
+      "defaultValue": "westeurope",
+      "allowedValues": [
+        "westeurope",
+        "northeurope",
+        "westus2",
+        "eastus",
+        "westcentralus",
+        "global"
+      ],
+      "metadata": {
+        "description": "Azure region for the Azure Maps account. Must be one of the regions supported by Microsoft.Maps/accounts (westeurope, northeurope, westus2, eastus, westcentralus, global). Defaults to westeurope. Required when the resource group location is not supported by Azure Maps (e.g. germanywestcentral)."
       }
     },
     "enableServiceOutageAlert": {
@@ -554,7 +569,7 @@
       "type": "Microsoft.Maps/accounts",
       "apiVersion": "2023-06-01",
       "name": "[variables('azureMapsName')]",
-      "location": "[parameters('location')]",
+      "location": "[parameters('azureMapsLocation')]",
       "tags": "[variables('effectiveTags')]",
       "sku": {
         "name": "G2"
