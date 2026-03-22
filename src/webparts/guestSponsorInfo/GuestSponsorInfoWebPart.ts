@@ -82,6 +82,9 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
         functionUrl: this.properties.functionUrl
           ? `https://${this.properties.functionUrl.replace(/^https?:\/\//i, '').replace(/\/$/, '')}/api/getGuestSponsors`
           : undefined,
+        presenceUrl: this.properties.functionUrl
+          ? `https://${this.properties.functionUrl.replace(/^https?:\/\//i, '').replace(/\/$/, '')}/api/getPresence`
+          : undefined,
         functionClientId: this.properties.functionClientId || undefined,
         aadHttpClient: this._aadHttpClient,
         showBusinessPhones: this.properties.showBusinessPhones ?? true,

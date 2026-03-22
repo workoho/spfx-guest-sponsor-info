@@ -29,6 +29,13 @@ export interface IGuestSponsorInfoProps {
   hostTenantId: string;
   /** URL of the Azure Function proxy endpoint. Undefined when not configured. */
   functionUrl: string | undefined;
+  /**
+   * URL of the Azure Function presence endpoint (`/api/getPresence`).  Derived from
+   * the same Function App base URL as `functionUrl`.  When set, presence refresh polls
+   * call this endpoint (application permissions via Managed Identity) instead of Graph
+   * directly (delegated permissions), ensuring reliable results for guest users.
+   */
+  presenceUrl: string | undefined;
   /** Client ID of the App Registration used by the Azure Function proxy. Undefined when not configured. */
   functionClientId: string | undefined;
   /** Pre-acquired AAD HTTP client scoped to the function App Registration. Undefined when not configured. */

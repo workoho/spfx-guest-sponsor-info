@@ -1,12 +1,11 @@
 # Guest Sponsor Info
 
-A SharePoint Online web part for landing pages in Microsoft Entra **resource tenants** that
-shows the sponsors of the currently signed-in **guest user**.
+A SharePoint Online web part for landing pages in Microsoft Entra **resource
+tenants** that shows the sponsors of the currently signed-in **guest user**.
 
-The layout matches the SharePoint People web part:
-each sponsor is shown as a card with a live photo (or initials fallback),
-name, and job title.
-Hovering or focusing a card reveals contact details.
+Each sponsor is rendered as a card with a live profile photo (or initials
+fallback), name, and job title. Hovering or focusing a card reveals contact
+details. The layout matches the built-in SharePoint People web part.
 
 ## Applies to
 
@@ -14,755 +13,139 @@ Hovering or focusing a card reveals contact details.
 - [SharePoint Online](https://www.microsoft.com/microsoft-365)
 - [Microsoft Entra ID – External Identities (B2B)](https://learn.microsoft.com/azure/active-directory/external-identities/)
 
-## Prerequisites
-
-| Requirement | Detail |
-|---|---|
-| SharePoint Online | Modern team or communication site |
-| Microsoft Entra | Guest accounts with one or more sponsors assigned |
-| Microsoft Graph permissions | `User.Read` · `User.ReadBasic.All` |
-
-The two Graph permissions must be approved by a tenant administrator in the
-**SharePoint Admin Center → Advanced → API access** page after the solution is deployed.
-
 ## Solution
 
 | Solution | Author(s) |
 |---|---|
 | `guest-sponsor-info.sppkg` | [Julian Pawlowski](https://github.com/jpawlowski) |
 
+## Prerequisites
+
+| Requirement | Detail |
+|---|---|
+| SharePoint Online | Modern team or communication site |
+| Microsoft Entra | Guest accounts with one or more sponsors assigned |
+| Microsoft Graph permissions | `User.Read` · `User.ReadBasic.All` (· `Presence.Read.All` optional) |
+
 ## Features
 
-- **Sponsor cards** – photo (or initials + deterministic colour) · name · job title
-- **Contact overlay** – email · business phone · mobile · office location · department on hover/focus
-- **Guest-only in view mode** – renders `null` for member users; they see nothing
-- **Edit-mode placeholder** – always visible to page authors regardless of guest status,
-  so the web part can be positioned and configured on the page
-- **Unavailable-sponsor handling** – sponsors whose accounts are deleted, soft-deleted, or
-  disabled are not rendered; a friendly message is shown when all assigned sponsors are gone
-- **Multilingual** – English · German · French · Spanish · Italian
-- **Theme-aware** – `supportsThemeVariants: true` honours the site theme
-- **Least-privilege Graph permissions** – `User.ReadBasic.All` instead of `User.Read.All`
-
-## Required Permissions
-
-| Scope | Resource | Reason |
-|---|---|---|
-| `User.Read` | Microsoft Graph | Read the signed-in user's own profile and sponsor list |
-| `User.ReadBasic.All` | Microsoft Graph | Fetch sponsor name, mail, job title, department, and phone |
-| `Presence.Read.All` | Microsoft Graph | **Optional.** Show the online presence status of sponsors |
-
-> **Why not `User.Read.All`?**
-> Sponsor profiles are publicly visible within the organisation.
-> `User.ReadBasic.All` is sufficient and does not expose sensitive account data such as
-> `accountEnabled` or `onPremisesSyncEnabled`.
+- **Sponsor cards** — photo (or initials + deterministic colour) · name · job
+  title
+- **Contact overlay** — email · phone · office location · department on
+  hover/focus
+- **Guest-only rendering** — renders nothing for member users; always shows a
+  placeholder in edit mode
+- **Unavailable-sponsor handling** — deleted or disabled sponsors are hidden; a
+  message is shown when all sponsors are gone
+- **Multilingual** — English · German · French · Spanish · Italian + 9 more
+- **Theme-aware** — honours the site theme
+- **Least-privilege** — `User.ReadBasic.All` instead of `User.Read.All`
 
 ## Minimal Path to Awesome
 
-> "Minimal Path to Awesome" is a [PnP community convention](https://aka.ms/m365pnp) for SPFx
-> web part README files — it means the shortest way to get the web part running.
+> [PnP community convention](https://aka.ms/m365pnp) — shortest way to get
+> the web part running.
 
-### Deploy a pre-built release
+### 1. Deploy the web part
 
-1. Download the latest `guest-sponsor-info.sppkg` from [Releases](../../releases).
-2. Upload it to your SharePoint **App Catalog**.
-   Leave the *"Make this solution available to all sites in the organization"* checkbox
-   **unchecked** for a minimal-footprint deployment.
-   Then add the app manually to each target site: **Site Contents → New → App →
-   Guest Sponsor Info**.
-3. Check **SharePoint Admin Center → Advanced → API access** for any pending permission
-   requests and approve them if present.
-   In many tenants the required Graph permissions (`User.Read`, `User.ReadBasic.All`,
-   `Presence.Read.All`) are already pre-consented by the *SharePoint Online Client
-   Extensibility Web Application Principal* — the queue will simply be empty and no
-   action is needed.
-4. Follow the [Guest Access Requirements](#guest-access-requirements) steps below.
-5. Add the *Guest Sponsor Info* web part to a modern page.
+1. Download the latest `guest-sponsor-info.sppkg` from
+   [Releases](../../releases).
+2. Upload it to your SharePoint **App Catalog** and add the app to each target
+   site (**Site Contents → New → App → Guest Sponsor Info**).
+3. Approve any pending Graph permissions in **SharePoint Admin Center →
+   Advanced → API access** (often already pre-consented — the queue will
+   simply be empty).
 
-### Build from source
+### 2. Enable the SharePoint Public CDN
 
-```bash
-npm install        # install dependencies
-npm run build      # compile, test, bundle, and package
-```
-
-The packaged solution is written to `sharepoint/solution/guest-sponsor-info.sppkg`.
-
-### Local development
-
-```bash
-cp .env.example .env          # fill in SPFX_TENANT=<your-tenant>.sharepoint.com
-./scripts/dev.sh              # starts dev server with hot-reload
-```
-
-The dev server bundles your code locally and serves it to the **hosted workbench** on your
-SharePoint Online tenant. Accept the certificate warning at `https://localhost:4321` once
-per browser session, then open the hosted workbench URL printed on startup.
-
-See [docs/architecture.md](docs/architecture.md) for the different testing scenarios
-(hosted workbench as member vs. guest vs. full integration test).
-
-## Guest Access Requirements
-
-The web part's JavaScript and CSS bundle is packaged with `includeClientSideAssets: true`
-and re-hosted by SharePoint. By default, guest users cannot reach those assets, which causes
-the web part to fail silently or show "Something went wrong" errors for guests only.
-
-**Step 1** has two options — choose the one that fits your environment; the remaining steps
-are always required regardless of which option you choose.
-
-### Step 1 – Make web part assets accessible to guests
-
-#### Option A – SharePoint Public CDN (recommended)
-
-When the **Public CDN** is enabled with the `*/CLIENTSIDEASSETS` origin, SharePoint
-automatically rewrites asset URLs to `https://publiccdn.sharepointonline.com/…` — a
-publicly accessible edge cache — instead of serving them from the App Catalog site
-collection. Guest users (including those with no App Catalog permissions, and even
-anonymous users on sites that allow public access) can download the bundle without any
-further configuration.
-
-This is the **simplest and most performant** option. No claim setting changes are needed.
-No App Catalog permissions need to be assigned.
+Guest users cannot reach assets hosted in the App Catalog by default. The
+simplest fix is to enable the Public CDN:
 
 ```powershell
-# Install PnP PowerShell once (PowerShell 7+, cross-platform):
-# Install-Module PnP.PowerShell -Scope CurrentUser
-
 Connect-PnPOnline -Url "https://<tenant>-admin.sharepoint.com" -Interactive
-
-# Enable the Public CDN (idempotent — safe to run even if already enabled).
 Set-PnPTenantCdnEnabled -CdnType Public -Enable $true
-
-# Add the SPFx asset library as a public origin.
-# Microsoft may have added this automatically when CDN was first enabled; the command is idempotent.
 Add-PnPTenantCdnOrigin -CdnType Public -OriginUrl "*/CLIENTSIDEASSETS"
-
-# Verify the origin is registered (propagation takes ≈ 15–30 min).
-Get-PnPTenantCdnOrigin -CdnType Public
 ```
 
-Wait for `*/CLIENTSIDEASSETS` to appear in the output with status `OK`.
-Once propagated, SharePoint rewrites all asset URLs automatically on the next page load —
-no redeployment of the `.sppkg` is required.
+Propagation takes ≈ 15–30 min. After that, asset URLs are rewritten
+automatically — no redeployment needed.
 
-> **Skip Option B entirely** if you use Option A. Steps 2 and 3 below still apply.
+> Cannot use the Public CDN? See
+> [docs/deployment.md](docs/deployment.md#option-b--app-catalog-permissions-alternative)
+> for the App Catalog permissions alternative.
 
-#### Option B – App Catalog permissions (alternative)
+### 3. Verify external sharing
 
-Use this option only if the Public CDN cannot be enabled in your tenant (for example,
-your organisation has a policy against public CDN origins for SharePoint).
+External sharing must be enabled at the tenant level and on each site where
+the web part is placed: **SharePoint Admin Center → Policies → Sharing** → at
+least *Existing guests only*.
 
-##### Step 1b-i – Enable the Everyone claim
+### 4. Deploy the Sponsor API (Azure Function)
 
-`ShowEveryoneClaim` controls the **"Everyone"** group in SharePoint's People Picker.
-When enabled, this group covers all authenticated users in the tenant's Microsoft Entra ID,
-**including B2B guests who have accepted their invitation**.
-
-On tenants provisioned after March 2018 this setting defaults to `$false`.
-Check the current value:
+The Graph `/me/sponsors` API requires a directory role — impractical for
+guests at scale. The included Azure Function proxy calls Graph with
+application permissions instead.
 
 ```powershell
-# Install PnP PowerShell once (PowerShell 7+, cross-platform):
-# Install-Module PnP.PowerShell -Scope CurrentUser
-
-Connect-PnPOnline -Url "https://<tenant>-admin.sharepoint.com" -Interactive
-(Get-PnPTenant).ShowEveryoneClaim   # should return: True
+# Create the App Registration
+./azure-function/infra/setup-app-registration.ps1 -TenantId "<tenant-id>"
 ```
 
-If it returns `False`, enable it:
-
-```powershell
-Set-PnPTenant -ShowEveryoneClaim $true
-```
-
-This makes the **"Everyone"** SharePoint claim available for permission assignments.
-
-> **Why not `ShowAllUsersClaim`?**
-> Many older SharePoint guides recommend checking or enabling `ShowAllUsersClaim` for
-> guest access. That setting controls the legacy *All Users (membership)* and
-> *All Users (windows)* groups — Windows/NTLM-era claims from the on-premises SharePoint
-> era. Those groups cover only organisation members authenticated via those older methods
-> and do **not** include B2B guests.
-> `ShowEveryoneClaim` and the *Everyone* group are the modern equivalent, and the only
-> built-in claim that includes B2B guests.
-> A third setting, `ShowEveryoneExceptExternalUsersClaim` (default `$true`), controls the
-> *Everyone except external users* group that Microsoft 365 services such as Teams and
-> M365 Groups use internally — as the name says, it explicitly excludes B2B guests.
-
-##### Step 1b-ii – Enable external sharing on the App Catalog site
-
-The App Catalog obeys SharePoint's site-level sharing settings. If external sharing is
-disabled on it, guests receive HTTP 403 even after the permission below is granted.
-
-1. Go to **SharePoint Admin Center → Sites → Active sites**.
-2. Open the App Catalog site (typically named `appcatalog`).
-3. Click **Policies** → **External sharing** and set it to at least **Existing guests**.
-
-##### Step 1b-iii – Grant Read permission
-
-1. Navigate to your App Catalog site
-   (typically `https://<tenant>.sharepoint.com/sites/appcatalog`).
-2. **Site Settings → People and Groups → App Catalog Visitors**.
-3. **New → Add Users** and add one of the following:
-   - **Everyone** – covers every authenticated user including B2B guests who have accepted
-     their invitation. This is the broadest option and the simplest to configure.
-     Requires `ShowEveryoneClaim = $true` (see Step 1b-i above).
-   - A **specific Microsoft 365 or security group** that contains the guest accounts
-     who need access. This is the more targeted, least-privilege alternative and does
-     not require any claim setting change.
-4. Set the permission level to **Read**.
-
-> **Pitfall – confusingly similar group names**
-> SharePoint shows several built-in groups with similar-sounding names:
->
-> - *Everyone* — includes B2B guests who have accepted their invitation. Use this one. ✓
-> - *Everyone except external users* — explicitly **excludes** B2B guests. ✗
-> - *All Users (membership)* / *All Users (windows)* — cover organisation members only;
->   B2B guests are **not** included. ✗
-
-### Step 2 – Verify external sharing on the landing page site
-
-External sharing must be enabled at both the tenant level and at each relevant site:
-
-- **SharePoint Admin Center → Policies → Sharing** – set to at least *Existing guests only*.
-- Open each site where the web part is placed and confirm external sharing is enabled
-  there too (same setting, per-site).
-- The **App Catalog site** is covered by Step 2a above.
-
-### Step 3 – Deploy the Sponsor API
-
-The Microsoft Graph `/me/sponsors` API requires the calling user to hold a directory role
-in addition to the `User.Read` delegated permission — a requirement that is impractical to
-meet at scale for guest accounts (see [docs/architecture.md](docs/architecture.md#azure-function-proxy)
-for the full analysis). The recommended solution is an **Azure Function proxy** that calls
-Graph with application permissions on behalf of the user.
-
-#### Pre-step: create the App Registration
-
-The Azure Function uses EasyAuth (Azure App Service Authentication) to validate the caller.
-EasyAuth needs an Entra App Registration as its identity provider.
-
-Run the included script (requires `Microsoft.Graph` PowerShell module):
-
-```powershell
-./azure-function/infra/setup-app-registration.ps1 -TenantId "<your-tenant-id>"
-```
-
-Copy the **Client ID** printed at the end — you will need it in the next step.
-
-Alternatively, create the App Registration manually in the Azure Portal:
-
-1. **Microsoft Entra admin center → App registrations → New registration**.
-2. Name: `Guest Sponsor Info Proxy`; Supported account types: *Accounts in this organizational
-   directory only*.
-3. After creation, open **Expose an API** → **Set** Application ID URI:
-   `api://guest-sponsor-info-proxy/<clientId>`.
-4. Copy the **Client ID**.
-
-#### Deploy to Azure
-
-Click the button below to open the Azure Portal with the ARM template pre-loaded:
+Then deploy to Azure:
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fjpawlowski%2Fspfx-guest-sponsor-info%2Fmain%2Fazure-function%2Finfra%2Fazuredeploy.json)
 
-Alternatively, deploy from [Azure Cloud Shell](https://shell.azure.com) without any local
-tooling — this also works for updates (ARM deployments are idempotent):
-
-```bash
-az deployment group create \
-  --resource-group <your-resource-group> \
-  --template-uri https://github.com/jpawlowski/spfx-guest-sponsor-info/releases/latest/download/azuredeploy.json \
-  --parameters \
-      tenantId=<your-tenant-id> \
-      tenantName=<your-tenant-name> \
-      functionAppName=<globally-unique-name> \
-      functionClientId=<client-id-from-pre-step>
-```
-
-<details>
-<summary>Optional: deploy as a Deployment Stack (recommended if you manage this long-term via CLI)</summary>
-
-[Azure Deployment Stacks](https://learn.microsoft.com/azure/azure-resource-manager/bicep/deployment-stacks)
-track all resources as a managed set. When you update the stack, resources that were removed
-from the template are automatically deleted — no manual cleanup required. A clean full teardown
-is also possible with a single command.
-
-```bash
-az stack group create \
-  --name guest-sponsor-info \
-  --resource-group <your-resource-group> \
-  --template-uri https://github.com/jpawlowski/spfx-guest-sponsor-info/releases/latest/download/azuredeploy.json \
-  --parameters \
-      tenantId=<your-tenant-id> \
-      tenantName=<your-tenant-name> \
-      functionAppName=<globally-unique-name> \
-      functionClientId=<client-id-from-pre-step> \
-  --action-on-unmanage deleteResources \
-  --deny-settings-mode none
-```
-
-The same `az stack group create` command is used for both initial deployment and updates
-(see *Updating the function* below).
-
-</details>
-
-Fill in the parameters:
-
-| Parameter | Description |
-|---|---|
-| `tenantId` | Your Entra tenant ID (GUID) |
-| `tenantName` | Your tenant name without domain suffix, e.g. `contoso` |
-| `functionAppName` | Globally unique name for the Function App |
-| `functionClientId` | Client ID from the pre-step above |
-| `appVersion` | Function package version to deploy. `"latest"` (default) = always pull the newest GitHub Release at provisioning time. SemVer without `v` prefix, e.g. `"1.4.2"` = pin to that specific release. On Flex Consumption, changing this value triggers the provisioning script to re-upload the ZIP. |
-| `location` | Azure region |
-
-Optional hosting plan parameters:
-
-| Parameter | Description |
-|---|---|
-| `hostingPlan` | `Consumption` (default) or `FlexConsumption`. Consumption includes the Azure free tier (1M executions/month) and supports the "Deploy to Azure" button. Flex Consumption (Linux-only) greatly reduces cold starts; set `alwaysReadyInstances=1` to eliminate them (~€2–5/month). Flex uses a provisioning script to upload the function ZIP automatically — no manual upload needed. Not all Azure regions support Flex — check [aka.ms/flex-region](https://aka.ms/flex-region). |
-| `alwaysReadyInstances` | Number of pre-warmed instances (Flex Consumption only). `1` = one instance kept warm (eliminates cold starts). `0` = on-demand. Ignored when `hostingPlan=Consumption`. Default: `1`. |
-| `maximumFlexInstances` | **Required for Flex.** Hard upper bound on scale-out instances — acts as a cost ceiling (scale stops here regardless of demand). Valid: 1–1000. Ignored when `hostingPlan=Consumption`. |
-| `instanceMemoryMB` | Memory per Flex Consumption instance in MB. `512` or `2048`. More memory allows more concurrent requests per instance but costs more per GB-second. Default: `2048`. Ignored when `hostingPlan=Consumption`. |
-| `dailyMemoryTimeQuotaGBs` | Consumption plan only. Daily GB-second budget — Function App is suspended when hit (cost guard). Default `10000`. Ignored for Flex. |
-
-#### Deploying with Flex Consumption plan
-
-The "Deploy to Azure" button and the `az deployment group create` commands above work for
-Flex Consumption too — just add the extra parameters. Check
-[aka.ms/flex-region](https://aka.ms/flex-region) first to confirm your target region supports
-Flex.
-
-Minimum required extra parameters:
-
-```bash
-az deployment group create \
-  --resource-group <your-resource-group> \
-  --template-uri https://github.com/jpawlowski/spfx-guest-sponsor-info/releases/latest/download/azuredeploy.json \
-  --parameters \
-      tenantId=<your-tenant-id> \
-      tenantName=<your-tenant-name> \
-      functionAppName=<globally-unique-name> \
-      functionClientId=<client-id-from-pre-step> \
-      hostingPlan=FlexConsumption \
-      maximumFlexInstances=10
-```
-
-**The initial ZIP upload is automated.** A short-lived Azure CLI container runs as part of the
-ARM deployment (∼2–5 min): it downloads the function package for the specified `appVersion`
-and uploads it to the `app-package` blob container in the Storage Account. The Function App
-detects the new blob and starts serving traffic automatically — no manual upload is needed.
-
-The deployment script resource (`<functionAppName>-deploy-zip`) is retained in the resource
-group for 2 hours for troubleshooting, then removed automatically.
-
-Optional parameters for map preview:
-
-| Parameter | Description |
-|---|---|
-| `deployAzureMaps` | `true` by default. Deploys an Azure Maps account for inline address map preview. |
-| `azureMapsAccountName` | Optional custom Azure Maps account name. Leave empty for auto-generated name. |
-
-### Inline Address Map (Azure Maps) in the web part
-
-1. Deploy with `deployAzureMaps=true`.
-2. Get the key via Azure CLI:
-
-```bash
-az maps account keys list \
-  -g <resource-group> \
-  -n <azure-maps-account-name> \
-  --query primaryKey -o tsv
-```
-
-1. In the web part property pane:
-   - enable `Show address map preview`
-   - paste the key into `Azure Maps subscription key`
-   - choose fallback provider (`Bing`, `Google`, `Apple`, `OpenStreetMap`, `HERE`)
-
-If no Azure Maps key is configured (or geocoding fails), the card shows
-an external map link fallback using the selected provider.
-
-For CSP-restricted environments, allow at least:
-
-- `https://atlas.microsoft.com` (Azure Maps geocoding + static map image)
-- the selected external map provider domain for fallback links
-
-Quick decision guide:
-
-1. Default path: keep `deployAzureMaps=true` and deploy Azure Maps with the function stack.
-2. Enable map rendering in the web part only when needed by entering the Azure Maps key.
-3. No key configured (or lookup fails): external provider link fallback is shown automatically.
-
-Billing note: with Azure Maps, pricing is request-based and includes a free monthly quota
-(for example, first requests in S0). If the key is not configured in the web part,
-no Azure Maps requests are issued from the card.
-
-After deployment, open the **Outputs** tab of the deployment in the Azure Portal
-(Resource Group → Deployments → select the deployment → **Outputs**).
-Note the following values:
-
-| Output | Used for |
-|---|---|
-| `managedIdentityObjectId` | Required parameter for `setup-graph-permissions.ps1` (next step) |
-| `functionAppUrl` | Paste into the web part property pane → **Azure Function Base URL** |
-| `sponsorApiUrl` | Full endpoint URL — for curl/Postman health checks only |
-
-#### Grant Graph permissions and configure the App Registration
+After deployment, grant Graph permissions and configure the web part:
 
 ```powershell
 ./azure-function/infra/setup-graph-permissions.ps1 `
   -ManagedIdentityObjectId "<oid-from-deployment-output>" `
-  -TenantId "<your-tenant-id>" `
-  -FunctionAppClientId "<client-id-from-pre-step>"
+  -TenantId "<tenant-id>" `
+  -FunctionAppClientId "<client-id>"
 ```
 
-This script does two things:
+In the web part property pane, enter the **Azure Function Base URL** and the
+**Sponsor API Client ID**.
 
-1. **Managed Identity Graph permissions**: assigns `User.Read.All`, `Presence.Read.All`
-   (optional; requires Microsoft Teams), and `MailboxSettings.Read` (optional; enables
-   filtering of shared/room/equipment mailboxes — without it the filter is simply skipped and everything continues to work)
-   to the Function App's system-assigned Managed Identity.
+> Full deployment details (Flex Consumption, Deployment Stacks, Azure Maps,
+> updating, security assessment, legacy options without Azure Function):
+> **[docs/deployment.md](docs/deployment.md)**
 
-2. **App Registration setup for silent token acquisition**: exposes a `user_impersonation`
-   scope on the EasyAuth App Registration and pre-authorizes *SharePoint Online Web Client
-   Extensibility* to call it. Without this step, the SharePoint web part would trigger full
-   page reloads and MSAL consent errors instead of acquiring tokens silently in the background.
+### 5. Add the web part to a page
 
-#### Configure the web part
+Edit a modern page → add the *Guest Sponsor Info* web part.
 
-In the property pane of the web part (edit the page → edit the web part → **Azure Function** group):
-
-- **Azure Function Base URL**: paste the function app base URL, e.g.
-  `https://guest-sponsor-info-xyz.azurewebsites.net`
-- **Sponsor API Client ID**: paste the Client ID from the pre-step
-
-#### Updating the function
-
-**Consumption plan:** The Function App is configured with `WEBSITE_RUN_FROM_PACKAGE` pointing
-to the latest GitHub Release ZIP. A restart is all that is needed — Azure pulls the current
-ZIP from the URL automatically on next cold start.
-
-From [Azure Cloud Shell](https://shell.azure.com) (no local tooling, no repo clone required):
+## Development
 
 ```bash
-az functionapp restart \
-  --resource-group <your-resource-group> \
-  --name <your-function-app-name>
+npm install
+cp .env.example .env           # set SPFX_TENANT=<tenant>.sharepoint.com
+./scripts/dev-webpart.sh       # SPFx dev server with hot-reload
 ```
 
-Or from the Azure Portal: open the Function App → **Overview → Restart**.
-
-**Flex Consumption plan:** The function ZIP lives in the `app-package` blob container. The
-simplest update path is to re-deploy the ARM template with a pinned `appVersion` — the
-provisioning script re-runs only when this value changes:
+To develop the Azure Function locally:
 
 ```bash
-az deployment group create \
-  --resource-group <your-resource-group> \
-  --template-uri https://github.com/jpawlowski/spfx-guest-sponsor-info/releases/latest/download/azuredeploy.json \
-  --parameters \
-      tenantId=<your-tenant-id> \
-      tenantName=<your-tenant-name> \
-      functionAppName=<your-function-app-name> \
-      functionClientId=<your-client-id> \
-      hostingPlan=FlexConsumption \
-      maximumFlexInstances=10 \
-      appVersion=1.x.y
+az login                       # authenticate for Graph API access
+./scripts/dev-function.sh      # build + start on http://localhost:7071
 ```
-
-<details>
-<summary>Manual upload via Azure Portal or CLI</summary>
-
-**Via the Azure Portal:**
-
-1. Open the Storage Account → **Containers** → `app-package`.
-2. Click **Upload**.
-3. Download the ZIP from the [Releases page](https://github.com/jpawlowski/spfx-guest-sponsor-info/releases)
-   and select it.
-4. Expand **Advanced** → set **Blob name** to `function.zip`.
-5. Enable **Overwrite if files already exist** → **Upload**.
-6. The Function App detects the new blob and redeploys within seconds.
-
-**Via Azure CLI ([Cloud Shell](https://shell.azure.com)):**
 
 ```bash
-# Download the new release
-curl -sSfL -o function.zip \
-  https://github.com/jpawlowski/spfx-guest-sponsor-info/releases/latest/download/guest-sponsor-info-function.zip
-
-# Storage account name is shown in the deployment output as "deploymentStorageAccountName"
-az storage blob upload \
-  --account-name <storage-account-name> \
-  --container-name app-package \
-  --name function.zip \
-  --file function.zip \
-  --auth-mode login \
-  --overwrite
+npm run build                  # full production build → .sppkg
+npm test                       # unit tests (Jest 29)
+npm run lint                   # TypeScript · SCSS · Markdown
 ```
 
-The Function App detects the new blob and redeploys automatically.
+> Full development guide (scripts, testing scenarios, release workflow, CI,
+> code conventions): **[docs/development.md](docs/development.md)**
 
-</details>
+## Further Documentation
 
-<details>
-<summary>Infrastructure changed (rare)? Re-run the full deployment instead</summary>
-
-If a new release explicitly states that the Azure infrastructure was updated (e.g. new
-environment variables, changed permissions, new resources), re-run the ARM deployment —
-it is idempotent and only applies what has changed. From
-[Azure Cloud Shell](https://shell.azure.com):
-
-```bash
-az deployment group create \
-  --resource-group <your-resource-group> \
-  --template-uri https://github.com/jpawlowski/spfx-guest-sponsor-info/releases/latest/download/azuredeploy.json \
-  --parameters \
-      tenantId=<your-tenant-id> \
-      tenantName=<your-tenant-name> \
-      functionAppName=<your-function-app-name> \
-      functionClientId=<your-client-id>
-```
-
-If you deployed as a Deployment Stack, use `az stack group create` with the same parameters
-instead (see the initial deployment section above). The stack automatically reconciles any
-resource changes.
-
-To remove all deployed resources:
-
-```bash
-az stack group delete \
-  --name guest-sponsor-info \
-  --resource-group <your-resource-group> \
-  --action-on-unmanage deleteResources \
-  --yes
-```
-
-</details>
-
-#### Security assessment of the Azure Function approach
-
-- The **Managed Identity** never exposes credentials — no secrets are stored anywhere.
-- `User.Read.All` is an **application permission**: unlike the delegated approach, the guest
-  user never holds this permission themselves. The function enforces that it only ever returns
-  the calling user's own sponsors (OID is taken from the EasyAuth-validated token).
-- **EasyAuth** ensures unauthenticated requests are rejected by Azure before the function code
-  runs. There is no custom JWT validation code to maintain.
-- Because guests do not need any Entra directory role assignment, none of the role-assignable
-  group limitations, dynamic membership restrictions, or third-party SaaS trust issues described
-  in Option A/B below apply.
-
-**Overall risk level: Low.** This is the recommended approach for production deployments.
-
-#### Legacy option (no Azure Function): assign a directory role to guests
-
-If you cannot deploy the Azure Function, guests need a directory role to call `/me/sponsors`
-directly. See the legacy instructions below.
-
-<details>
-<summary>Legacy Option A – Custom role (requires Entra ID P1 or P2)</summary>
-
-A custom role scoped to exactly `microsoft.directory/users/sponsors/read` is the
-least-privilege approach among the legacy options.
-
-1. **Microsoft Entra admin center → Roles and admins → Roles → New custom role**.
-2. Name it e.g. `Sponsor Viewer`.
-3. On the *Permissions* step, search for `sponsors` and add
-   `microsoft.directory/users/sponsors/read`.
-4. Save the role.
-5. Open the new role → **Add assignments** → select the security group containing your guests.
-
-**Note:** Role-assignable groups require `isAssignableToRole = true` (cannot be set on an
-existing group). Dynamic membership is not supported. Every new guest must be added manually
-or via automation with `RoleManagement.ReadWrite.Directory` permissions.
-
-**Privacy note:** This permission is not self-scoped — a guest with this role can also read
-the sponsor relationships of other guest accounts. See the security assessment below.
-
-</details>
-
-<details>
-<summary>Legacy Option B – Directory Readers built-in role (no P1/P2 required)</summary>
-
-If your tenant does not have Entra ID P1 or P2:
-
-1. **Microsoft Entra admin center → Roles and admins → Directory Readers**.
-2. **Add assignments** → select the security group containing your guests.
-
-**Warning:** Directory Readers grants much broader directory read access than just sponsors.
-Only use this as a last resort and document it in your risk register.
-
-</details>
-
-### Security assessment of these settings
-
-**Public CDN (`*/CLIENTSIDEASSETS` origin)** *(Option A)*
-Enabling the Public CDN makes the compiled JavaScript and CSS bundle available at
-`publiccdn.sharepointonline.com` without authentication. This is intentional and safe:
-the bundle contains only compiled code — no credentials, no user data, no secrets.
-Environment-specific values such as Graph endpoint URLs are public Microsoft URLs;
-tenant-specific IDs are obtained at runtime from `pageContext` and are never embedded
-in the bundle.
-Enabling the Public CDN is a tenant-wide change that affects all SPFx solutions using
-`includeClientSideAssets: true`. If your organisation publishes SPFx solutions that embed
-sensitive configuration data directly in the bundle, review those solutions before enabling
-this; this web part itself is safe to serve publicly.
-
-**`ShowEveryoneClaim`** *(Option B only)*
-This setting controls whether the *Everyone* claim group is visible in SharePoint's People
-Picker. The *Everyone* group covers all authenticated users in the tenant's Microsoft Entra
-ID, **including B2B guests who have accepted their invitation** — which is exactly why it is
-needed here. It defaults to `$false` on tenants provisioned after March 2018.
-Enabling it is a tenant-wide change: *Everyone* becomes selectable as a permission target
-anywhere in the tenant. The setting itself does not grant access — it only makes the claim
-group available for permission assignments.
-The blast radius is purely administrative.
-
-Do not confuse this with the two other claim settings:
-
-- `ShowAllUsersClaim` (`$true` by default) — controls the legacy *All Users (membership)*
-  and *All Users (windows)* groups, left over from on-premises SharePoint's Windows/NTLM
-  authentication. They cover only organisation members authenticated via those methods and
-  do **not** include B2B guests. Many older guides recommend this setting for "everyone"
-  access — for modern B2B guest access it is the wrong setting.
-- `ShowEveryoneExceptExternalUsersClaim` (`$true` by default) — controls *Everyone except
-  external users*, which Microsoft 365 services (Teams, M365 Groups, Planner) rely on
-  internally. Despite being always on, it explicitly **excludes** B2B guests — the opposite
-  of what is needed here.
-
-**Read permission for Everyone on the App Catalog** *(Option B only)*
-"Everyone" covers every authenticated identity accepted by the tenant:
-full members, licensed guests, and B2B guests who have accepted their invitation.
-Anonymous (unauthenticated) users are explicitly excluded.
-
-With Read permission on the App Catalog, authenticated guests can:
-
-- Download the compiled JavaScript/CSS bundle — the explicit goal of this step.
-- Browse the App Catalog site and see the list of deployed SPFx solutions (names, versions,
-  deployment dates). This is low-sensitivity metadata: it reveals which tools the tenant uses,
-  but contains no business data or secrets.
-
-Guests cannot:
-
-- Install, retract, or manage any apps (that requires Site Collection Admin or higher).
-- Access any content on any other site collection.
-- Modify App Catalog contents.
-
-The compiled bundle itself contains no secrets. Environment-specific values such as Graph
-endpoints are public Microsoft URLs; tenant-specific IDs (used for Teams deep links) are
-obtained at runtime from `pageContext` and never hard-coded in the bundle.
-
-**`Sponsor Viewer` custom role / Directory Readers (legacy Step 3 options)**
-The `microsoft.directory/users/sponsors/read` role permission is not scoped to "only my own
-sponsors". A guest who holds this role — whether via the custom `Sponsor Viewer` role or the
-broader `Directory Readers` role — can also call `/users/{other-id}/sponsors` and read the
-sponsor relationships of *other* guest accounts in the tenant, e.g. via Graph Explorer.
-
-This privacy concern is the primary motivation for the recommended **Azure Function proxy**
-approach (Step 3 above): with the proxy, guests never hold any Entra directory role, and
-the function enforces server-side that only the caller's own sponsors are returned.
-
-If you are using the legacy options:
-
-What this exposes:
-
-- Which internal employee(s) are responsible for a given guest — an internal accountability
-  relationship that guests would not otherwise be able to enumerate.
-- No additional profile data beyond what `User.ReadBasic.All` already allows (name, mail,
-  job title). Sensitive fields such as `accountEnabled` or group memberships remain inaccessible.
-
-`Directory Readers` (Legacy Option B) makes this significantly worse: it grants read access
-to practically all directory objects and their relationships, not just sponsor assignments.
-The custom `Sponsor Viewer` role (Legacy Option A) limits the extra exposure to sponsor
-relationships only — it is the better choice from a data-minimisation perspective.
-
-**Overall risk level (legacy options): Low** for Legacy Option A (custom role),
-**Low–Medium** for Legacy Option B (Directory Readers, due to broader directory read access).
-Organisations with strict data-minimisation requirements should use the Azure Function proxy
-instead and document the rationale in their data processing register.
-
-### Tenant-wide deployment vs. per-site-collection
-
-The deployment dialog offers a checkbox
-*"Make this solution available to all sites in the organization"*.
-**For a minimal-footprint deployment, leave this unchecked** and add the app manually only
-to the sites where guests actually land.
-
-Here is the practical trade-off:
-
-| | Per site collection (recommended) | Tenant-wide |
+| Document | Audience | Content |
 |---|---|---|
-| Web part appears in toolbox | Only sites where admin added the app | Every modern site |
-| Admin effort | Once per target site (Site Contents → Add an app) | Once, at upload |
-| App Catalog Read requirement | Same — required either way | Same — required either way |
-| Guest data exposure | None | None — web part renders nothing for member users |
-| Adding after new sites are created | Manual per site | Automatic |
-
-The App Catalog Read permission (Step 2) applies regardless of the deployment model —
-guests must be able to fetch the bundle from the App Catalog no matter which sites the
-solution is active on.
-
-**Per-site is the recommended default** because:
-
-- It follows the least-privilege principle: the web part is only available where it is
-  explicitly needed.
-- Guest landing sites are typically a known, stable set (intranet home, welcome page).
-
-If you expect guest-accessible sites to grow over time and prefer to avoid per-site admin
-steps, the tenant-wide option works equally well — the web part renders `null` for
-non-guest users so there is no data exposure on member-only sites. Check the
-*"Make this solution available to all sites in the organization"* checkbox during upload.
-
-| Command | Description |
-|---|---|
-| `npm run build` | Full production build + unit tests + packaging |
-| `npm test` | Compile and run unit tests |
-| `npm start` | Start dev server (hot-reload, hosted workbench) |
-| `npm run clean` | Delete all build output |
-| `npm run lint` | Run all linters (TypeScript · SCSS · Markdown) |
-
-Wrapper scripts in `scripts/` provide additional convenience (see below).
-
-## Unit Tests
-
-Tests are written with **Jest 29** and `react-dom/test-utils` (no additional test library needed).
-
-```bash
-npm test
-```
-
-Coverage output is written to `jest-output/coverage/`.
-
-## Publishing a Release
-
-Releases are created by pushing a SemVer tag. The recommended workflow:
-
-```bash
-./scripts/set-version.sh v1.2.3 --commit   # stamp version, commit, and create tag
-git push && git push --tags                 # triggers the release GitHub Actions workflow
-```
-
-The workflow automatically:
-
-1. Generates release notes from the Conventional Commit history (via [git-cliff](https://git-cliff.org)).
-2. Builds the production `.sppkg`.
-3. Creates a GitHub Release with the notes and the `.sppkg` attached.
-
-For the **first release**, this works even with a single commit and no prior tags.
-Preview what the release notes will look like before tagging:
-
-```bash
-./scripts/release-notes.sh
-```
-
-## Continuous Integration
-
-| Workflow | Trigger | What it does |
-|---|---|---|
-| `ci.yml` | Push / PR to `main` | Build · test · upload coverage |
-| `release.yml` | `v*` SemVer tag | Bump version · build · create GitHub Release + `.sppkg` asset |
+| [docs/deployment.md](docs/deployment.md) | Admins / Ops | Full deployment, guest access, Azure Function, security |
+| [docs/development.md](docs/development.md) | Developers | Local setup, build, test, release, code conventions |
+| [docs/architecture.md](docs/architecture.md) | Developers | Design decisions, data paths, known limitations |
 
 ## References
 
@@ -778,6 +161,6 @@ MIT — see [LICENSE](LICENSE) for details.
 
 ## Disclaimer
 
-**THIS CODE IS PROVIDED *AS IS* WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED,
-INCLUDING ANY IMPLIED WARRANTIES OF FITNESS FOR A PARTICULAR PURPOSE, MERCHANTABILITY,
-OR NON-INFRINGEMENT.**
+**THIS CODE IS PROVIDED *AS IS* WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS
+OR IMPLIED, INCLUDING ANY IMPLIED WARRANTIES OF FITNESS FOR A PARTICULAR
+PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.**

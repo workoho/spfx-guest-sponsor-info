@@ -70,6 +70,7 @@ function renderWebPart(overrides: Partial<IGuestSponsorInfoProps> = {}): void {
     mockMode: false,
     hostTenantId: 'aaaabbbb-0000-0000-0000-000000000001',
     functionUrl: undefined,
+    presenceUrl: undefined,
     functionClientId: undefined,
     aadHttpClient: undefined,
     showBusinessPhones: true,
