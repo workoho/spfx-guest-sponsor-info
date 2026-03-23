@@ -98,7 +98,6 @@ define([], function() {
     "ShowWorkLocationFieldLabel": "勤務地を表示",
     "ShowManagerFieldLabel": "上司を表示",
     "UseInformalAddressFieldLabel": "くだけた表現を使用",
-    "UseInformalAddressHint": "ゲストユーザーに完全な文章で直接呼びかけるステータスメッセージとバナーに影響します（エラーメッセージ、Teamsアクセス通知など）。",
 
     "ShowWorkLocationFallbackFieldLabel": "勤務場所をフォールバックとして表示",
     "LocationDisplayHintGeoWithFallback": "市区町村と国は 1 行の地理情報としてまとめて表示されます。勤務場所は市区町村/国のデータがない場合にのみ表示されます。",

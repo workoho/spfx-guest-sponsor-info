@@ -96,7 +96,6 @@ define([], function() {
     "ShowWorkLocationFieldLabel": "Visa arbetsplats",
     "ShowManagerFieldLabel": "Visa chef",
     "UseInformalAddressFieldLabel": "Informellt tilltal",
-    "UseInformalAddressHint": "Påverkar statusmeddelanden och banners som vänder sig direkt till gästanvändaren i hela meningar (t.ex. felmeddelanden, Teams-åtkomstmeddelande).",
 
     "ShowWorkLocationFallbackFieldLabel": "Visa arbetsplats som reserv",
     "LocationDisplayHintGeoWithFallback": "Stad och land kombineras till en gemensam geografisk rad. Arbetsplatsen visas bara om inga uppgifter om stad/land finns.",

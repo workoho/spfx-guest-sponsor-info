@@ -98,7 +98,6 @@ define([], function() {
     "ShowWorkLocationFieldLabel": "Pokaż lokalizację miejsca pracy",
     "ShowManagerFieldLabel": "Pokaż menedżera",
     "UseInformalAddressFieldLabel": "Forma nieformalna (ty)",
-    "UseInformalAddressHint": "Wpływa na komunikaty o stanie i banery, które bezpośrednio zwracają się do użytkownika-gościa w pełnych zdaniach (np. komunikaty o błędach, powiadomienie o dostępie do Teams).",
 
     "ShowWorkLocationFallbackFieldLabel": "Pokaż lokalizację miejsca pracy jako zapasową",
     "LocationDisplayHintGeoWithFallback": "Miasto i kraj są łączone w jednym wierszu lokalizacji. Lokalizacja pracy jest wyświetlana tylko wtedy, gdy brak danych miasta/kraju.",

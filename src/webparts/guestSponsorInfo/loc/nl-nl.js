@@ -104,7 +104,6 @@ define([], function() {
     "ShowWorkLocationFieldLabel": "Werklocatie weergeven",
     "ShowManagerFieldLabel": "Manager weergeven",
     "UseInformalAddressFieldLabel": "Informeel aanspreken (jij/je)",
-    "UseInformalAddressHint": "Heeft invloed op statusberichten en banners die de gastgebruiker direct aanspreken in volledige zinnen (bijv. foutmeldingen, Teams-toegangsbericht).",
 
     "ShowWorkLocationFallbackFieldLabel": "Werklocatie als terugval weergeven",
     "LocationDisplayHintGeoWithFallback": "Stad en land worden gecombineerd in één geografische regel. De werklocatie wordt alleen weergegeven als er geen stad-/landgegevens beschikbaar zijn.",

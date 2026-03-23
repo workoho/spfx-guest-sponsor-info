@@ -105,7 +105,6 @@ define([], function() {
     "ShowWorkLocationFieldLabel": "Mostra luogo di lavoro",
     "ShowManagerFieldLabel": "Mostra responsabile",
     "UseInformalAddressFieldLabel": "Trattamento informale (tu)",
-    "UseInformalAddressHint": "Influisce sui messaggi di stato e sui banner che si rivolgono direttamente all'utente ospite in frasi complete (es. messaggi di errore, avviso di accesso a Teams).",
 
     "ShowWorkLocationFallbackFieldLabel": "Mostra luogo di lavoro come fallback",
     "LocationDisplayHintGeoWithFallback": "La città e il paese sono combinati in un'unica riga geografica. Il luogo di lavoro viene mostrato solo se non sono disponibili dati su città/paese.",

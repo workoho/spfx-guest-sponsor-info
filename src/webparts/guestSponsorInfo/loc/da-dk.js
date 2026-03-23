@@ -98,7 +98,6 @@ define([], function() {
     "ShowWorkLocationFieldLabel": "Vis arbejdssted",
     "ShowManagerFieldLabel": "Vis chef",
     "UseInformalAddressFieldLabel": "Uformel tiltaleform",
-    "UseInformalAddressHint": "Påvirker statusbeskeder og bannere, der henvender sig direkte til gæstebrugeren i hele sætninger (f.eks. fejlbeskeder, Teams-adgangsbesked).",
     "ShowWorkLocationFallbackFieldLabel": "Vis arbejdssted som fallback",
     "LocationDisplayHintGeoWithFallback": "By og land kombineres til én geografisk linje. Arbejdsstedet vises kun, hvis der ikke findes by-/landdata.",
     "LocationDisplayHintGeoOnly": "By og land kombineres til én geografisk linje. Arbejdsstedet er skjult.",

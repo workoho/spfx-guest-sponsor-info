@@ -469,6 +469,10 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                   text: strings.ShowNoSponsorsHintLabel,
                   checked: this.properties.showNoSponsorsHint ?? true,
                 }),
+                PropertyPaneHorizontalRule(),
+                PropertyPaneCheckbox('useInformalAddress', {
+                  text: strings.UseInformalAddressFieldLabel,
+                }),
               ]
             },
             {
@@ -500,13 +504,6 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                 }),
                 PropertyPaneCheckbox('showSponsorDepartment', {
                   text: strings.ShowSponsorDepartmentFieldLabel,
-                }),
-                PropertyPaneHorizontalRule(),
-                PropertyPaneCheckbox('useInformalAddress', {
-                  text: strings.UseInformalAddressFieldLabel,
-                }),
-                PropertyPaneLabel('useInformalAddressHint', {
-                  text: strings.UseInformalAddressHint,
                 }),
               ]
             },

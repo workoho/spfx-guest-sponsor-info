@@ -98,7 +98,6 @@ define([], function() {
     "ShowWorkLocationFieldLabel": "Näytä työpaikka",
     "ShowManagerFieldLabel": "Näytä esimies",
     "UseInformalAddressFieldLabel": "Käytä sinuttelumuotoa",
-    "UseInformalAddressHint": "Vaikuttaa tilaviesteihin ja banneihin, jotka puhuttelevat vieraskäyttäjää suoraan kokonaisin lausein (esim. virheilmoitukset, Teams-pääsy-ilmoitus).",
 
     "ShowWorkLocationFallbackFieldLabel": "Näytä työpaikka varana",
     "LocationDisplayHintGeoWithFallback": "Kaupunki ja maa yhdistetään yhdeksi maantieteelliseksi riviksi. Työpaikka näytetään vain, jos kaupunki-/maatietoja ei ole saatavilla.",

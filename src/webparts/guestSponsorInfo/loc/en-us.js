@@ -108,7 +108,6 @@ define([], function() {
     "AddressMapProviderHint": "For the map to find the location, enable at least city or country together with the street address.",
     "ShowManagerFieldLabel": "Show manager",
     "UseInformalAddressFieldLabel": "Use informal salutation (du/tu)",
-    "UseInformalAddressHint": "Affects status messages and banners that address the guest user directly in full sentences (e.g. error messages, Teams access notice).",
     "LocationDisplayHintSeparateRows": "Enabled address fields are combined into a single clickable row.",
     "LocationDisplayHintHidden": "All location and address fields are hidden.",
     "AdvancedDisplayGroupName": "Advanced display options",

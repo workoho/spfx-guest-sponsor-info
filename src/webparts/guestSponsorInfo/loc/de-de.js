@@ -117,7 +117,6 @@ define([], function() {
     "AddressMapProviderHint": "Damit der Kartenanbieter den Ort finden kann, sollten sinnvolle Adressfelder aktiviert sein – z. B. Straße und Postleitzahl mit Stadt oder Land.",
     "ShowManagerFieldLabel": "Vorgesetzte(n) anzeigen",
     "UseInformalAddressFieldLabel": "Informelle Anrede verwenden (du)",
-    "UseInformalAddressHint": "Wirkt sich auf Statusmeldungen und Banner aus, die den Gastnutzer direkt in ganzen Sätzen ansprechen (z. B. Fehlermeldungen, Teams-Zugriffshinweis).",
     "LocationDisplayHintSeparateRows": "Aktivierte Adressfelder werden zu einer einzelnen anklickbaren Zeile zusammengefasst.",
     "LocationDisplayHintHidden": "Alle Orts- und Adressfelder sind ausgeblendet.",
     "AdvancedDisplayGroupName": "Erweiterte Anzeigeoptionen",

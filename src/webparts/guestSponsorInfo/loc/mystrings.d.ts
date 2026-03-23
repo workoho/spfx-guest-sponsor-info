@@ -58,7 +58,6 @@ declare interface IGuestSponsorInfoWebPartStrings {
   ShowSponsorPhotoFieldLabel: string;
   ShowManagerPhotoFieldLabel: string;
   UseInformalAddressFieldLabel: string;
-  UseInformalAddressHint: string;
 
   // Job title and department toggles
   ShowSponsorJobTitleFieldLabel: string;

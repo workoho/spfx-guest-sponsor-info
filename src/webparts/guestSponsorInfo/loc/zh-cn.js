@@ -98,7 +98,6 @@ define([], function() {
     "ShowWorkLocationFieldLabel": "显示工作地点",
     "ShowManagerFieldLabel": "显示上级",
     "UseInformalAddressFieldLabel": "使用非正式称谓",
-    "UseInformalAddressHint": "影响以完整句子直接称呼来宾用户的状态消息和横幅（例如：错误消息、Teams 访问通知）。",
 
     "ShowWorkLocationFallbackFieldLabel": "将工作地点显示为后备信息",
     "LocationDisplayHintGeoWithFallback": "城市和国家/地区会合并为一行地理信息。仅当没有城市/国家/地区数据时才显示工作地点。",
