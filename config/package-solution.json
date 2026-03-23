@@ -4,7 +4,7 @@
     "name": "Guest Sponsor Info",
     "title": "Guest Sponsor Info",
     "id": "6cdf9494-9c67-40af-8ac8-7b36be245848",
-    "version": "0.18.0.0",
+    "version": "0.19.0.0",
     "includeClientSideAssets": true,
     "skipFeatureDeployment": true,
     "isDomainIsolated": false,
@@ -65,7 +65,7 @@
         "title": "Guest Sponsor Info",
         "description": "The feature that activates elements of the Guest Sponsor Info web part.",
         "id": "b7d00abc-0ce7-45d6-9b8e-ffd7b2139cee",
-        "version": "0.18.0.0"
+        "version": "0.19.0.0"
       }
     ]
   },
