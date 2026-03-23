@@ -36,40 +36,40 @@ flowchart TB
         Catalog["📦 App Catalog"]:::delivery
         CDN["🌐 Public CDN"]:::delivery
         Page["📄 Guest Landing Page"]:::delivery
-        WP["🖥️ Guest Sponsor Info\nWeb Part"]:::webpart
+        WP["🖥️ Guest Sponsor Info Web Part"]:::webpart
     end
 
     subgraph entra["🔐 Microsoft Entra ID"]
-        TokenSvc["🔑 Token Service\n(App Registration\nfor Sponsor API)"]:::token
+        TokenSvc["🔑 Token Service (App Registration)"]:::token
     end
 
     subgraph azure["⚡ Azure · Sponsor API"]
-        EasyAuth{"🛡️ EasyAuth\n(Azure App Service)\ntoken gate"}:::gate
-        Func["⚡ Azure Function\n(sponsor lookup &\nbusiness logic)"]:::func
-        MI["🔒 Managed Identity\n(no stored credentials)"]:::infra
-        AI[("📊 Application\nInsights")]:::logs
+        EasyAuth{"🛡️ EasyAuth (Azure App Service)"}:::gate
+        Func["⚡ Azure Function (sponsor lookup)"]:::func
+        MI["🔒 Managed Identity"]:::infra
+        AI[("📊 App Insights")]:::logs
     end
 
-    Graph[("🕸️ Microsoft Graph\n(sponsors · profiles\nphotos · presence)")]:::msgraph
+    Graph[("🕸️ Microsoft Graph")]:::msgraph
 
     Admin      -- "deploys"                              --> Catalog
     Catalog    -- "via"                                  --> CDN
     CDN        -- "① web part bundle"                    --> WP
     Page       -- "hosts"                                --> WP
 
-    WP         -- "② request token\nscoped to Sponsor API"   --> TokenSvc
-    TokenSvc   -- "signed Bearer token\n(identifies the guest)"  --> WP
-    WP         -- "③ call with\nBearer token"            --> EasyAuth
-    EasyAuth   -- "④ token valid —\nguest OID confirmed"  --> Func
-    EasyAuth   -. "token invalid or missing —\nrequest rejected (HTTP 401)"  .-> WP
+    WP         -- "② request token (Sponsor API scope)"  --> TokenSvc
+    TokenSvc   -- "signed Bearer token"                   --> WP
+    WP         -- "③ call with Bearer token"              --> EasyAuth
+    EasyAuth   -- "④ token valid — OID confirmed"         --> Func
+    EasyAuth   -. "token invalid → HTTP 401"              .-> WP
     Func       --> MI
-    MI         -- "sponsors · profiles · presence\n(app permissions)"  --> Graph
-    Func       -- "⑤ full sponsor list\n(one-time on load)"  --> WP
-    Func       -. "telemetry"                            .-> AI
-    WP         -- "⑥ profile photos\n(direct · delegated token)"  --> Graph
+    MI         -- "sponsors · profiles · presence (app perms)" --> Graph
+    Func       -- "⑤ full sponsor list (one-time)"        --> WP
+    Func       -. "telemetry"                             .-> AI
+    WP         -- "⑥ profile photos (delegated · direct)" --> Graph
 
-    WP         -. "⑦ presence poll\n(same Bearer token —\nsilently refreshed)"  .-> EasyAuth
-    Func       -. "⑦ presence status only\n(no sponsor re-fetch)"  .-> WP
+    WP         -. "⑦ presence poll (token auto-refreshed)" .-> EasyAuth
+    Func       -. "⑦ presence status only"                .-> WP
 
     style spo   fill:#eff6ff,stroke:#3b82f6
     style entra fill:#fffbeb,stroke:#d97706
@@ -126,17 +126,17 @@ flowchart LR
     classDef msgraph  fill:#ede9fe,stroke:#7c3aed,color:#4c1d95,font-weight:bold
 
     subgraph browser["💻 Guest's Browser"]
-        WP2["🖥️ Guest Sponsor Info\nWeb Part"]:::webpart
+        WP2["🖥️ Guest Sponsor Info Web Part"]:::webpart
     end
 
     subgraph entra2["🔐 Microsoft Entra ID"]
         TokenSvc2["🔑 Token Service"]:::token
     end
 
-    Graph2[("🕸️ Microsoft Graph\n(delegated permissions)")]:::msgraph
+    Graph2[("🕸️ Microsoft Graph (delegated)")]:::msgraph
 
     WP2 -- "acquire token" --> TokenSvc2
-    WP2 -- "sponsors, profiles, photos\n(guest must hold Directory Readers role)" --> Graph2
+    WP2 -- "sponsors · profiles · photos (needs Directory Readers role)" --> Graph2
     WP2 -. "presence (optional)" .-> Graph2
 
     style browser fill:#eff6ff,stroke:#3b82f6
