@@ -5,108 +5,106 @@ For the written design decisions behind each component, see [architecture.md](ar
 
 ---
 
-## Recommended Path — Azure Function Proxy
+## System Overview — Recommended Path (Azure Function Proxy)
 
-The function proxy is the **recommended deployment**: guests never need an Entra
-directory role, and all Graph app-permission calls are confined to the function.
+The diagram covers two aspects: **how the web part reaches the guest's browser**
+(delivery, grey arrows) and **how it retrieves sponsor data at runtime** (numbered
+arrows). Steps ②–③ make the authentication handshake explicit — the web part cannot
+call the Sponsor API without first obtaining a signed token from Entra ID.
 
 ```mermaid
 flowchart TB
-    subgraph browser["Guest User Browser"]
-        WP["SPFx Web Part\nGuestSponsorInfo.tsx · SponsorService.ts"]
-    end
+    Admin(["SharePoint Admin"])
 
     subgraph spo["SharePoint Online"]
-        CDN["Public CDN\n(web part assets)"]
+        Catalog["App Catalog\n(solution package)"]
+        CDN["Public CDN\n(web part bundle)"]
+        Page["Guest Landing Page"]
+        WP["Guest Sponsor Info\nWeb Part"]
     end
 
     subgraph entra["Microsoft Entra ID"]
-        AppReg["EasyAuth App Registration\n(exposes user_impersonation scope)"]
+        TokenSvc["Token Service\n(App Registration for\nthe Sponsor API)"]
     end
 
-    subgraph azfunc["Azure Function App"]
-        EA["EasyAuth\n(validates Bearer token,\nsets X-MS-CLIENT-PRINCIPAL-ID)"]
-        GS["getGuestSponsors.ts"]
-        MI["Managed Identity\n(DefaultAzureCredential)"]
+    subgraph azure["Azure · Sponsor API"]
+        EasyAuth{"EasyAuth\ntoken validation\n(runs before any\nfunction code)"}
+        Func["Azure Function\n(sponsor lookup &\nbusiness logic)"]
+        MI["Managed Identity\n(no stored credentials)"]
         AI[("Application\nInsights")]
     end
 
-    subgraph msgraph["Microsoft Graph"]
-        SpEP["/users/{oid}/sponsors"]
-        BatEP["$batch\n(profiles + manager + accountEnabled)"]
-        PhEP["/users/{id}/photo/$value"]
-        PrEP["/communications/getPresencesByUserId\n(optional — Presence.Read.All)"]
-    end
+    Graph[("Microsoft Graph\n(sponsors · profiles\nphotos · presence)")]
 
-    CDN       -. "① web part assets on first load" .->    WP
-    WP        -. "② acquire token (user_impersonation)" .-> AppReg
-    AppReg    -. "Bearer token" .->                        WP
-    WP        --  "③ POST /api/getGuestSponsors\n   + Bearer token" --> EA
-    EA        --  "validated request\n+ OID header" -->    GS
-    GS        -->                                          MI
-    MI        --  "User.Read.All" -->                      SpEP
-    MI        --  "User.Read.All" -->                      BatEP
-    MI        -. "Presence.Read.All (optional)" .->        PrEP
-    GS        --  "{ activeSponsors, unavailableCount }" --> WP
-    GS        -. "telemetry & logs" .->                    AI
-    WP        --  "④ photo/$value · User.ReadBasic.All\n   (delegated, always direct)" --> PhEP
+    Admin      -- "deploys"                         --> Catalog
+    Catalog    -- "via"                             --> CDN
+    CDN        -- "① web part bundle"               --> WP
+    Page       -- "hosts"                           --> WP
+
+    WP         -- "② request token\nscoped to Sponsor API"   --> TokenSvc
+    TokenSvc   -- "signed Bearer token\n(identifies the guest)"  --> WP
+    WP         -- "③ call with\nBearer token"       --> EasyAuth
+    EasyAuth   -- "④ token valid —\nguest OID confirmed"  --> Func
+    EasyAuth   -. "token invalid or missing —\nrequest rejected (HTTP 401)"  .-> WP
+    Func       --> MI
+    MI         -- "sponsors & profiles\n(app permissions)"   --> Graph
+    Func       -- "⑤ sponsor list"                  --> WP
+    Func       -. "telemetry"                       .-> AI
+    WP         -- "⑥ profile photos\n(direct · delegated token)"  --> Graph
 ```
 
-### Step-by-step
+### What each step means
 
 | Step | What happens |
 |---|---|
-| ① | Browser loads the bundled web part JavaScript from the SharePoint Public CDN. |
-| ② | Web part acquires an Entra ID token for the EasyAuth App Registration (`user_impersonation` scope). No extra guest consent needed — the scope is pre-authorized for *SharePoint Online Web Client Extensibility*. |
-| ③ | Web part calls `POST /api/getGuestSponsors` on the Function App, passing the Bearer token. EasyAuth validates the token before any function code runs and injects the caller's object ID as `X-MS-CLIENT-PRINCIPAL-ID`. The function never trusts a user ID from the request body. |
-| ④ | Profile photos are always fetched **directly** from Graph with a delegated token (`User.ReadBasic.All`). They are returned as `ArrayBuffer` → base64 data URL to avoid `Blob` URL leaks. |
-
-The function uses `Promise.allSettled` to fan out three Graph calls concurrently
-(sponsor list, `$batch` for profiles + manager, optional presence) and returns
-`{ activeSponsors, unavailableCount }` once all resolve.
+| ① | The guest opens the SharePoint landing page. The browser loads the web part bundle from the Public CDN — no App Catalog access needed at runtime. |
+| ② | The web part silently requests a token from Entra ID, scoped specifically to the Sponsor API's App Registration. No extra guest consent is required — the scope is pre-authorized for SharePoint. |
+| ③ | Only after a valid token is in hand does the web part call the Sponsor API, with the Bearer token attached. There is no direct path to the function without this token. |
+| ④ | EasyAuth intercepts the request at the Azure Function boundary and validates the token before any function code runs. An invalid or missing token is rejected immediately (HTTP 401); the function never sees the request. |
+| ⑤ | The function identifies the guest from the EasyAuth-confirmed OID and calls Microsoft Graph using its own Managed Identity — the guest never needs an Entra directory role. |
+| ⑥ | Profile photos are loaded **directly** from Graph using the guest's own delegated token. They bypass the function entirely. |
 
 ---
 
-## Fallback Path — Direct Graph (legacy)
+## Fallback Path — Direct Graph (legacy, no Azure Function)
 
-When **no Azure Function URL is configured**, the web part falls back to calling
-`GET /me/sponsors` directly on Microsoft Graph with a delegated token. This
-requires the guest account to hold an Entra directory role (e.g. *Directory Readers*),
-which is impractical at scale. Deploy the Azure Function to avoid this.
+When no Azure Function URL is configured, the web part calls Microsoft Graph
+directly with the guest's delegated token. This requires the guest account to
+hold an Entra directory role (*Directory Readers*) — impractical at scale.
+The Azure Function proxy removes that requirement.
 
 ```mermaid
 flowchart LR
-    subgraph browser["Guest User Browser"]
-        WP2["SPFx Web Part"]
+    subgraph browser["Guest's Browser"]
+        WP2["Guest Sponsor Info\nWeb Part"]
     end
 
-    subgraph msgraph2["Microsoft Graph (delegated)"]
-        SpEP2["/me/sponsors\n(requires Directory Readers role)"]
-        PhEP2["/users/{id}/photo/$value"]
-        PrEP2["/communications/getPresencesByUserId\n(optional — Presence.Read.All)"]
+    subgraph entra2["Microsoft Entra ID"]
+        TokenSvc2["Token Service"]
     end
 
-    WP2 -- "User.Read\n(+ Directory Readers role)" --> SpEP2
-    WP2 -- "User.ReadBasic.All" --> PhEP2
-    WP2 -. "Presence.Read.All (optional)" .-> PrEP2
+    Graph2[("Microsoft Graph\n(delegated permissions)")]
+
+    WP2 -- "acquire token" --> TokenSvc2
+    WP2 -- "sponsors, profiles, photos\n(guest must hold Directory Readers role)" --> Graph2
+    WP2 -. "presence (optional)" .-> Graph2
 ```
-
-> **Note:** On the direct path, `accountEnabled` cannot be checked efficiently
-> because `User.Read.All` is not requested. Disabled-but-not-deleted sponsors
-> remain visible until their account is hard-deleted from Entra ID.
 
 ---
 
 ## Component Summary
 
-| Component | Technology | Role |
-|---|---|---|
-| SPFx Web Part | React 17 · Fluent UI v8 · TypeScript | Guest-facing UI inside SharePoint |
-| Azure Function | Node.js 22 · Azure Functions v4 | Graph proxy — enforces caller identity, applies business filters |
-| EasyAuth | Azure App Service Authentication | Validates JWT Bearer tokens before function code runs |
-| Managed Identity | Azure system-assigned MI | Credential-free Graph access (`DefaultAzureCredential`) |
-| Microsoft Graph | REST API | Source of sponsors, profiles, photos, and presence |
-| Application Insights | Azure Monitor | Function telemetry, structured error logs |
+| Component | Role |
+|---|---|
+| SharePoint App Catalog | Stores the packaged solution; publishes assets to the CDN |
+| Public CDN | Delivers the web part JavaScript bundle to the guest's browser |
+| Web Part | Guest-facing UI rendered inside the SharePoint page |
+| Token Service (Entra ID) | Issues tokens that identify the guest — no directory role needed |
+| Sponsor API (Azure Function) | Secure proxy between the web part and Graph; enforces caller identity |
+| EasyAuth | Validates tokens at the function boundary before any code runs |
+| Managed Identity | Allows the function to call Graph without any stored credentials |
+| Microsoft Graph | Source of sponsor relationships, profiles, photos, and presence |
+| Application Insights | Telemetry and structured error logs for the function |
 
 ---
 
