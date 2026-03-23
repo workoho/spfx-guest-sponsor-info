@@ -68,7 +68,7 @@ function renderWebPart(overrides: Partial<IGuestSponsorInfoProps> = {}): void {
     graphClient: {} as never, // The actual client object is irrelevant; getSponsors is mocked.
     title: 'My Sponsors',
     mockMode: false,
-    mockTeamsUnavailable: false,
+    mockSimulatedHint: 'none',
     cardLayout: 'auto',
     hostTenantId: 'aaaabbbb-0000-0000-0000-000000000001',
     functionUrl: undefined,
@@ -95,6 +95,10 @@ function renderWebPart(overrides: Partial<IGuestSponsorInfoProps> = {}): void {
     showManagerDepartment: false,
     showSponsorPhoto: true,
     showManagerPhoto: true,
+    showTeamsAccessPendingHint: true,
+    showVersionMismatchHint: true,
+    showSponsorUnavailableHint: true,
+    showNoSponsorsHint: true,
     clientVersion: '0.0.1',
   };
   ReactDOM.render(<GuestSponsorInfo {...defaults} {...overrides} />, container);

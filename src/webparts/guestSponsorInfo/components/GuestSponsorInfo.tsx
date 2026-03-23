@@ -149,7 +149,11 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   graphClient,
   title,
   mockMode,
-  mockTeamsUnavailable,
+  mockSimulatedHint,
+  showTeamsAccessPendingHint,
+  showVersionMismatchHint,
+  showSponsorUnavailableHint,
+  showNoSponsorsHint,
   cardLayout,
   hostTenantId,
   functionUrl,
@@ -239,7 +243,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
     if (mockMode) {
       setSponsors(MOCK_SPONSORS);
       setAllUnavailable(false);
-      setGuestHasTeamsAccess(mockTeamsUnavailable ? false : undefined);
+      setGuestHasTeamsAccess(mockSimulatedHint === 'teamsAccessPending' ? false : undefined);
       setLoading(false);
       return;
     }
@@ -443,9 +447,9 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
           showManagerPhoto={showManagerPhoto}
           useInformalAddress={useInformalAddress}
           onActiveCardChange={() => undefined}
-          guestHasTeamsAccess={mockMode && mockTeamsUnavailable ? false : undefined}
+          guestHasTeamsAccess={mockMode && mockSimulatedHint === 'teamsAccessPending' ? false : undefined}
         />
-        {mockMode && mockTeamsUnavailable && (
+        {mockMode && mockSimulatedHint === 'teamsAccessPending' && (
           <MessageBar
             messageBarType={MessageBarType.warning}
             isMultiline
@@ -454,6 +458,29 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
           >
             <b>{strings.TeamsAccessPendingTitle}</b><br />
             {fstr('TeamsAccessPendingMessage')}
+          </MessageBar>
+        )}
+        {mockMode && mockSimulatedHint === 'versionMismatch' && (
+          <MessageBar
+            messageBarType={MessageBarType.warning}
+            isMultiline
+            delayedRender={false}
+            className={styles.teamsAccessBanner}
+          >
+            <b>{strings.VersionMismatchTitle}</b><br />
+            {strings.VersionMismatchMessage}
+          </MessageBar>
+        )}
+        {mockMode && mockSimulatedHint === 'sponsorUnavailable' && (
+          <MessageBar messageBarType={MessageBarType.warning} isMultiline delayedRender={false}>
+            <b>{strings.SponsorUnavailableTitle}</b><br />
+            {fstr('SponsorUnavailableMessage')}
+          </MessageBar>
+        )}
+        {mockMode && mockSimulatedHint === 'noSponsors' && (
+          <MessageBar messageBarType={MessageBarType.info} isMultiline delayedRender={false}>
+            <b>{strings.NoSponsorsTitle}</b><br />
+            {fstr('NoSponsorsMessage')}
           </MessageBar>
         )}
       </section>
@@ -484,13 +511,13 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
           {error}
         </MessageBar>
       )}
-      {!loading && !error && sponsors.length === 0 && allUnavailable && (
+      {!loading && !error && sponsors.length === 0 && allUnavailable && showSponsorUnavailableHint && (
         <MessageBar messageBarType={MessageBarType.warning} isMultiline delayedRender={false}>
           <b>{strings.SponsorUnavailableTitle}</b><br />
           {fstr('SponsorUnavailableMessage')}
         </MessageBar>
       )}
-      {!loading && !error && sponsors.length === 0 && !allUnavailable && (
+      {!loading && !error && sponsors.length === 0 && !allUnavailable && showNoSponsorsHint && (
         <MessageBar messageBarType={MessageBarType.info} isMultiline delayedRender={false}>
           <b>{strings.NoSponsorsTitle}</b><br />
           {fstr('NoSponsorsMessage')}
@@ -524,7 +551,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
           guestHasTeamsAccess={guestHasTeamsAccess}
         />
       )}
-      {!loading && !error && guestHasTeamsAccess === false && (
+      {!loading && !error && guestHasTeamsAccess === false && showTeamsAccessPendingHint && (
         <MessageBar
           messageBarType={MessageBarType.warning}
           isMultiline
@@ -535,7 +562,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
           {fstr('TeamsAccessPendingMessage')}
         </MessageBar>
       )}
-      {versionMismatch && (
+      {versionMismatch && showVersionMismatchHint && (
         <MessageBar
           messageBarType={MessageBarType.warning}
           isMultiline

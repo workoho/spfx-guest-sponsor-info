@@ -24,8 +24,20 @@ import workohoDefaultLogo from './assets/workoho-default-logo.svg';
 export interface IGuestSponsorInfoWebPartProps {
   title: string;
   mockMode: boolean;
-  /** Simulate Teams unavailability in demo mode. Default: false. */
-  mockTeamsUnavailable: boolean;
+  /**
+   * Notification to simulate in demo mode.
+   * Replaces the former mockTeamsUnavailable boolean with a dropdown selection.
+   * Default: 'none'.
+   */
+  mockSimulatedHint: 'none' | 'teamsAccessPending' | 'versionMismatch' | 'sponsorUnavailable' | 'noSponsors';
+  /** Show the "Teams not set up yet" notice to guest users. Default: true. */
+  showTeamsAccessPendingHint: boolean;
+  /** Show the "Update available" notice when the web part and Azure Function versions differ. Default: true. */
+  showVersionMismatchHint: boolean;
+  /** Show the "Sponsor not available" notice when all assigned sponsors are inactive. Default: true. */
+  showSponsorUnavailableHint: boolean;
+  /** Show the "No sponsors found" notice when no sponsors are assigned. Default: true. */
+  showNoSponsorsHint: boolean;
   /** Card layout: 'auto' switches to compact when >2 sponsors. Default: 'auto'. */
   cardLayout: 'auto' | 'full' | 'compact';
   functionUrl: string;
@@ -86,7 +98,11 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
         graphClient: this._graphClient, // undefined until onInit resolves
         title: this.properties.title,
         mockMode: this.properties.mockMode ?? false,
-        mockTeamsUnavailable: (this.properties.mockMode ?? false) && (this.properties.mockTeamsUnavailable ?? false),
+        mockSimulatedHint: this.properties.mockSimulatedHint ?? 'none',
+        showTeamsAccessPendingHint: this.properties.showTeamsAccessPendingHint ?? true,
+        showVersionMismatchHint: this.properties.showVersionMismatchHint ?? true,
+        showSponsorUnavailableHint: this.properties.showSponsorUnavailableHint ?? true,
+        showNoSponsorsHint: this.properties.showNoSponsorsHint ?? true,
         cardLayout: this.properties.cardLayout ?? 'auto',
         hostTenantId: this.context.pageContext.aadInfo.tenantId.toString(),
         functionUrl: this.properties.functionUrl
@@ -235,13 +251,18 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
 
     const createCtaLink = (text: string, href: string): HTMLAnchorElement => {
       const ctaLink = document.createElement('a');
-      ctaLink.textContent = text;
+      ctaLink.textContent = `${text}\u00a0\u2192`;
       ctaLink.href = href;
       ctaLink.target = '_blank';
       ctaLink.rel = 'noopener noreferrer';
       ctaLink.style.display = 'inline-block';
       ctaLink.style.margin = '0 0 12px 0';
+      ctaLink.style.padding = '3px 10px';
+      ctaLink.style.border = '1px solid currentColor';
+      ctaLink.style.borderRadius = '4px';
       ctaLink.style.fontWeight = '600';
+      ctaLink.style.fontSize = '12px';
+      ctaLink.style.textDecoration = 'none';
       return ctaLink;
     };
 
@@ -280,6 +301,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
     logoLink.style.display = 'block';
     logoLink.style.width = '100%';
     logoLink.style.margin = '0 0 12px 0';
+    logoLink.style.textDecoration = 'none';
 
     const logo = document.createElement('img');
     logo.src = workohoDefaultLogo;
@@ -309,6 +331,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
     easyLifeLink.target = '_blank';
     easyLifeLink.rel = 'noopener noreferrer';
     easyLifeLink.style.fontWeight = '500';
+    easyLifeLink.style.textDecoration = 'none';
 
     partnerLine.appendChild(easyLifeLink);
     partnerLine.append(` ${strings.AuthorSectionPartnerSuffix}`);
@@ -338,12 +361,18 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
     sourceLink.target = '_blank';
     sourceLink.rel = 'noopener noreferrer';
     sourceLink.style.display = 'inline';
+    sourceLink.style.textDecoration = 'none';
 
     const separator = document.createElement('span');
     separator.textContent = ' · ';
 
-    const versionLabel = document.createElement('span');
-    versionLabel.textContent = `Version: ${this.manifest.version}`;
+    const semver = this.manifest.version.split('.').slice(0, 3).join('.');
+    const versionLink = document.createElement('a');
+    versionLink.textContent = `${strings.AuthorSectionVersionLabel}: ${this.manifest.version}`;
+    versionLink.href = `https://github.com/workoho/spfx-guest-sponsor-info/releases/tag/v${semver}`;
+    versionLink.target = '_blank';
+    versionLink.rel = 'noopener noreferrer';
+    versionLink.style.textDecoration = 'none';
 
     const munichLine = document.createElement('span');
     munichLine.textContent = 'Built in Munich, World City with ❤';
@@ -358,7 +387,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
 
     metaLine.appendChild(sourceLink);
     metaLine.appendChild(separator);
-    metaLine.appendChild(versionLabel);
+    metaLine.appendChild(versionLink);
 
     footer.appendChild(metaLine);
     footer.appendChild(document.createElement('br'));
@@ -402,10 +431,44 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                   text: strings.MockModeFieldLabel
                 }),
                 ...(this.properties.mockMode ? [
-                  PropertyPaneCheckbox('mockTeamsUnavailable', {
-                    text: strings.MockTeamsUnavailableFieldLabel
+                  PropertyPaneDropdown('mockSimulatedHint', {
+                    label: strings.MockSimulatedHintFieldLabel,
+                    options: [
+                      { key: 'none', text: strings.MockSimulatedHintNoneOption },
+                      { key: 'teamsAccessPending', text: strings.MockSimulatedHintTeamsAccessPendingOption },
+                      { key: 'versionMismatch', text: strings.MockSimulatedHintVersionMismatchOption },
+                      { key: 'sponsorUnavailable', text: strings.MockSimulatedHintSponsorUnavailableOption },
+                      { key: 'noSponsors', text: strings.MockSimulatedHintNoSponsorsOption },
+                    ],
+                    selectedKey: this.properties.mockSimulatedHint ?? 'none',
                   })
                 ] : [])
+              ]
+            },
+            {
+              groupName: strings.GuestNotificationsGroupName,
+              isCollapsed: true,
+              groupFields: [
+                PropertyPaneLabel('guestNotificationsGroupHint', {
+                  text: strings.GuestNotificationsGroupHint,
+                }),
+                PropertyPaneHorizontalRule(),
+                PropertyPaneCheckbox('showTeamsAccessPendingHint', {
+                  text: strings.ShowTeamsAccessPendingHintLabel,
+                  checked: this.properties.showTeamsAccessPendingHint ?? true,
+                }),
+                PropertyPaneCheckbox('showVersionMismatchHint', {
+                  text: strings.ShowVersionMismatchHintLabel,
+                  checked: this.properties.showVersionMismatchHint ?? true,
+                }),
+                PropertyPaneCheckbox('showSponsorUnavailableHint', {
+                  text: strings.ShowSponsorUnavailableHintLabel,
+                  checked: this.properties.showSponsorUnavailableHint ?? true,
+                }),
+                PropertyPaneCheckbox('showNoSponsorsHint', {
+                  text: strings.ShowNoSponsorsHintLabel,
+                  checked: this.properties.showNoSponsorsHint ?? true,
+                }),
               ]
             },
             {

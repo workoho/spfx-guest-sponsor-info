@@ -22,7 +22,16 @@ export interface IGuestSponsorInfoProps {
    * making live Graph calls.
    */
   mockMode: boolean;
-  mockTeamsUnavailable: boolean;
+  /** Notification to simulate in demo mode. Default: 'none'. */
+  mockSimulatedHint: 'none' | 'teamsAccessPending' | 'versionMismatch' | 'sponsorUnavailable' | 'noSponsors';
+  /** Show the "Teams not set up yet" notice to guest users. Default: true. */
+  showTeamsAccessPendingHint: boolean;
+  /** Show the "Update available" notice when the web part and Azure Function versions differ. Default: true. */
+  showVersionMismatchHint: boolean;
+  /** Show the "Sponsor not available" notice when all assigned sponsors are inactive. Default: true. */
+  showSponsorUnavailableHint: boolean;
+  /** Show the "No sponsors found" notice when no sponsors are assigned. Default: true. */
+  showNoSponsorsHint: boolean;
   /** Card layout mode: 'full' (136px tiles), 'compact' (horizontal rows), or 'auto' (switches based on count). */
   cardLayout: 'auto' | 'full' | 'compact';
   /**

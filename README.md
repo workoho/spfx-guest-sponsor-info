@@ -29,22 +29,59 @@ details. The layout matches the built-in SharePoint People web part.
 
 ## Features
 
-- **Sponsor cards** — photo (or initials + deterministic colour) · name · job
-  title
-- **Contact overlay** — email · phone · office location · department on
-  hover/focus
-- **Guest-only rendering** — renders nothing for member users; always shows a
-  placeholder in edit mode
-- **Unavailable-sponsor handling** — deleted or disabled sponsors are hidden; a
-  message is shown when all sponsors are gone
-- **Multilingual** — English · German · French · Spanish · Italian + 9 more
-- **Theme-aware** — honours the site theme
-- **Least-privilege** — `User.ReadBasic.All` instead of `User.Read.All`
+- **"Who is my contact here?"** — guests see their sponsor's photo, name, and
+  job title directly on the SharePoint landing page — no searching, no asking
+  around
+- **Familiar look and feel** — the contact card is modelled after the Microsoft
+  Teams profile card and the SharePoint People web part, so it feels native
+  rather than like a custom add-on
+- **Everything needed to reach out** — email, phone, and Teams Chat / Call
+  buttons in one click; office address with map preview (Azure Maps) or a link
+  to the map provider of your choice (Google, Apple, Bing, OpenStreetMap, HERE)
+- **Fully configurable contact details** — page editors choose exactly which
+  fields are shown: phone numbers, full address broken down by street, city,
+  state, ZIP, and country, map preview, manager section, presence status,
+  photos — all individually toggleable in the property pane
+- **Preview mode for page editors** — editors don't need to be a guest to see
+  how the web part will look; a demo mode shows realistic sample cards so the
+  page can be designed and reviewed without any real guest account
+- **"Can I already use Teams here?"** — Microsoft requires guests to be
+  [added to at least one Team](https://learn.microsoft.com/microsoftteams/guest-access)
+  before they can use any Teams features in the host tenant; if that hasn't
+  happened yet, the web part shows a friendly notice explaining exactly what is
+  happening and what to do next — instead of a confusing error
+- **Sponsor's manager visible too** — guests can see who the sponsor reports to,
+  giving them a clearer picture of their contact's role in the organisation
+- **Live availability** — the sponsor's current Teams status (available, busy,
+  in a meeting, out of office …) is shown in real time so guests know whether
+  to chat, call, or send an email
+- **Only active people, no stale entries** — the web part filters out disabled
+  accounts and shared/room mailboxes, so guests always see real, reachable
+  colleagues — not former employees or system accounts that are still lingering
+  in the sponsor list; if all assigned sponsors have since left the organisation,
+  the guest receives a clear notice instead of an empty page
+- **Only shown to guests** — member users see nothing; the web part is invisible
+  unless the visitor is actually a guest account
+- **Works without giving guests extra permissions** — if you've ever tried to
+  build something like this, you'll know that guests can't read their own sponsor
+  list with default permissions, and there's no good way to grant that right
+  granularly. An included Azure Function acts as a secure proxy so that problem
+  never reaches your guests
+- **14 languages** — including an informal salutation mode (`du`/`tu`) for
+  German, French, Spanish, Italian, and Dutch
+
+> **Tip:** Want to automate who gets assigned as a sponsor — and keep those
+> assignments current over time? [EasyLife 365 Collaboration](https://easylife365.cloud/)
+> handles the full lifecycle of Microsoft 365 collaboration workspaces — Teams, SharePoint
+> team sites, Viva Engage communities, and more — including guest onboarding and sponsor
+> management. This web part then takes care of the guest-facing experience.
+> [Workoho](https://www.workoho.com/), the author of this web part, is a Platinum sales and
+> implementation partner of EasyLife 365 and happy to help.
+>
+> Full feature descriptions, design decisions, and the problem this solves:
+> **[docs/features.md](docs/features.md)**
 
 ## Minimal Path to Awesome
-
-> [PnP community convention](https://aka.ms/m365pnp) — shortest way to get
-> the web part running.
 
 ### 1. Deploy the web part
 
@@ -143,6 +180,7 @@ npm run lint                   # TypeScript · SCSS · Markdown
 
 | Document | Audience | Content |
 |---|---|---|
+| [docs/features.md](docs/features.md) | Everyone | Detailed feature descriptions and the problems they solve |
 | [docs/deployment.md](docs/deployment.md) | Admins / Ops | Full deployment, guest access, Azure Function, security |
 | [docs/development.md](docs/development.md) | Developers | Local setup, build, test, release, code conventions |
 | [docs/architecture.md](docs/architecture.md) | Developers | Design decisions, data paths, known limitations |

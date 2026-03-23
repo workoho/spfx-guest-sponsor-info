@@ -13,9 +13,20 @@ declare interface IGuestSponsorInfoWebPartStrings {
   GuestOnlyPlaceholder: string;
   MockModeFieldLabel: string;
   MockModePlaceholder: string;
-  MockTeamsUnavailableFieldLabel: string;
+  MockSimulatedHintFieldLabel: string;
+  MockSimulatedHintNoneOption: string;
+  MockSimulatedHintTeamsAccessPendingOption: string;
+  MockSimulatedHintVersionMismatchOption: string;
+  MockSimulatedHintSponsorUnavailableOption: string;
+  MockSimulatedHintNoSponsorsOption: string;
 
   // Display toggles
+  GuestNotificationsGroupName: string;
+  GuestNotificationsGroupHint: string;
+  ShowTeamsAccessPendingHintLabel: string;
+  ShowVersionMismatchHintLabel: string;
+  ShowSponsorUnavailableHintLabel: string;
+  ShowNoSponsorsHintLabel: string;
   DisplayGroupName: string;
   CardLayoutFieldLabel: string;
   CardLayoutAutoOption: string;
