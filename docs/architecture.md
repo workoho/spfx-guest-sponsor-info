@@ -143,8 +143,10 @@ is not self-scoped — GDPR concern). The function sidesteps all of this.
 
 ### Security
 
-- **User identification:** Caller OID comes from the EasyAuth-validated token — callers cannot
-  query other users. The function never accepts a user ID from the request body or query string.
+- **User identification:** Caller OID comes from the
+  [EasyAuth](https://learn.microsoft.com/azure/app-service/overview-authentication-authorization)-validated
+  token — callers cannot query other users. The function never accepts a user ID
+  from the request body or query string.
 - **Client authorization:** In production ( `NODE_ENV === 'production'`), the function validates
   EasyAuth principal claims (not raw Authorization headers):
   1. `tid` (tenant ID) — must match our tenant (`TENANT_ID` env var)

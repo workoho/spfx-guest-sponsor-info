@@ -44,7 +44,7 @@ flowchart TB
     end
 
     subgraph azure["⚡ Azure · Sponsor API"]
-        EasyAuth{"🛡️ EasyAuth\ntoken validation\n(runs before any\nfunction code)"}:::gate
+        EasyAuth{"🛡️ EasyAuth\n(Azure App Service)\ntoken gate"}:::gate
         Func["⚡ Azure Function\n(sponsor lookup &\nbusiness logic)"]:::func
         MI["🔒 Managed Identity\n(no stored credentials)"]:::infra
         AI[("📊 Application\nInsights")]:::logs
@@ -105,7 +105,7 @@ flowchart TB
 | ① | The guest opens the SharePoint landing page. The browser loads the web part bundle from the Public CDN — no App Catalog access needed at runtime. |
 | ② | The web part silently requests a token from Entra ID, scoped specifically to the Sponsor API's App Registration. No extra guest consent is required — the scope is pre-authorized for SharePoint. |
 | ③ | Only after a valid token is in hand does the web part call the Sponsor API, with the Bearer token attached. There is no direct path to the function without this token. |
-| ④ | EasyAuth intercepts the request at the Azure Function boundary and validates the token before any function code runs. An invalid or missing token is rejected immediately (HTTP 401); the function never sees the request. |
+| ④ | [EasyAuth](https://learn.microsoft.com/azure/app-service/overview-authentication-authorization) (Microsoft Azure App Service Authentication) intercepts the request at the Azure Function boundary and validates the token before any function code runs. An invalid or missing token is rejected immediately (HTTP 401); the function never sees the request. |
 | ⑤ | The function identifies the guest from the EasyAuth-confirmed OID and calls Microsoft Graph using its own Managed Identity. It returns the full sponsor list — sponsors, profiles, and manager — in one response. This happens **once on page load**. |
 | ⑥ | Profile photos are loaded **directly** from Graph using the guest's own delegated token. They bypass the function entirely. |
 | ⑦ | After the initial load, the web part polls the Sponsor API for **presence status only** at adaptive intervals — **30 seconds** while a sponsor card is hovered, **2 minutes** while the browser tab is visible, **5 minutes** while the tab is in the background. The token is silently refreshed by the browser before it expires; the EasyAuth gate applies on every poll just as on the initial call. The full sponsor list is never re-fetched during polling. |
@@ -158,7 +158,7 @@ flowchart LR
 | Web Part | Guest-facing UI rendered inside the SharePoint page |
 | Token Service (Entra ID) | Issues tokens that identify the guest — no directory role needed |
 | Sponsor API (Azure Function) | Secure proxy between the web part and Graph; enforces caller identity |
-| EasyAuth | Validates tokens at the function boundary before any code runs |
+| [EasyAuth](https://learn.microsoft.com/azure/app-service/overview-authentication-authorization) | Microsoft Azure App Service Authentication — validates tokens at the function boundary before any code runs |
 | Managed Identity | Allows the function to call Graph without any stored credentials |
 | Microsoft Graph | Source of sponsor relationships, profiles, photos, and presence |
 | Application Insights | Telemetry and structured error logs for the function |

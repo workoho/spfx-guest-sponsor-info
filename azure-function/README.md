@@ -27,7 +27,7 @@ only the calling user's own sponsors, and guests never need any directory role.
 
 ## Permissions
 
-### Caller → Function (delegated, via EasyAuth App Registration)
+### Caller → Function (delegated, via [EasyAuth](https://learn.microsoft.com/azure/app-service/overview-authentication-authorization) App Registration)
 
 The web part acquires a token for the EasyAuth App Registration and passes it
 as a Bearer token. EasyAuth validates the token before function code runs.

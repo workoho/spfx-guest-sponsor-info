@@ -97,7 +97,8 @@ On first run the script copies `local.settings.json.example` to
 
 ### Testing the function standalone
 
-EasyAuth is not active locally. Pass the caller OID via the dev header:
+[EasyAuth](https://learn.microsoft.com/azure/app-service/overview-authentication-authorization) is not
+active locally. Pass the caller OID via the dev header:
 
 ```bash
 curl http://localhost:7071/api/getGuestSponsors \

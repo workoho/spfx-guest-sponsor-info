@@ -190,8 +190,9 @@ deployment instructions.
 
 ### Pre-step: create the App Registration
 
-The Azure Function uses EasyAuth (Azure App Service Authentication). EasyAuth
-needs an Entra App Registration as its identity provider.
+The Azure Function uses [EasyAuth](https://learn.microsoft.com/azure/app-service/overview-authentication-authorization)
+(Azure App Service Authentication). EasyAuth needs an Entra App Registration
+as its identity provider.
 
 Run the included script (requires `Microsoft.Graph` PowerShell module):
 

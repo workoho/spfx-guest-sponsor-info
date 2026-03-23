@@ -137,8 +137,9 @@ guests at scale is not viable:
 
 The included **Azure Function proxy** sidesteps all of this. The function:
 
-1. Receives the guest's request authenticated by **EasyAuth** (no secret in the
-   client, no custom auth header handling)
+1. Receives the guest's request authenticated by
+   **[EasyAuth](https://learn.microsoft.com/azure/app-service/overview-authentication-authorization)**
+   (no secret in the client, no custom auth header handling)
 2. Reads the caller's Object ID exclusively from the EasyAuth-validated principal
    claims — callers cannot query other users' sponsors by manipulating a parameter
 3. Calls Graph with its own **Managed Identity** (application permissions, no
