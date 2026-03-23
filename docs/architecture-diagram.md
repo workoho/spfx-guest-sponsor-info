@@ -12,10 +12,10 @@ happens each time a guest opens the landing page.
 ## Setup — Two Admin Roles (Recommended Path)
 
 Two separate admin personas are involved in setting up the solution.
-The **SharePoint Admin** only needs access to the App Catalog.
-The **Azure Admin** owns everything in Azure and Entra ID — the App Registration
-that EasyAuth uses to validate tokens, the Function itself, and the Graph
-permissions granted to the Managed Identity.
+The **SharePoint Admin** only needs the standard SharePoint Administrator role.
+The **Azure Admin** covers three distinct responsibilities — Azure resource
+deployment, Entra ID app configuration, and Graph permission grants — each
+requiring different elevated permissions (see table below the diagram).
 
 ```mermaid
 flowchart LR
@@ -77,6 +77,21 @@ flowchart LR
     %% 7     AI connection
     linkStyle 7     stroke:#94a3b8,stroke-width:1px
 ```
+
+### Required permissions
+
+| Who | Task | Required role / permission |
+|---|---|---|
+| SharePoint Admin | Deploy `.sppkg` to the App Catalog | **SharePoint Administrator** |
+| Azure Admin | Deploy ARM template (creates resources + role assignments) | **Owner** on the target resource group¹ |
+| Azure Admin | Create and configure the EasyAuth App Registration | **Application Administrator** |
+| Azure Admin | Grant Microsoft Graph app roles to the Managed Identity | **Privileged Role Administrator** |
+
+¹ `Contributor` alone is not sufficient — the template creates
+`Microsoft.Authorization/roleAssignments` on the Storage Account.
+
+> **Tip:** A single person covering both Azure and Entra tasks needs
+> **Global Administrator** + **Owner** on the resource group.
 
 ---
 
