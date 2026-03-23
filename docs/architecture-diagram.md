@@ -28,7 +28,7 @@ flowchart TB
     classDef func     fill:#d1fae5,stroke:#059669,color:#064e3b,font-weight:bold
     classDef infra    fill:#a7f3d0,stroke:#059669,color:#064e3b
     classDef logs     fill:#f8fafc,stroke:#94a3b8,color:#64748b
-    classDef graph    fill:#ede9fe,stroke:#7c3aed,color:#4c1d95,font-weight:bold
+    classDef msgraph  fill:#ede9fe,stroke:#7c3aed,color:#4c1d95,font-weight:bold
 
     Admin(["SharePoint Admin"]):::admin
 
@@ -50,7 +50,7 @@ flowchart TB
         AI[("Application\nInsights")]:::logs
     end
 
-    Graph[("Microsoft Graph\n(sponsors · profiles\nphotos · presence)")]:::graph
+    Graph[("Microsoft Graph\n(sponsors · profiles\nphotos · presence)")]:::msgraph
 
     Admin      -- "deploys"                              --> Catalog
     Catalog    -- "via"                                  --> CDN
@@ -123,7 +123,7 @@ The Azure Function proxy removes that requirement.
 flowchart LR
     classDef webpart  fill:#1d4ed8,stroke:#1e3a8a,color:#ffffff,font-weight:bold
     classDef token    fill:#fef3c7,stroke:#d97706,color:#78350f,font-weight:bold
-    classDef graph    fill:#ede9fe,stroke:#7c3aed,color:#4c1d95,font-weight:bold
+    classDef msgraph  fill:#ede9fe,stroke:#7c3aed,color:#4c1d95,font-weight:bold
 
     subgraph browser["Guest's Browser"]
         WP2["Guest Sponsor Info\nWeb Part"]:::webpart
@@ -133,7 +133,7 @@ flowchart LR
         TokenSvc2["Token Service"]:::token
     end
 
-    Graph2[("Microsoft Graph\n(delegated permissions)")]:::graph
+    Graph2[("Microsoft Graph\n(delegated permissions)")]:::msgraph
 
     WP2 -- "acquire token" --> TokenSvc2
     WP2 -- "sponsors, profiles, photos\n(guest must hold Directory Readers role)" --> Graph2
