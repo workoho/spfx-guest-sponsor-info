@@ -223,16 +223,26 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   // Edit-mode proxy health check: verify the Azure Function is reachable while the
   // page author has the web part selected.  Uses the lightweight /api/ping endpoint
   // so the check works for any authenticated user — not just guests.
+  // The ping response also carries `x-api-version`; if that differs from the web
+  // part's own manifest version we surface the version-mismatch banner to the editor
+  // so they are informed regardless of the guest-facing showVersionMismatchHint setting.
   React.useEffect(() => {
     if (!isEditMode || !pingUrl) return;
     if (!aadHttpClient) { onProxyStatusChange?.('error'); return; }
     let cancelled = false;
     onProxyStatusChange?.('checking');
     pingProxy(pingUrl, aadHttpClient)
-      .then(() => { if (!cancelled) { onProxyStatusChange?.('ok'); } })
+      .then((functionVersion) => {
+        if (!cancelled) {
+          onProxyStatusChange?.('ok');
+          setVersionMismatch(
+            !!(clientVersion && functionVersion && clientVersion !== functionVersion)
+          );
+        }
+      })
       .catch(() => { if (!cancelled) { onProxyStatusChange?.('error'); } });
     return () => { cancelled = true; };
-  }, [isEditMode, pingUrl, aadHttpClient]);
+  }, [isEditMode, pingUrl, aadHttpClient, clientVersion]);
 
   React.useEffect(() => {
     if (isEditMode) return;
@@ -449,6 +459,19 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
           onActiveCardChange={() => undefined}
           guestHasTeamsAccess={mockMode && mockSimulatedHint === 'teamsAccessPending' ? false : undefined}
         />
+        {/* Real version mismatch detected via ping: always shown to the editor, independent
+            of the showVersionMismatchHint guest-facing toggle. */}
+        {versionMismatch && mockSimulatedHint !== 'versionMismatch' && (
+          <MessageBar
+            messageBarType={MessageBarType.warning}
+            isMultiline
+            delayedRender={false}
+            className={styles.teamsAccessBanner}
+          >
+            <b>{strings.VersionMismatchTitle}</b><br />
+            {strings.VersionMismatchMessage}
+          </MessageBar>
+        )}
         {mockMode && mockSimulatedHint === 'teamsAccessPending' && (
           <MessageBar
             messageBarType={MessageBarType.warning}

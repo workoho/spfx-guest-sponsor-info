@@ -223,18 +223,22 @@ export async function getSponsors(client: MSGraphClientV3): Promise<ISponsorsRes
  */
 
 /**
+/**
  * Lightweight health check against the Azure Function's `/api/ping` endpoint.
- * Returns `true` when the function responds with HTTP 200, `false` otherwise.
  * No Graph calls or guest-context required — used in edit mode to verify connectivity.
+ * Returns the function version string from the `x-api-version` response header,
+ * or `undefined` when the header is absent (older function deployments).
+ * Throws when the function is unreachable or responds with a non-2xx status.
  */
 export async function pingProxy(
   pingUrl: string,
   aadHttpClient: AadHttpClient
-): Promise<void> {
+): Promise<string | undefined> {
   const response = await aadHttpClient.get(pingUrl, AadHttpClient.configurations.v1);
   if (!response.ok) {
     throw new Error(`Ping returned ${response.status}`);
   }
+  return response.headers.get('x-api-version') ?? undefined;
 }
 
 export async function getSponsorsViaProxy(

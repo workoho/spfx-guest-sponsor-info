@@ -100,7 +100,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
         mockMode: this.properties.mockMode ?? false,
         mockSimulatedHint: this.properties.mockSimulatedHint ?? 'none',
         showTeamsAccessPendingHint: this.properties.showTeamsAccessPendingHint ?? true,
-        showVersionMismatchHint: this.properties.showVersionMismatchHint ?? true,
+        showVersionMismatchHint: this.properties.showVersionMismatchHint ?? false,
         showSponsorUnavailableHint: this.properties.showSponsorUnavailableHint ?? true,
         showNoSponsorsHint: this.properties.showNoSponsorsHint ?? true,
         cardLayout: this.properties.cardLayout ?? 'auto',
@@ -459,7 +459,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                 }),
                 PropertyPaneCheckbox('showVersionMismatchHint', {
                   text: strings.ShowVersionMismatchHintLabel,
-                  checked: this.properties.showVersionMismatchHint ?? true,
+                  checked: this.properties.showVersionMismatchHint ?? false,
                 }),
                 PropertyPaneCheckbox('showSponsorUnavailableHint', {
                   text: strings.ShowSponsorUnavailableHintLabel,
