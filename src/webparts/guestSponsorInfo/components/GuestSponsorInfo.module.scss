@@ -293,6 +293,13 @@
 .richAvatarWrapper {
   position: relative;
   flex-shrink: 0;
+
+  // Add the Teams-style surface ring to Fluent UI's built-in presence dot
+  // (Busy, DND, Away, etc.). box-shadow keeps the dot size unchanged.
+  :global(.ms-Persona-presence) {
+    box-shadow: 0 0 0 2px var(--white, #fff);
+    box-shadow: 0 0 0 2px "[theme:white, default: #ffffff]";
+  }
 }
 
 .richPresenceDot {

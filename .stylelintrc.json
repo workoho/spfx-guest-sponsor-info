@@ -4,6 +4,7 @@
     "selector-class-pattern": null,
     "custom-property-pattern": null,
     "rule-empty-line-before": null,
-    "scss/load-partial-extension": null
+    "scss/load-partial-extension": null,
+    "selector-pseudo-class-no-unknown": [true, { "ignorePseudoClasses": ["global", "local"] }]
   }
 }
