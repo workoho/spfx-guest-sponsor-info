@@ -147,7 +147,7 @@ define([], function() {
     "MapProviderOpenStreetMapOption": "OpenStreetMap",
     "MapProviderHereOption": "HERE WeGo",
     "MapProviderNoneOption": "Uitgeschakeld (geen kaartlink)",
-    "AddressMapProviderHint": "Activeer voor de kaart minimaal stad of land samen met andere adresvelden, zodat de locatie gevonden kan worden.",
+    "AddressMapProviderHint": "Activeer minimaal stad en land — dat volstaat voor elke kaartprovider om een zinvolle locatie weer te geven.",
     "CityFieldLabel": "Stad",
     "CountryFieldLabel": "Land",
     "CopyCityAriaLabel": "Stad kopiëren",

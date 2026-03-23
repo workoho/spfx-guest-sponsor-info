@@ -141,7 +141,7 @@ define([], function() {
     "MapProviderOpenStreetMapOption": "OpenStreetMap",
     "MapProviderHereOption": "HERE WeGo",
     "MapProviderNoneOption": "無効（地図リンクなし）",
-    "AddressMapProviderHint": "地図が場所を見つけるには、市区町村または国と、住所の一部を少なくとも有効にしてください。",
+    "AddressMapProviderHint": "少なくとも市区町村と国を有効にしてください — どの地図プロバイダーでも意味のある位置を表示するのに十分です。",
     "CityFieldLabel": "市区町村",
     "CountryFieldLabel": "国",
     "CopyCityAriaLabel": "市区町村をコピー",

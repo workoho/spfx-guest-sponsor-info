@@ -105,7 +105,7 @@ define([], function() {
     "MapProviderOpenStreetMapOption": "OpenStreetMap",
     "MapProviderHereOption": "HERE WeGo",
     "MapProviderNoneOption": "Disabled (no map link)",
-    "AddressMapProviderHint": "For the map to find the location, enable at least city or country together with the street address.",
+    "AddressMapProviderHint": "Enable at least city and country — that is sufficient for any map provider to show a meaningful location.",
     "ShowManagerFieldLabel": "Show manager",
     "UseInformalAddressFieldLabel": "Use informal salutation (du/tu)",
     "LocationDisplayHintSeparateRows": "Enabled address fields are combined into a single clickable row.",

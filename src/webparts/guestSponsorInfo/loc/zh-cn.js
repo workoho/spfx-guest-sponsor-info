@@ -141,7 +141,7 @@ define([], function() {
     "MapProviderOpenStreetMapOption": "OpenStreetMap",
     "MapProviderHereOption": "HERE WeGo",
     "MapProviderNoneOption": "禁用（无地图链接）",
-    "AddressMapProviderHint": "要让地图找到该位置，请至少启用城市或国家/地区，并配合其他地址字段。",
+    "AddressMapProviderHint": "至少启用城市和国家/地区 — 这足以让任何地图提供商显示有意义的位置。",
     "CityFieldLabel": "城市",
     "CountryFieldLabel": "国家/地区",
     "CopyCityAriaLabel": "复制城市",

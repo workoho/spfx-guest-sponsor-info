@@ -139,7 +139,7 @@ define([], function() {
     "MapProviderOpenStreetMapOption": "OpenStreetMap",
     "MapProviderHereOption": "HERE WeGo",
     "MapProviderNoneOption": "Inaktiverad (ingen kartlänk)",
-    "AddressMapProviderHint": "För att kartan ska hitta platsen, aktivera minst stad eller land tillsammans med andra adressfält.",
+    "AddressMapProviderHint": "Aktivera minst stad och land — det räcker för valfri kartleverantör att visa en meningsfull plats.",
     "CityFieldLabel": "Stad",
     "CountryFieldLabel": "Land",
     "CopyCityAriaLabel": "Kopiera stad",

@@ -141,7 +141,7 @@ define([], function() {
     "MapProviderOpenStreetMapOption": "OpenStreetMap",
     "MapProviderHereOption": "HERE WeGo",
     "MapProviderNoneOption": "Poistettu käytöstä (ei karttaostaman)",
-    "AddressMapProviderHint": "Jotta kartta voi löytää sijainnin, valitse vähintään kaupunki tai maa yhdessä muiden osoitekenttien kanssa.",
+    "AddressMapProviderHint": "Ota käyttöön vähintään kaupunki ja maa — se riittää mille tahansa karttatarjoajalle merkityksellisen sijainnin näyttämiseen.",
     "CityFieldLabel": "Kaupunki",
     "CountryFieldLabel": "Maa",
     "CopyCityAriaLabel": "Kopioi kaupunki",

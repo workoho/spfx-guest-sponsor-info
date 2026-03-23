@@ -114,7 +114,7 @@ define([], function() {
     "MapProviderOpenStreetMapOption": "OpenStreetMap",
     "MapProviderHereOption": "HERE WeGo",
     "MapProviderNoneOption": "Deaktiviert (kein Kartenlink)",
-    "AddressMapProviderHint": "Damit der Kartenanbieter den Ort finden kann, sollten sinnvolle Adressfelder aktiviert sein – z. B. Straße und Postleitzahl mit Stadt oder Land.",
+    "AddressMapProviderHint": "Aktivieren Sie mindestens Stadt und Land – das reicht für jeden Kartenanbieter aus, um einen sinnvollen Ausschnitt anzuzeigen.",
     "ShowManagerFieldLabel": "Vorgesetzte(n) anzeigen",
     "UseInformalAddressFieldLabel": "Informelle Anrede verwenden (du)",
     "LocationDisplayHintSeparateRows": "Aktivierte Adressfelder werden zu einer einzelnen anklickbaren Zeile zusammengefasst.",

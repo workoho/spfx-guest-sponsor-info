@@ -147,7 +147,7 @@ define([], function() {
     "MapProviderOpenStreetMapOption": "OpenStreetMap",
     "MapProviderHereOption": "HERE WeGo",
     "MapProviderNoneOption": "Désactivé (aucun lien carte)",
-    "AddressMapProviderHint": "Pour que la carte trouve l’emplacement, activez au moins la ville ou le pays avec d’autres champs d’adresse.",
+    "AddressMapProviderHint": "Activez au moins la ville et le pays — cela suffit à tout fournisseur de carte pour afficher une vue pertinente de l'emplacement.",
     "CityFieldLabel": "Ville",
     "CountryFieldLabel": "Pays",
     "CopyCityAriaLabel": "Copier la ville",

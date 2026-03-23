@@ -141,7 +141,7 @@ define([], function() {
     "MapProviderOpenStreetMapOption": "OpenStreetMap",
     "MapProviderHereOption": "HERE WeGo",
     "MapProviderNoneOption": "Deaktiveret (intet kortlink)",
-    "AddressMapProviderHint": "For at kortet kan finde placeringen, skal du aktivere mindst by eller land sammen med en del af adressen.",
+    "AddressMapProviderHint": "Aktiver mindst by og land — det er nok til, at enhver korttjeneste kan vise en meningsfuld placering.",
     "CityFieldLabel": "By",
     "CountryFieldLabel": "Land",
     "CopyCityAriaLabel": "Kopiér by",
