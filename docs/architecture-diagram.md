@@ -8,9 +8,12 @@ For the written design decisions behind each component, see [architecture.md](ar
 ## System Overview — Recommended Path (Azure Function Proxy)
 
 The diagram covers two aspects: **how the web part reaches the guest's browser**
-(delivery, grey arrows) and **how it retrieves sponsor data at runtime** (numbered
-arrows). Steps ②–③ make the authentication handshake explicit — the web part cannot
-call the Sponsor API without first obtaining a signed token from Entra ID.
+(delivery, grey arrows) and **how it retrieves and keeps data current at runtime**
+(numbered arrows). Steps ②–③ make the authentication handshake explicit — the web
+part cannot call the Sponsor API without first obtaining a signed token from Entra ID.
+Presence status (step ⑦) is kept up-to-date through a separate polling loop that reuses
+the same token and the same EasyAuth gate, but only fetches presence — not the full
+sponsor list.
 
 ```mermaid
 flowchart TB
@@ -36,21 +39,24 @@ flowchart TB
 
     Graph[("Microsoft Graph\n(sponsors · profiles\nphotos · presence)")]
 
-    Admin      -- "deploys"                         --> Catalog
-    Catalog    -- "via"                             --> CDN
-    CDN        -- "① web part bundle"               --> WP
-    Page       -- "hosts"                           --> WP
+    Admin      -- "deploys"                              --> Catalog
+    Catalog    -- "via"                                  --> CDN
+    CDN        -- "① web part bundle"                    --> WP
+    Page       -- "hosts"                                --> WP
 
     WP         -- "② request token\nscoped to Sponsor API"   --> TokenSvc
     TokenSvc   -- "signed Bearer token\n(identifies the guest)"  --> WP
-    WP         -- "③ call with\nBearer token"       --> EasyAuth
+    WP         -- "③ call with\nBearer token"            --> EasyAuth
     EasyAuth   -- "④ token valid —\nguest OID confirmed"  --> Func
     EasyAuth   -. "token invalid or missing —\nrequest rejected (HTTP 401)"  .-> WP
     Func       --> MI
-    MI         -- "sponsors & profiles\n(app permissions)"   --> Graph
-    Func       -- "⑤ sponsor list"                  --> WP
-    Func       -. "telemetry"                       .-> AI
+    MI         -- "sponsors · profiles\n· presence · photos\n(app permissions)"  --> Graph
+    Func       -- "⑤ full sponsor list\n(one-time on load)"  --> WP
+    Func       -. "telemetry"                            .-> AI
     WP         -- "⑥ profile photos\n(direct · delegated token)"  --> Graph
+
+    WP         -. "⑦ presence poll\n(same Bearer token —\nsilently refreshed)"  .-> EasyAuth
+    Func       -. "⑦ presence status only\n(no sponsor re-fetch)"  .-> WP
 ```
 
 ### What each step means
@@ -61,8 +67,9 @@ flowchart TB
 | ② | The web part silently requests a token from Entra ID, scoped specifically to the Sponsor API's App Registration. No extra guest consent is required — the scope is pre-authorized for SharePoint. |
 | ③ | Only after a valid token is in hand does the web part call the Sponsor API, with the Bearer token attached. There is no direct path to the function without this token. |
 | ④ | EasyAuth intercepts the request at the Azure Function boundary and validates the token before any function code runs. An invalid or missing token is rejected immediately (HTTP 401); the function never sees the request. |
-| ⑤ | The function identifies the guest from the EasyAuth-confirmed OID and calls Microsoft Graph using its own Managed Identity — the guest never needs an Entra directory role. |
+| ⑤ | The function identifies the guest from the EasyAuth-confirmed OID and calls Microsoft Graph using its own Managed Identity. It returns the full sponsor list — sponsors, profiles, and manager — in one response. This happens **once on page load**. |
 | ⑥ | Profile photos are loaded **directly** from Graph using the guest's own delegated token. They bypass the function entirely. |
+| ⑦ | After the initial load, the web part polls the Sponsor API for **presence status only** at adaptive intervals — **30 seconds** while a sponsor card is hovered, **2 minutes** while the browser tab is visible, **5 minutes** while the tab is in the background. The token is silently refreshed by the browser before it expires; the EasyAuth gate applies on every poll just as on the initial call. The full sponsor list is never re-fetched during polling. |
 
 ---
 
