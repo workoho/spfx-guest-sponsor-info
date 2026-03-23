@@ -80,17 +80,22 @@ flowchart LR
 
 ### Required permissions
 
-| Who | Task | Required role / permission |
-|---|---|---|
-| SharePoint Admin | Deploy `.sppkg` to the App Catalog | **SharePoint Administrator** |
-| Azure Admin | Deploy ARM template (creates resources + role assignments) | **Owner** on the target resource group¹ |
-| Azure Admin | Create and configure the EasyAuth App Registration | **Application Administrator** |
-| Azure Admin | Grant Microsoft Graph app roles to the Managed Identity | **Privileged Role Administrator** |
+| Step | Who | What happens | Required role / permission |
+|---|---|---|---|
+| 1 | SharePoint Admin | Deploys `.sppkg` to the App Catalog | **SharePoint Administrator** |
+| 2 | Azure Admin | Runs `setup-app-registration.ps1` — creates the App Registration | **Application Administrator** |
+| 3 | Azure Admin | Deploys the ARM template — creates Azure resources and Storage role assignments; EasyAuth config registers the Service Principal in Entra | **Owner** on the target resource group¹ |
+| 4 | Azure Admin | Runs `setup-graph-permissions.ps1` — grants Graph app roles to the Managed Identity (`User.Read.All`, `Presence.Read.All`, …) | **Privileged Role Administrator**² |
+| 4 | Azure Admin | Same script — exposes `user_impersonation` scope and pre-authorizes SharePoint Online Web Client Extensibility | **Application Administrator** |
 
 ¹ `Contributor` alone is not sufficient — the template creates
 `Microsoft.Authorization/roleAssignments` on the Storage Account.
 
-> **Tip:** A single person covering both Azure and Entra tasks needs
+² Granting application permissions (app roles) to a Managed Identity requires
+`AppRoleAssignment.ReadWrite.All`, which requires Privileged Role Administrator
+or higher.
+
+> **Tip:** A single person covering all Azure and Entra steps needs
 > **Global Administrator** + **Owner** on the resource group.
 
 ---
