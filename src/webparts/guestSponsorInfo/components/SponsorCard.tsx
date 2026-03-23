@@ -514,11 +514,19 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
     return () => clearTimeout(timer);
   }, [isActive]);
 
-  // Show the rich card below the persona tile (matching Microsoft's People Card
-  // behaviour in SharePoint lists). Fluent's Callout automatically chooses the
-  // left or right edge of the target based on available viewport space, and
-  // repositions above when there is insufficient space below.
-  const calloutHint = DirectionalHint.bottomAutoEdge;
+  // Show the rich card below (or above when viewport space is tight) the persona
+  // tile. We pre-calculate at activation time whether the fully-expanded callout
+  // fits below, so the direction is committed before the body animates open and
+  // the callout never flips mid-expansion.
+  // richCard max-height = min(389px, 80vh); Callout gapSpace = 8px.
+  const [calloutHint, setCalloutHint] = React.useState<DirectionalHint>(DirectionalHint.bottomAutoEdge);
+  React.useEffect(() => {
+    if (!isActive || !cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const expandedHeight = Math.min(389, window.innerHeight * 0.8) + 8; // richCard + gapSpace
+    setCalloutHint(spaceBelow >= expandedHeight ? DirectionalHint.bottomAutoEdge : DirectionalHint.topAutoEdge);
+  }, [isActive]);
 
   // The rich card body is defined here so it can be placed inside either
   // a Callout (desktop) or a Panel (mobile) without duplicating the JSX.
