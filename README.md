@@ -157,7 +157,7 @@ npm run lint                   # TypeScript · SCSS · Markdown
 
 ## License
 
-MIT — see [LICENSE](LICENSE) for details.
+AGPL-3.0-only — see [LICENSE](LICENSE) for details.
 
 ## Disclaimer
 
