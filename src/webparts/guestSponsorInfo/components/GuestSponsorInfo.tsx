@@ -443,6 +443,17 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
     // "Sponsor not available" the tiles ARE shown (read-only) so the editor can
     // see how the layout looks when all sponsors are unavailable.
     const showMockCards = !mockMode || mockSimulatedHint !== 'noSponsors';
+    // When simulating "no sponsors" and the notice toggle is off, nothing remains
+    // beyond the title — hide the entire web part so the editor sees the same
+    // empty result the guest would see.
+    // Using an IIFE avoids TypeScript control-flow narrowing through the || chain.
+    const hasEditContent = ((): boolean => {
+      if (!mockMode) return true;                               // always shows mock cards
+      if (mockSimulatedHint !== 'noSponsors') return true;     // shows tiles or sponsor-unavailable banner
+      if (versionMismatch) return true;                        // real version-mismatch ping result
+      return showNoSponsorsHint;                               // only the notice banner remains
+    })();
+    if (!hasEditContent) return null;
     return (
       <section className={styles.webPart}>
         {title && <h2 className={styles.title}>{title}</h2>}
@@ -510,7 +521,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
             {strings.VersionMismatchMessage}
           </MessageBar>
         )}
-        {mockMode && mockSimulatedHint === 'sponsorUnavailable' && (
+        {mockMode && mockSimulatedHint === 'sponsorUnavailable' && showSponsorUnavailableHint && (
           <MessageBar
             messageBarType={MessageBarType.warning}
             isMultiline
@@ -521,7 +532,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
             {fstr('SponsorUnavailableMessage')}
           </MessageBar>
         )}
-        {mockMode && mockSimulatedHint === 'noSponsors' && (
+        {mockMode && mockSimulatedHint === 'noSponsors' && showNoSponsorsHint && (
           <MessageBar messageBarType={MessageBarType.info} isMultiline delayedRender={false}>
             <b>{strings.NoSponsorsTitle}</b><br />
             {fstr('NoSponsorsMessage')}
@@ -540,6 +551,19 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   // When all sponsors are unavailable but their profile data is available, we still
   // show their tiles (read-only, no popup) so the guest can see who their sponsors are,
   // even if those accounts are currently disabled or deleted.
+  //
+  // When nothing meaningful remains to show beyond the title (no tiles, no banners),
+  // hide the entire web part so the guest never sees a lone heading.
+  const hasVisibleContent =
+    loading ||
+    !!error ||
+    sponsors.length > 0 ||
+    (allUnavailable && unavailableSponsors.length > 0) ||
+    (allUnavailable && showSponsorUnavailableHint) ||
+    (!allUnavailable && sponsors.length === 0 && showNoSponsorsHint) ||
+    (guestHasTeamsAccess === false && showTeamsAccessPendingHint) ||
+    (versionMismatch && showVersionMismatchHint);
+  if (!hasVisibleContent) return null;
   const noResults = !loading && !error && sponsors.length === 0 && unavailableSponsors.length === 0;
   const contentClassNames = (loading || error || noResults) ? `${styles.webPart} ${styles.webPartContent}` : styles.webPart;
   return (
