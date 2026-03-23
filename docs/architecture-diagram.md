@@ -3,24 +3,95 @@
 Visual system-level overview of the *Guest Sponsor Info* solution.
 For the written design decisions behind each component, see [architecture.md](architecture.md).
 
+The recommended path (Azure Function proxy) is split into two diagrams:
+**Setup** shows who configures what during deployment; **Runtime** shows what
+happens each time a guest opens the landing page.
+
 ---
 
-## System Overview — Recommended Path (Azure Function Proxy)
+## Setup — Two Admin Roles (Recommended Path)
 
-The diagram covers two aspects: **how the web part reaches the guest's browser**
-(delivery) and **how it retrieves and keeps data current at runtime** (steps ①–⑦).
+Two separate admin personas are involved in setting up the solution.
+The **SharePoint Admin** only needs access to the App Catalog.
+The **Azure Admin** owns everything in Azure and Entra ID — the App Registration
+that EasyAuth uses to validate tokens, the Function itself, and the Graph
+permissions granted to the Managed Identity.
+
+```mermaid
+flowchart LR
+    classDef admin    fill:#f1f5f9,stroke:#64748b,color:#1e293b,font-weight:bold
+    classDef delivery fill:#dbeafe,stroke:#3b82f6,color:#1e3a8a
+    classDef token    fill:#fef3c7,stroke:#d97706,color:#78350f,font-weight:bold
+    classDef gate     fill:#fde68a,stroke:#b45309,color:#78350f,font-weight:bold
+    classDef func     fill:#d1fae5,stroke:#059669,color:#064e3b,font-weight:bold
+    classDef infra    fill:#a7f3d0,stroke:#059669,color:#064e3b
+    classDef logs     fill:#f8fafc,stroke:#94a3b8,color:#64748b
+    classDef msgraph  fill:#ede9fe,stroke:#7c3aed,color:#4c1d95,font-weight:bold
+
+    SpAdmin(["🧑‍💼 SharePoint Admin"]):::admin
+    AzAdmin(["🧑‍💼 Azure Admin"]):::admin
+
+    subgraph spo["☁️ SharePoint Online"]
+        Catalog["📦 App Catalog"]:::delivery
+        CDN["🌐 Public CDN"]:::delivery
+    end
+
+    subgraph entra["🔐 Microsoft Entra ID"]
+        AppReg["🔑 App Registration (EasyAuth)"]:::token
+    end
+
+    subgraph azure["⚡ Azure · Sponsor API"]
+        Func["⚡ Azure Function"]:::func
+        MI["🔒 Managed Identity"]:::infra
+        AI[("📊 App Insights")]:::logs
+    end
+
+    Graph[("🕸️ Microsoft Graph")]:::msgraph
+
+    SpAdmin -- "① deploys .sppkg"        --> Catalog
+    Catalog -- "publishes assets"         --> CDN
+
+    AzAdmin -- "② creates App Registration" --> AppReg
+    AzAdmin -- "③ deploys function"      --> Func
+    AzAdmin -- "④ grants permissions"    --> MI
+    Func    -. "uses"                    .-> MI
+    MI      -- "Graph app permissions"   --> Graph
+    AzAdmin -. "connects"               .-> AI
+
+    style spo   fill:#eff6ff,stroke:#3b82f6
+    style entra fill:#fffbeb,stroke:#d97706
+    style azure fill:#f0fdf4,stroke:#059669
+
+    %% 0–1   SharePoint delivery chain
+    linkStyle 0,1   stroke:#94a3b8,stroke-width:1.5px
+    %% 2     App Registration creation
+    linkStyle 2     stroke:#d97706,stroke-width:2px
+    %% 3     Function deployment
+    linkStyle 3     stroke:#059669,stroke-width:2px
+    %% 4     permission grant
+    linkStyle 4     stroke:#059669,stroke-width:2px
+    %% 5     Func uses MI
+    linkStyle 5     stroke:#a7f3d0,stroke-width:1.5px
+    %% 6     MI→Graph permission
+    linkStyle 6     stroke:#7c3aed,stroke-width:2px
+    %% 7     AI connection
+    linkStyle 7     stroke:#94a3b8,stroke-width:1px
+```
+
+---
+
+## Runtime — Guest Experience (Recommended Path)
+
 Color-coding marks system boundaries at a glance:
 **blue** = SharePoint Online · **amber** = Microsoft Entra ID ·
 **green** = Azure Sponsor API · **purple** = Microsoft Graph.
-Steps ②–③ make the authentication handshake explicit — the web part cannot call
-the Sponsor API without first obtaining a signed token from Entra ID.
-Presence status (step ⑦) is kept up-to-date through a separate polling loop that
-reuses the same token and the same EasyAuth gate, but only fetches presence —
-not the full sponsor list.
+Steps ②–③ show the authentication handshake — the web part cannot call the
+Sponsor API without first obtaining a signed token from Entra ID.
+Step ⑦ is a separate polling loop that only fetches presence, never the full
+sponsor list.
 
 ```mermaid
 flowchart TB
-    classDef admin    fill:#f1f5f9,stroke:#64748b,color:#1e293b,font-weight:bold
     classDef delivery fill:#dbeafe,stroke:#3b82f6,color:#1e3a8a
     classDef webpart  fill:#1d4ed8,stroke:#1e3a8a,color:#ffffff,font-weight:bold
     classDef token    fill:#fef3c7,stroke:#d97706,color:#78350f,font-weight:bold
@@ -30,11 +101,7 @@ flowchart TB
     classDef logs     fill:#f8fafc,stroke:#94a3b8,color:#64748b
     classDef msgraph  fill:#ede9fe,stroke:#7c3aed,color:#4c1d95,font-weight:bold
 
-    Admin(["🧑‍💼 SharePoint Admin"]):::admin
-    AzureAdmin(["🧑‍💼 Azure Admin"]):::admin
-
     subgraph spo["☁️ SharePoint Online"]
-        Catalog["📦 App Catalog"]:::delivery
         CDN["🌐 Public CDN"]:::delivery
         Page["📄 Guest Landing Page"]:::delivery
         WP["🖥️ Guest Sponsor Info Web Part"]:::webpart
@@ -53,55 +120,47 @@ flowchart TB
 
     Graph[("🕸️ Microsoft Graph")]:::msgraph
 
-    Admin      -- "deploys"                              --> Catalog
-    AzureAdmin -- "creates App Registration"             --> TokenSvc
-    AzureAdmin -- "deploys"                              --> Func
-    AzureAdmin -- "grants Graph permissions"             --> MI
-    Catalog    -- "via"                                  --> CDN
     CDN        -- "① web part bundle"                    --> WP
     Page       -- "hosts"                                --> WP
 
     WP         -- "② request token (Sponsor API scope)"  --> TokenSvc
-    TokenSvc   -- "signed Bearer token"                   --> WP
-    WP         -- "③ call with Bearer token"              --> EasyAuth
-    EasyAuth   -- "④ token valid — OID confirmed"         --> Func
-    EasyAuth   -. "token invalid → HTTP 401"              .-> WP
+    TokenSvc   -- "signed Bearer token"                  --> WP
+    WP         -- "③ call with Bearer token"             --> EasyAuth
+    EasyAuth   -- "④ token valid — OID confirmed"        --> Func
+    EasyAuth   -. "token invalid → HTTP 401"             .-> WP
     Func       --> MI
     MI         -- "sponsors · profiles · presence (app perms)" --> Graph
-    Func       -- "⑤ full sponsor list (one-time)"        --> WP
-    Func       -. "telemetry"                             .-> AI
+    Func       -- "⑤ full sponsor list (one-time)"       --> WP
+    Func       -. "telemetry"                            .-> AI
     WP         -- "⑥ profile photos (delegated · direct)" --> Graph
 
     WP         -. "⑦ presence poll (token auto-refreshed)" .-> EasyAuth
-    Func       -. "⑦ presence status only"                .-> WP
+    Func       -. "⑦ presence status only"               .-> WP
 
     style spo   fill:#eff6ff,stroke:#3b82f6
     style entra fill:#fffbeb,stroke:#d97706
     style azure fill:#f0fdf4,stroke:#059669
 
-    %% link indices (declaration order, 0-based)
-    %% 0      setup: Admin→Catalog
-    %% 1–3    setup: AzureAdmin→TokenSvc, AzureAdmin→Func, AzureAdmin→MI
-    %% 4–6    delivery: Catalog→CDN, CDN→WP, Page→WP
-    linkStyle 0,1,2,3,4,5,6  stroke:#94a3b8,stroke-width:1.5px
-    %% 7–8    token roundtrip: WP→TokenSvc, TokenSvc→WP
-    linkStyle 7,8       stroke:#d97706,stroke-width:2px
-    %% 9      initial API call: WP→EasyAuth
-    linkStyle 9         stroke:#1d4ed8,stroke-width:2.5px
-    %% 10     valid path: EasyAuth→Func
-    linkStyle 10        stroke:#059669,stroke-width:2.5px
-    %% 11     rejection path: EasyAuth→WP
-    linkStyle 11        stroke:#dc2626,stroke-width:1.5px
-    %% 12–13  function→Graph via MI
-    linkStyle 12,13     stroke:#7c3aed,stroke-width:2px
-    %% 14     sponsor list response: Func→WP
-    linkStyle 14        stroke:#059669,stroke-width:2px
-    %% 15     telemetry: Func→AI
-    linkStyle 15        stroke:#94a3b8,stroke-width:1px
-    %% 16     photos: WP→Graph
-    linkStyle 16        stroke:#3b82f6,stroke-width:2px
-    %% 17–18  presence polling: WP→EasyAuth, Func→WP
-    linkStyle 17,18     stroke:#0891b2,stroke-width:1.5px
+    %% 0–1   delivery: CDN→WP, Page→WP
+    linkStyle 0,1   stroke:#94a3b8,stroke-width:1.5px
+    %% 2–3   token roundtrip: WP→TokenSvc, TokenSvc→WP
+    linkStyle 2,3   stroke:#d97706,stroke-width:2px
+    %% 4     initial API call: WP→EasyAuth
+    linkStyle 4     stroke:#1d4ed8,stroke-width:2.5px
+    %% 5     valid path: EasyAuth→Func
+    linkStyle 5     stroke:#059669,stroke-width:2.5px
+    %% 6     rejection path: EasyAuth→WP
+    linkStyle 6     stroke:#dc2626,stroke-width:1.5px
+    %% 7–8   function→Graph via MI
+    linkStyle 7,8   stroke:#7c3aed,stroke-width:2px
+    %% 9     sponsor list response: Func→WP
+    linkStyle 9     stroke:#059669,stroke-width:2px
+    %% 10    telemetry: Func→AI
+    linkStyle 10    stroke:#94a3b8,stroke-width:1px
+    %% 11    photos: WP→Graph
+    linkStyle 11    stroke:#3b82f6,stroke-width:2px
+    %% 12–13 presence polling: WP→EasyAuth, Func→WP
+    linkStyle 12,13 stroke:#0891b2,stroke-width:1.5px
 ```
 
 ### What each step means
