@@ -114,7 +114,7 @@ own home tenant in the Teams client.
 
 A guest account can exist in Entra before it has been added to any Team. In
 this state, the guest cannot use Teams features in the host tenant. The web part
-detects this condition (via the Azure Function proxy) and reacts gracefully:
+detects this condition (via the Guest Sponsor API) and reacts gracefully:
 
 - The Chat and Call buttons are **disabled** with explanatory tooltips
 - An **informational banner** appears below the sponsor grid, guiding the guest
@@ -124,7 +124,7 @@ No error message, no broken buttons — just a clear, actionable explanation.
 
 ---
 
-## The Azure Function proxy — the part that makes it actually work
+## The Guest Sponsor API — the part that makes it actually work
 
 The central architectural challenge is that the Graph `/me/sponsors` relationship
 requires the calling user to hold an Entra directory role. Assigning roles to
@@ -135,7 +135,8 @@ guests at scale is not viable:
 - The sponsor-read permission is not self-scoped — a potential GDPR concern
   because directory roles typically grant broader read access
 
-The included **Azure Function proxy** sidesteps all of this. The function:
+The included **Guest Sponsor API** sidesteps all of this. Powered by a custom
+Azure Function, it:
 
 1. Receives the guest's request authenticated by
    **[EasyAuth](https://learn.microsoft.com/azure/app-service/overview-authentication-authorization)**

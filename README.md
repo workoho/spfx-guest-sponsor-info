@@ -65,8 +65,8 @@ details. The layout matches the built-in SharePoint People web part.
 - **Works without giving guests extra permissions** — if you've ever tried to
   build something like this, you'll know that guests can't read their own sponsor
   list with default permissions, and there's no good way to grant that right
-  granularly. An included Azure Function acts as a secure proxy so that problem
-  never reaches your guests
+  granularly. The included **Guest Sponsor API** acts as a secure proxy so that
+  problem never reaches your guests (powered by a custom Azure Function)
 - **14 languages** — including an informal salutation mode (`du`/`tu`) for
   German, French, Spanish, Italian, and Dutch
 
@@ -82,6 +82,9 @@ details. The layout matches the built-in SharePoint People web part.
 > **[docs/features.md](docs/features.md)**
 
 ## Minimal Path to Awesome
+
+> For a visual overview of all setup steps and required admin roles, see the
+> [Setup diagram](docs/architecture-diagram.md#setup--two-admin-roles-recommended-path).
 
 ### 1. Deploy the web part
 
@@ -117,11 +120,11 @@ External sharing must be enabled at the tenant level and on each site where
 the web part is placed: **SharePoint Admin Center → Policies → Sharing** → at
 least *Existing guests only*.
 
-### 4. Deploy the Sponsor API (Azure Function)
+### 4. Deploy the Guest Sponsor API
 
 The Graph `/me/sponsors` API requires a directory role — impractical for
-guests at scale. The included Azure Function proxy calls Graph with
-application permissions instead.
+guests at scale. The included **Guest Sponsor API** calls Graph with application
+permissions instead (powered by a custom Azure Function).
 
 ```powershell
 # Create the App Registration
@@ -145,7 +148,7 @@ In the web part property pane, enter the **Azure Function Base URL** and the
 **Sponsor API Client ID**.
 
 > Full deployment details (Flex Consumption, Deployment Stacks, Azure Maps,
-> updating, security assessment, legacy options without Azure Function):
+> updating, security assessment, legacy options without the Guest Sponsor API):
 > **[docs/deployment.md](docs/deployment.md)**
 
 ### 5. Add the web part to a page
@@ -182,7 +185,7 @@ npm run lint                   # TypeScript · SCSS · Markdown
 |---|---|---|
 | [docs/architecture-diagram.md](docs/architecture-diagram.md) | Everyone | Visual Mermaid diagram of the full system architecture |
 | [docs/features.md](docs/features.md) | Everyone | Detailed feature descriptions and the problems they solve |
-| [docs/deployment.md](docs/deployment.md) | Admins / Ops | Full deployment, guest access, Azure Function, security |
+| [docs/deployment.md](docs/deployment.md) | Admins / Ops | Full deployment, guest access, Guest Sponsor API, security |
 | [docs/development.md](docs/development.md) | Developers | Local setup, build, test, release, code conventions |
 | [docs/architecture.md](docs/architecture.md) | Developers | Design decisions, data paths, known limitations |
 

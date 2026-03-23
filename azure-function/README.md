@@ -4,7 +4,7 @@ HTTP-triggered Azure Function (Node.js 22, Azure Functions v4) that acts as a
 proxy between the SharePoint web part and Microsoft Graph.
 
 For deployment instructions and administration, see
-[docs/deployment.md](../docs/deployment.md#azure-function-sponsor-api).
+[docs/deployment.md](../docs/deployment.md#guest-sponsor-api).
 For architecture decisions, see
 [docs/architecture.md](../docs/architecture.md#azure-function).
 For a visual system overview, see

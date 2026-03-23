@@ -5,17 +5,18 @@ SharePoint and Azure administrators.
 
 For a quick-start overview, see the [README](../README.md).
 For architecture decisions and internals, see [architecture.md](architecture.md).
-For a visual system overview, see [architecture-diagram.md](architecture-diagram.md).
+For a visual system overview (including a setup checklist diagram), see
+[architecture-diagram.md](architecture-diagram.md#setup--two-admin-roles-recommended-path).
 
 ## Table of Contents
 
 - [SharePoint Deployment](#sharepoint-deployment)
 - [Guest Access Requirements](#guest-access-requirements)
-- [Azure Function (Sponsor API)](#azure-function-sponsor-api)
+- [Guest Sponsor API](#guest-sponsor-api)
 - [Inline Address Map (Azure Maps)](#inline-address-map-azure-maps)
 - [Updating the Function](#updating-the-function)
 - [Security Assessment](#security-assessment)
-- [Legacy Options (no Azure Function)](#legacy-options-no-azure-function)
+- [Legacy Options (no Guest Sponsor API)](#legacy-options-no-guest-sponsor-api)
 
 ---
 
@@ -173,20 +174,23 @@ External sharing must be enabled at both the tenant level and at each site:
   *Existing guests only*.
 - Confirm each site where the web part is placed has external sharing enabled.
 
-### Step 3 – Deploy the Sponsor API (Azure Function)
+### Step 3 – Deploy the Guest Sponsor API
 
 The Microsoft Graph `/me/sponsors` API requires the calling user to hold a
 directory role — impractical for guest accounts at scale
-(see [architecture.md](architecture.md#azure-function-proxy) for the full
-analysis). The recommended solution is an **Azure Function proxy** that calls
-Graph with application permissions on behalf of the user.
+(see [architecture.md](architecture.md#guest-sponsor-api-recommended) for the full
+analysis). The recommended solution is the **Guest Sponsor API** — a custom
+Azure Function that calls Graph with application permissions on behalf of the user.
 
-See the [Azure Function section](#azure-function-sponsor-api) below for full
+See the [Guest Sponsor API section](#guest-sponsor-api) below for full
 deployment instructions.
 
 ---
 
-## Azure Function (Sponsor API)
+## Guest Sponsor API
+
+> The [Setup diagram](architecture-diagram.md#setup--two-admin-roles-recommended-path)
+> gives a visual overview of all admin roles and deployment steps involved.
 
 ### Pre-step: create the App Registration
 
@@ -319,7 +323,7 @@ Outputs**:
 | Output | Used for |
 |---|---|
 | `managedIdentityObjectId` | Required for `setup-graph-permissions.ps1` (next step) |
-| `functionAppUrl` | Web part property pane → **Azure Function Base URL** |
+| `functionAppUrl` | Web part property pane → **Guest Sponsor API Base URL** |
 | `sponsorApiUrl` | Full endpoint URL (for curl/Postman health checks) |
 
 ### Grant Graph permissions and configure the App Registration
@@ -342,11 +346,11 @@ This script:
 
 ### Configure the web part
 
-In the property pane (**Azure Function** group):
+In the property pane (**Guest Sponsor API** group):
 
-- **Azure Function Base URL** — e.g.
+- **Guest Sponsor API Base URL** — e.g.
   `https://guest-sponsor-info-xyz.azurewebsites.net`
-- **Sponsor API Client ID** — the Client ID from the pre-step
+- **Guest Sponsor API Client ID** — the Client ID from the pre-step
 
 ---
 
@@ -488,7 +492,7 @@ az stack group delete \
 
 ## Security Assessment
 
-### Azure Function approach (recommended)
+### Guest Sponsor API approach (recommended)
 
 - **Managed Identity** — no secrets stored anywhere.
 - `User.Read.All` is an **application permission**: the guest user never holds
@@ -525,10 +529,10 @@ install, retract, or modify any apps.
 
 ---
 
-## Legacy Options (no Azure Function)
+## Legacy Options (no Guest Sponsor API)
 
-If you cannot deploy the Azure Function, guests need an Entra directory role
-to call `/me/sponsors` directly. The Azure Function approach is strongly
+If you cannot deploy the Guest Sponsor API, guests need an Entra directory role
+to call `/me/sponsors` directly. The Guest Sponsor API approach is strongly
 preferred — see the
 [security assessment in architecture.md](architecture.md#security) for why.
 
