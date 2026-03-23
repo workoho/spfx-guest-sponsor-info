@@ -768,7 +768,7 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
       {/* ── Card thumbnail (always visible in the grid) ──────────────── */}
       <div
         ref={cardRef}
-        className={`${compact ? styles.cardCompact : styles.card}${isActive ? ` ${styles.cardActive}` : ''}${readOnly ? ` ${styles.cardReadOnly}` : ''}`}
+        className={`${compact ? styles.cardCompact : styles.card}${readOnly ? ` ${styles.cardReadOnly}` : ''}`}
         onMouseEnter={readOnly ? undefined : onActivate}
         onMouseLeave={readOnly ? undefined : onScheduleDeactivate}
         onFocus={readOnly ? undefined : onActivate}

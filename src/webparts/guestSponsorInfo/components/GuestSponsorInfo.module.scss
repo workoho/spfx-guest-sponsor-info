@@ -114,33 +114,15 @@
   cursor: pointer;
   outline: none;
   background: transparent;
-  transition: background-color 120ms ease;
-
-  &:hover {
-    background: var(--neutralLighter);
-    background: "[theme:neutralLighter, default: #f3f2f1]";
-  }
 
   &:focus-visible {
     box-shadow: 0 0 0 2px var(--themePrimary);
     box-shadow: 0 0 0 2px "[theme:themePrimary, default: #0078d4]";
   }
 
-  // Suppress hover highlight while the rich card callout is open — the
-  // persona tile is no longer the interactive focus and highlighting it
-  // alongside the open card looks cluttered.
-  &.cardActive {
-    background: transparent !important;
-  }
-
-  // Read-only tiles (e.g. unavailable sponsors): never show hover background
-  // or pointer cursor — the card is purely visual.
+  // Read-only tiles (e.g. unavailable sponsors): no pointer cursor.
   &.cardReadOnly {
     cursor: default;
-
-    &:hover {
-      background: transparent;
-    }
   }
 }
 
