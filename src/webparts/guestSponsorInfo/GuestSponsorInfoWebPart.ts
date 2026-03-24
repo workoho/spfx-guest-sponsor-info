@@ -99,6 +99,11 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
   private _versionMismatch = false;
   private _newVersionAvailable: string | false = false;
   private _githubCheckDone = false;
+
+  /** sessionStorage key for the cached GitHub release check result. */
+  private static readonly _GITHUB_CACHE_KEY = 'spfx-gsr-github-release';
+  /** Cache TTL in milliseconds (1 hour). */
+  private static readonly _GITHUB_CACHE_TTL = 3_600_000;
   private _themeProvider: ThemeProvider | undefined;
   private _theme: IReadonlyTheme | undefined;
 
@@ -211,10 +216,21 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
       )
       .then((data) => {
         const tag = data?.tag_name;
+        // No valid tag means an API error or unexpected shape — don't cache;
+        // a retry is acceptable on the next pane open.
         if (typeof tag !== 'string' || !tag) return;
         const latest = tag.replace(/^v/, '');
         const current = this.manifest.version.split('.').slice(0, 3).join('.');
-        if (this._isNewerVersion(latest, current)) {
+        const newer = this._isNewerVersion(latest, current);
+        // Persist both outcomes so the next pane open (even after a view↔edit
+        // switch) doesn't re-fetch within the cache TTL window.
+        try {
+          sessionStorage.setItem(
+            GuestSponsorInfoWebPart._GITHUB_CACHE_KEY,
+            JSON.stringify({ version: newer ? latest : null, ts: Date.now() })
+          );
+        } catch { /* sessionStorage unavailable — ignore */ }
+        if (newer) {
           this._newVersionAvailable = latest;
           if (this.context.propertyPane.isPropertyPaneOpen()) {
             this.context.propertyPane.refresh();
@@ -273,10 +289,25 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
   }
 
   protected onPropertyPaneOpened(): void {
-    if (!this._githubCheckDone) {
-      this._githubCheckDone = true;
-      this._checkGitHubRelease();
-    }
+    if (this._githubCheckDone) return;
+    this._githubCheckDone = true;
+    // Restore from sessionStorage cache so that view↔edit mode switches or page
+    // saves (which re-instantiate the web part without a full browser reload)
+    // don't trigger a redundant GitHub API call.
+    try {
+      const raw = sessionStorage.getItem(GuestSponsorInfoWebPart._GITHUB_CACHE_KEY);
+      if (raw) {
+        const { version, ts } = JSON.parse(raw) as { version: string | null; ts: number };
+        if (Date.now() - ts < GuestSponsorInfoWebPart._GITHUB_CACHE_TTL) {
+          if (version) {
+            this._newVersionAvailable = version;
+            this.context.propertyPane.refresh();
+          }
+          return; // cache hit — skip fetch
+        }
+      }
+    } catch { /* sessionStorage unavailable or corrupt — proceed with live fetch */ }
+    this._checkGitHubRelease();
   }
 
   protected onPropertyPaneFieldChanged(propertyPath: string, oldValue: unknown, newValue: unknown): void {
