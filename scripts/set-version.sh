@@ -108,10 +108,8 @@ suggest_bump() {
     range="${base_tag}..HEAD"
   fi
 
-  local log
-  log=$(git log "$range" --format="%s%x00%b%x00" 2>/dev/null || true)
-
-  if [[ -z "$log" ]]; then
+  # Check whether there are any commits to analyse at all
+  if ! git log "$range" --format="%s" 2>/dev/null | grep -q .; then
     echo "patch"
     return
   fi
@@ -122,7 +120,9 @@ suggest_bump() {
   local re_breaking='^[a-zA-Z]+(\([^)]*\))?!:'
   local re_feat='^feat(\([^)]*\))?:'
 
-  # Read NUL-delimited pairs: subject, body
+  # Pipe directly into the loop — bash variables cannot hold NUL bytes, so
+  # storing the output in a variable via $() would silently drop all \0
+  # delimiters and break the read -d $'\0' loop.
   while IFS= read -r -d $'\0' subject && IFS= read -r -d $'\0' body; do
     [[ -z "$subject" ]] && continue
 
@@ -142,7 +142,7 @@ suggest_bump() {
     if [[ "$subject" =~ $re_feat ]] && [[ "$bump" != "major" ]]; then
       bump="minor"
     fi
-  done <<<"$log"
+  done < <(git log "$range" --format="%s%x00%b%x00" 2>/dev/null)
 
   echo "$bump"
 }
