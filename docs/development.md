@@ -49,9 +49,9 @@ The following steps require manual action after the container has started:
    git config --global user.email "you@example.com"
    ```
 
-   Note: these live in the container filesystem and reset on rebuild. For a
-   persistent setup, configure them on the host OS — the container reads
-   them from `~/.gitconfig` automatically.
+   Note: values set this way live in the container filesystem and are lost on
+   rebuild. For a persistent setup, configure your git identity on the host OS
+   — the container reads it from `~/.gitconfig` automatically at startup.
 
 In **GitHub Codespaces** steps 1–4 are handled automatically.
 
@@ -209,7 +209,7 @@ lost on the next rebuild.
 
 | Script | Purpose |
 |---|---|
-| `./scripts/bootstrap.sh` | Install deps + create `.env` (run once after cloning) |
+| `./scripts/bootstrap.sh` | Install deps + create `.env` (runs automatically in the devcontainer; run manually outside it) |
 | `./scripts/reset.sh` | Wipe build outputs + node_modules, then re-bootstrap |
 | `./scripts/dev-webpart.sh` | Start SPFx web part dev server |
 | `./scripts/dev-function.sh` | Start Azure Function locally |
