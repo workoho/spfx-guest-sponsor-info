@@ -100,8 +100,15 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
   private _newVersionAvailable: { version: string; url: string } | false = false;
   private _githubCheckDone = false;
 
-  /** sessionStorage key for the cached GitHub release check result. */
-  private static readonly _GITHUB_CACHE_KEY = 'spfx-gsr-github-release';
+  /**
+   * sessionStorage key for the cached GitHub release check result.
+   * Uses the manifest component ID as a namespace so the key is globally unique
+   * within the shared sessionStorage of a SharePoint page and cannot collide
+   * with keys written by other web parts or first-party SharePoint code.
+   */
+  private get _githubCacheKey(): string {
+    return `${this.manifest.id}/github-release`;
+  }
   /** Cache TTL in milliseconds (1 hour). */
   private static readonly _GITHUB_CACHE_TTL = 3_600_000;
   private _themeProvider: ThemeProvider | undefined;
@@ -228,7 +235,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
         // switch) doesn't re-fetch within the cache TTL window.
         try {
           sessionStorage.setItem(
-            GuestSponsorInfoWebPart._GITHUB_CACHE_KEY,
+            this._githubCacheKey,
             JSON.stringify({
               version: newer ? latest : null,
               url: newer ? releaseUrl : null,
@@ -301,7 +308,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
     // saves (which re-instantiate the web part without a full browser reload)
     // don't trigger a redundant GitHub API call.
     try {
-      const raw = sessionStorage.getItem(GuestSponsorInfoWebPart._GITHUB_CACHE_KEY);
+      const raw = sessionStorage.getItem(this._githubCacheKey);
       if (raw) {
         const { version, url, ts } = JSON.parse(raw) as
           { version: string | null; url: string | null; ts: number };
