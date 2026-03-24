@@ -5,7 +5,11 @@
 #   ./scripts/bootstrap.sh
 #
 # Installs web part dependencies (npm install) and creates .env from
-# .env.example if .env does not already exist. Run once after cloning.
+# .env.example if .env does not already exist.
+#
+# In the devcontainer this script is called automatically by post-create.sh
+# on every container start — you only need to run it manually when working
+# outside the devcontainer (local Node.js setup).
 #
 # After bootstrapping, start a dev server:
 #   ./scripts/dev-webpart.sh    # SPFx web part (hosted workbench)

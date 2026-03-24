@@ -32,18 +32,16 @@ if [[ ! -x "${INSTALL_DIR}/git-cliff" ]]; then
 fi
 # Ensure ~/.local/bin is on PATH for interactive shells.
 if ! grep -q '\.local/bin' "${HOME}/.bashrc" 2>/dev/null; then
+  # SC2016: single quotes intentional — $HOME must expand at shell startup, not now.
+  # shellcheck disable=SC2016
   echo 'export PATH="${HOME}/.local/bin:${PATH}"' >> "${HOME}/.bashrc"
 fi
 
-# Install project dependencies and set up git hooks (husky prepare script).
-npm install
+# Install project dependencies and create .env from .env.example if absent.
+# bootstrap.sh is the single source of truth for both steps.
+bash scripts/bootstrap.sh
 
 # Ensure Husky git hooks are properly initialized in dev-container.
-# Note: npm install already triggers the prepare script (which runs 'husky'),
-# but we call it explicitly here as a belt-and-suspenders measure.
-npm run prepare
-
-# Hard-enforce the correct hooksPath. 'husky' silently skips when HUSKY=0 is
 # set in the environment, which would leave core.hooksPath pointing to whatever
 # it was before (possibly a stale or incorrect value). Explicitly setting it
 # to the canonical value ensures git hooks are always active in the container.

@@ -16,7 +16,7 @@ For a visual system overview, see [architecture-diagram.md](architecture-diagram
 ## Quick Start
 
 ```bash
-./scripts/bootstrap.sh         # install deps + create .env (then set SPFX_SERVE_TENANT_DOMAIN in .env)
+# set SPFX_SERVE_TENANT_DOMAIN in .env, then:
 ./scripts/dev-webpart.sh       # starts SPFx dev server with hot-reload
 ```
 
@@ -27,15 +27,14 @@ workbench URL printed on startup.
 
 ### First-session checklist (devcontainer)
 
-`post-create.sh` runs automatically and handles `npm install`, git hooks,
-git identity, `git-cliff`, `delta`, and the Bicep CLI. Check the terminal
-output during container start for any warnings.
+`post-create.sh` runs automatically on container start and handles `npm install`,
+`.env` creation, git hooks, git identity, `git-cliff`, `delta`, and the Bicep CLI.
+Check the terminal output during container start for any warnings.
 
 The following steps require manual action after the container has started:
 
-1. **`./scripts/bootstrap.sh`** — creates `.env` from `.env.example` and
-   sets `SPFX_SERVE_TENANT_DOMAIN`. Skip if the variable is already set
-   in your environment.
+1. **Set `SPFX_SERVE_TENANT_DOMAIN`** in `.env` (created automatically at
+   `<repo-root>/.env`). Without it, `./scripts/dev-webpart.sh` cannot start.
 2. **`az login`** — only needed for Azure Function development. Not required
    for web part work.
 3. **GitHub token** — run `gh auth login` inside the container to enable
