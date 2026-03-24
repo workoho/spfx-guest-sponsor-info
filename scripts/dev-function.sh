@@ -27,7 +27,7 @@ SCRIPT_DIR="${BASH_SOURCE[0]%/*}"
 ROOT_DIR="${SCRIPT_DIR}/.."
 FUNC_DIR="${ROOT_DIR}/azure-function"
 
-# Load .env if present (shares SPFX_TENANT etc. with dev-webpart.sh).
+# Load .env if present (shares SPFX_SERVE_TENANT_DOMAIN etc. with dev-webpart.sh).
 ENV_FILE="${ROOT_DIR}/.env"
 if [[ -f "${ENV_FILE}" ]]; then
   set -a

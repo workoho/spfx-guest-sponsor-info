@@ -4,9 +4,17 @@
 # Usage:
 #   scripts/dev-webpart.sh
 #
-# Requires SPFX_TENANT to be set — either in a local .env file or as an
-# environment variable. Copy .env.example to .env and fill in your tenant:
-#   cp .env.example .env
+# Requires SPFX_SERVE_TENANT_DOMAIN to be set. Two ways to provide it
+# (in order of preference):
+#
+#   1. Host OS environment variable (persistent across container rebuilds):
+#        export SPFX_SERVE_TENANT_DOMAIN=contoso.sharepoint.com
+#      Add this to ~/.bashrc or ~/.profile on your host machine. The
+#      devcontainer picks it up automatically via containerEnv.
+#
+#   2. Local .env file (git-ignored, persistent within the container):
+#        cp .env.example .env
+#      Then set SPFX_SERVE_TENANT_DOMAIN=<your-tenant>.sharepoint.com in .env.
 #
 # NOTE: The local workbench (/temp/workbench.html) was removed in SPFx 1.17.
 # The dev server only serves the JS bundle; testing requires the hosted
@@ -23,7 +31,7 @@ set -euo pipefail
 # Always run from the repository root so paths resolve correctly.
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-# Load .env if present.
+# Load .env if present (overrides any containerEnv value for this session).
 ENV_FILE=".env"
 if [[ -f "${ENV_FILE}" ]]; then
   set -a
@@ -32,37 +40,30 @@ if [[ -f "${ENV_FILE}" ]]; then
   set +a
 fi
 
-SPFX_TENANT="${SPFX_TENANT:-}"
+SPFX_SERVE_TENANT_DOMAIN="${SPFX_SERVE_TENANT_DOMAIN:-}"
 
-if [[ -z "${SPFX_TENANT}" ]]; then
-  echo "ERROR: SPFX_TENANT is not set."
+if [[ -z "${SPFX_SERVE_TENANT_DOMAIN}" ]]; then
+  echo "ERROR: SPFX_SERVE_TENANT_DOMAIN is not set."
   echo "  The local workbench was removed in SPFx 1.17."
   echo "  A SharePoint Online tenant is required to test the web part."
   echo ""
-  echo "  Copy .env.example to .env and fill in your tenant domain:"
-  echo "    cp .env.example .env"
+  echo "  Option 1 — this terminal session only (lost when the terminal closes):"
+  echo "    export SPFX_SERVE_TENANT_DOMAIN=contoso.sharepoint.com"
+  echo ""
+  echo "  Option 2 — persistent in this container (all terminals, survives VS Code restarts):"
+  echo "    cp -n .env.example .env   # skip if .env already exists"
+  echo "    echo 'SPFX_SERVE_TENANT_DOMAIN=contoso.sharepoint.com' >> .env"
+  echo "    This script sources .env on every run, so it works with any shell."
+  echo ""
+  echo "  Option 3 — permanent across future container rebuilds (set once on your host OS):"
+  echo "    echo 'export SPFX_SERVE_TENANT_DOMAIN=contoso.sharepoint.com' >> ~/.bashrc"
+  echo "    Use ~/.zshrc for zsh. Takes effect the next time this container is rebuilt."
   exit 1
 fi
 
-# Patch serve.json with the configured tenant domain, then restore the
-# original on exit so the {tenantDomain} placeholder stays intact in git.
-SERVE_JSON="config/serve.json"
-SERVE_ORIG=$(cat "${SERVE_JSON}")
-restore_serve() {
-  printf '%s\n' "${SERVE_ORIG}" > "${SERVE_JSON}"
-  git update-index --no-skip-worktree "${SERVE_JSON}" 2>/dev/null || true
-}
-trap restore_serve EXIT INT TERM
-TMP=$(mktemp)
-sed "s|{tenantDomain}|${SPFX_TENANT}|g" "${SERVE_JSON}" > "${TMP}"
-cp "${TMP}" "${SERVE_JSON}"
-rm "${TMP}"
-# Hide the patched file from git so accidental staging is impossible.
-git update-index --skip-worktree "${SERVE_JSON}" 2>/dev/null || true
-
-echo "Tenant: ${SPFX_TENANT}"
+echo "Tenant: ${SPFX_SERVE_TENANT_DOMAIN}"
 echo "Starting local development server..."
-echo "Hosted workbench: https://${SPFX_TENANT}/_layouts/15/workbench.aspx"
+echo "Hosted workbench: https://${SPFX_SERVE_TENANT_DOMAIN}/_layouts/15/workbench.aspx"
 echo "  → Accept the certificate at https://localhost:4321 first (once per browser)"
 echo ""
 echo "Press Ctrl+C to stop."

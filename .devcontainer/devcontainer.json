@@ -44,7 +44,15 @@
     // Pass the host GITHUB_TOKEN into the container so `gh` and the MCP server
     // authenticate automatically. In Codespaces this is set automatically.
     // Locally: export GITHUB_TOKEN=<your PAT> before opening the devcontainer.
-    "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}"
+    "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}",
+    // SPFx hosted workbench tenant domain — used by config/serve.json ({tenantdomain}
+    // placeholder) and dev-webpart.sh. Set once on your host OS (e.g. add
+    //   export SPFX_SERVE_TENANT_DOMAIN=contoso.sharepoint.com
+    // to ~/.bashrc or ~/.profile) and every container rebuild picks it up
+    // automatically. As a fallback, copy .env.example to .env and set the
+    // variable there — the script loads .env before starting the dev server.
+    // In Codespaces, add it as a Codespaces secret (repository scope).
+    "SPFX_SERVE_TENANT_DOMAIN": "${localEnv:SPFX_SERVE_TENANT_DOMAIN}"
   },
   "customizations": {
     "vscode": {

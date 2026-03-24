@@ -16,8 +16,7 @@ For a visual system overview, see [architecture-diagram.md](architecture-diagram
 ## Quick Start
 
 ```bash
-npm install                    # install dependencies
-cp .env.example .env           # fill in SPFX_TENANT=<your-tenant>.sharepoint.com
+./scripts/bootstrap.sh         # install deps + create .env (then set SPFX_SERVE_TENANT_DOMAIN in .env)
 ./scripts/dev-webpart.sh       # starts SPFx dev server with hot-reload
 ```
 
@@ -30,6 +29,8 @@ workbench URL printed on startup.
 
 | Script | Purpose |
 |---|---|
+| `./scripts/bootstrap.sh` | Install deps + create `.env` (run once after cloning) |
+| `./scripts/reset.sh` | Wipe build outputs + node_modules, then re-bootstrap |
 | `./scripts/dev-webpart.sh` | Start SPFx web part dev server |
 | `./scripts/dev-function.sh` | Start Azure Function locally |
 | `./scripts/test.sh` | Run tests |
@@ -64,7 +65,7 @@ Coverage output is written to `jest-output/coverage/`.
 
 ### Testing scenarios
 
-- **Hosted workbench as member:** `SPFX_TENANT` in `.env` +
+- **Hosted workbench as member:** `SPFX_SERVE_TENANT_DOMAIN` in `.env` (or set on host OS) +
   `./scripts/dev-webpart.sh`. Verifies the non-guest path.
 - **Hosted workbench as guest:** Requires a second M365 tenant where your
   account is a guest with sponsors assigned, API permissions consented, and
@@ -158,18 +159,11 @@ The VS Code task "npm watch (functions)" also provides this.
 ## Build from Source
 
 ```bash
-npm install        # install dependencies
-npm run build      # compile, test, bundle, and package
+./scripts/build.sh    # clean install + compile + test + bundle + package
 ```
 
 The packaged solution is written to
 `sharepoint/solution/guest-sponsor-info.sppkg`.
-
-For a CI-style clean build from scratch:
-
-```bash
-./scripts/build.sh    # runs npm ci first
-```
 
 ## Publishing a Release
 
