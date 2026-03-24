@@ -855,21 +855,9 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
             color="colorful"
           />
         </div>
-        {compact ? (
-          <div className={styles.cardTextGroup}>
-            <div className={styles.cardNameCompact}>{resolvedName}</div>
-            {showSponsorJobTitle && sponsor.jobTitle && (
-              <div className={styles.cardJobTitleCompact}>{sponsor.jobTitle}</div>
-            )}
-          </div>
-        ) : (
-          <>
-            <div className={styles.cardName}>{resolvedName}</div>
-            {showSponsorJobTitle && sponsor.jobTitle && (
-              <div className={styles.cardJobTitle}>{sponsor.jobTitle}</div>
-            )}
-          </>
-        )}
+        <div className={compact ? styles.cardNameCompact : styles.cardName}>
+          {resolvedName}
+        </div>
       </div>
 
       {/* ── Rich contact card (OverlayDrawer on mobile, Popover on desktop) ─── */}

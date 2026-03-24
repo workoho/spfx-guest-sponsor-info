@@ -97,23 +97,11 @@
   line-height: var(--lineHeightBase300, 20px);
   max-width: 100%;
 
-  // Wrap up to 2 lines; a third line is reserved for an optional job title row.
+  // Wrap up to 3 lines with trailing ellipsis.
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
-}
-
-.cardJobTitle {
-  font-size: 12px;
-  font-weight: 400;
-  text-align: center;
-  color: var(--colorNeutralForeground2, #616161);
-  line-height: var(--lineHeightBase200, 16px);
-  max-width: 100%;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
 }
 
 /* ─── Presence dot on card thumbnail ────────────────────────────────────── */
@@ -156,30 +144,11 @@
   flex-shrink: 0;
 }
 
-// Text column inside compact card: stacks name and optional job title vertically.
-.cardTextGroup {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  flex: 1;
-}
-
 .cardNameCompact {
   font-size: 14px;
   font-weight: 600;
   color: var(--colorNeutralForeground1, #242424);
   line-height: var(--lineHeightBase300, 20px);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.cardJobTitleCompact {
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--colorNeutralForeground2, #616161);
-  line-height: var(--lineHeightBase200, 16px);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
