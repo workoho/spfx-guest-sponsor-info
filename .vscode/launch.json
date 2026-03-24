@@ -14,10 +14,7 @@
         "webpack:///../../../../src/*": "${webRoot}/src/*",
         "webpack:///../../../../../src/*": "${webRoot}/src/*"
       },
-      "runtimeArgs": [
-        "--remote-debugging-port=9222",
-        "-incognito"
-      ]
+      "runtimeArgs": ["--remote-debugging-port=9222", "-incognito"]
     },
     {
       "name": "Attach to Node Functions",
@@ -27,9 +24,7 @@
       "port": 9229,
       "preLaunchTask": "func: host start",
       "sourceMaps": true,
-      "outFiles": [
-        "${workspaceFolder}/azure-function/dist/**/*.js"
-      ],
+      "outFiles": ["${workspaceFolder}/azure-function/dist/**/*.js"],
       "localRoot": "${workspaceFolder}/azure-function",
       "remoteRoot": "${workspaceFolder}/azure-function"
     }
