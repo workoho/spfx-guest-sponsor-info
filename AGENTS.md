@@ -149,6 +149,49 @@ After **every** code change:
 
 **Never push with lint errors or test failures.**
 
+## Shell Script Conventions
+
+All scripts in `scripts/*.sh` follow these rules. Before writing a new script, read
+`scripts/lint.sh` for the standard boilerplate (`set -euo pipefail`, `cd`, `source colors.sh`)
+and `scripts/set-version.sh` for the `maybe()` dry-run pattern.
+
+### Colour output
+
+Use the variables from `scripts/colors.sh` — never copy the detection block inline.
+
+| Variable | Meaning | Typical use |
+|---|---|---|
+| `C_GRN` | Green | `✓` success messages |
+| `C_RED` | Red | `✗` errors / fatal messages |
+| `C_YLW` | Yellow bold | `⚠` warnings, menu highlights |
+| `C_CYN` | Cyan | version numbers, file paths |
+| `C_BLD` | Bold | section headers |
+| `C_DIM` | Dim | secondary info, progress lines |
+| `C_RST` | Reset | always close a colour sequence |
+
+Colours are automatically suppressed when `$CI` is set, stdout is not a TTY,
+`$NO_COLOR` is set, or `$TERM` is `"dumb"`.
+
+### Comments
+
+Bash is not self-documenting. Comment non-obvious constructs, especially:
+
+- Parameter expansions: `${var%%[-+]*}` → explain what it strips and why
+- Conditional flags: explain what a `git` or `npm` flag does if it is not obvious
+- Decision points: why a fallback exists, what the edge case is
+
+### Validation
+
+After **every** shell script change:
+
+```bash
+npm run lint:sh   # shellcheck -x (SC1091 aware; follows sourced files)
+npm run fix       # shfmt auto-format (2-space indent, case-indent)
+```
+
+Do not suppress shellcheck warnings with `# shellcheck disable` unless you add
+a comment directly above it explaining the specific reason.
+
 ## Stack Constraints (Do Not Violate)
 
 - **SPFx version** — Do not upgrade; use `scripts/upgrade-spfx.sh` when explicitly requested
@@ -156,28 +199,16 @@ After **every** code change:
 - **React version** — Pinned at 17.0.1; do not change
 - **@microsoft/** packages — Managed as coordinated set; do not individually update
 
-## Fluent UI v9 Rules (Enforced — Do Not Use v8 APIs)
+## Fluent UI v9
 
-This project has been migrated to **Fluent UI v9** (`@fluentui/react-components`).
-All new code **must** use v9 APIs. Do not import from `@fluentui/react` (v8).
+This project uses **Fluent UI v9** (`@fluentui/react-components`) exclusively.
+For import patterns, check the existing components — `GuestSponsorInfo.tsx` and
+`SponsorCard.tsx` are the authoritative reference.
 
-### Allowed imports
+### Styles
 
-```typescript
-// ✅ Fluent UI v9 components
-import { FluentProvider, MessageBar, MessageBarBody, Avatar,
-         PresenceBadge, Popover, PopoverTrigger, PopoverSurface,
-         OverlayDrawer, DrawerHeader, DrawerHeaderTitle, DrawerBody,
-         Button, Tooltip, Link, makeStyles, mergeClasses } from '@fluentui/react-components';
-
-// ✅ Fluent UI v9 icons (SVG — no icon font needed)
-import { ChatRegular, MailRegular, CallRegular, CopyRegular,
-         CheckmarkRegular, PhoneRegular, BuildingRegular,
-         LocationRegular, OrganizationRegular, DismissRegular } from '@fluentui/react-icons';
-
-// ✅ Theme bridge (SPFx → v9)
-import { createV9Theme } from '@fluentui/react-migration-v8-v9';
-```
+Use CSS Modules (`.module.scss`) for all styling — **not** `makeStyles` / Griffel.
+`mergeClasses` from `@fluentui/react-components` is fine for combining class names.
 
 ### Forbidden patterns
 
@@ -187,8 +218,8 @@ import { Persona, Callout, Panel, ActionButton, IconButton,
          Icon, TooltipHost, MessageBar } from '@fluentui/react';
 // ❌ v8 icon font
 initializeIcons();
-// ❌ v8 inline style overrides
-const styles: IButtonStyles = { root: { ... } };
+// ❌ Griffel (use CSS Modules instead)
+const useStyles = makeStyles({ ... });
 ```
 
 ### Key component equivalents
@@ -204,7 +235,7 @@ const styles: IButtonStyles = { root: { ... } };
 | `TooltipHost` | `Tooltip` with `relationship="label"` |
 | `Link` | `Link` from `@fluentui/react-components` |
 | `MessageBar` + `MessageBarType` | `MessageBar` + `MessageBarBody` with `intent` prop |
-| `IButtonStyles` | `makeStyles(…)` (Griffel) |
+| `IButtonStyles` | CSS Modules (`.module.scss`) — not `makeStyles` |
 
 ### Theme integration
 
@@ -217,8 +248,6 @@ import { createV9Theme } from '@fluentui/react-migration-v8-v9';
 const v9Theme = theme ? createV9Theme(theme) : undefined;
 return <FluentProvider theme={v9Theme}>{children}</FluentProvider>;
 ```
-
-See `MIGRATION.md` for the full migration plan and component mapping table.
 
 ## Key Files for Reference
 

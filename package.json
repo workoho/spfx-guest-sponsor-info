@@ -28,7 +28,7 @@
     "lint:ts": "eslint src --ext .ts,.tsx",
     "lint:ts:func": "eslint azure-function/src --ext .ts",
     "lint:scss": "stylelint \"src/**/*.scss\"",
-    "lint:md": "markdownlint-cli2 --config .markdownlint.json README.md AGENTS.md MIGRATION.md azure-function/README.md docs/**/*.md .github/*.md .github/**/*.md",
+    "lint:md": "markdownlint-cli2 --config .markdownlint.json README.md AGENTS.md azure-function/README.md docs/**/*.md .github/*.md .github/**/*.md",
     "lint:bicep": "az bicep lint --file azure-function/infra/main.bicep",
     "lint:sh": "shellcheck -x scripts/*.sh azure-function/infra/hooks/*.sh",
     "lint:loc": "node --check src/webparts/guestSponsorInfo/loc/da-dk.js src/webparts/guestSponsorInfo/loc/de-de.js src/webparts/guestSponsorInfo/loc/en-us.js src/webparts/guestSponsorInfo/loc/es-es.js src/webparts/guestSponsorInfo/loc/fi-fi.js src/webparts/guestSponsorInfo/loc/fr-fr.js src/webparts/guestSponsorInfo/loc/it-it.js src/webparts/guestSponsorInfo/loc/ja-jp.js src/webparts/guestSponsorInfo/loc/nb-no.js src/webparts/guestSponsorInfo/loc/nl-nl.js src/webparts/guestSponsorInfo/loc/pl-pl.js src/webparts/guestSponsorInfo/loc/pt-br.js src/webparts/guestSponsorInfo/loc/sv-se.js src/webparts/guestSponsorInfo/loc/zh-cn.js",

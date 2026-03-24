@@ -73,6 +73,18 @@ The release workflow is documented in `docs/development.md` → "Publishing a Re
 - Locale strings follow the SPFx AMD `define()` pattern in `loc/*.js`; add new keys to all five locale files
   (en-us, de-de, fr-fr, es-es, it-it).
 
+## Shell scripts (`scripts/*.sh`)
+
+- Every script must start with `set -euo pipefail` and
+  `cd "$(dirname "${BASH_SOURCE[0]}")/.."`.
+- Source `scripts/colors.sh` for all colour output — never copy the colour-detection
+  block inline. Colour variables: `C_RED` `C_GRN` `C_YLW` `C_CYN` `C_BLD` `C_DIM` `C_RST`.
+- After every change run `npm run lint:sh` (`shellcheck -x`). Fix all warnings — do not
+  suppress them with `# shellcheck disable` without a comment explaining why.
+- Bash parameter expansions and non-obvious constructs must have an inline comment.
+- Scripts that perform side effects (file writes, git ops) should support a dry-run mode
+  via a `maybe()` helper that prints `[dry-run] <cmd>` instead of executing.
+
 ## Key files
 
 - `src/webparts/guestSponsorInfo/services/SponsorService.ts` — all Graph logic
