@@ -157,8 +157,21 @@ The devcontainer ships a pre-configured
 [GitHub MCP server](https://github.com/modelcontextprotocol/servers/tree/main/src/github).
 It gives AI coding agents (Copilot, Claude, etc.) structured access to the
 GitHub API — issues, PRs, Actions runs, and releases — as first-class tools,
-without the agent having to parse `gh` CLI output. Requires `GITHUB_TOKEN` to
-be set (see `containerEnv` in `.devcontainer/devcontainer.json`).
+without the agent having to parse `gh` CLI output.
+
+Both the MCP server and the `gh` CLI authenticate via `GITHUB_TOKEN`. Set it
+once on your host machine and every container rebuild picks it up automatically:
+
+```bash
+# add to ~/.bashrc or ~/.zshrc on your host OS
+export GITHUB_TOKEN=ghp_...   # a GitHub Personal Access Token (classic or fine-grained)
+```
+
+In **GitHub Codespaces** the token is injected automatically — no action needed.
+
+As a short-lived alternative you can run `gh auth login` inside a running
+container, but credentials are stored in the container filesystem and will be
+lost on the next rebuild.
 
 ---
 
