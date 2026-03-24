@@ -168,6 +168,42 @@ const SponsorGridSkeleton: React.FC<{ compact: boolean }> = ({ compact }) => (
   </ul>
 );
 
+/**
+ * Builds the two visible sponsor sets, respecting both the configured cap and
+ * the original Entra ordering. Only active accounts count toward the cap;
+ * unavailable accounts (disabled / deleted) are shown alongside the active
+ * ones in their original position so the guest can always see who their
+ * sponsors are, while active accounts "nachrücken" to fill the visible slots.
+ *
+ * Falls back to independent slice() when sponsorOrder is empty (e.g. older
+ * Function versions or the direct Graph path without ordering info).
+ */
+function buildVisibleSponsorSets(
+  activeSponsors: ISponsor[],
+  unavailableSponsors: ISponsor[],
+  sponsorOrder: string[],
+  maxSponsorCount: number
+): { visibleActive: ISponsor[]; visibleUnavailable: ISponsor[] } {
+  if (sponsorOrder.length === 0) {
+    return {
+      visibleActive: activeSponsors.slice(0, maxSponsorCount),
+      visibleUnavailable: unavailableSponsors.slice(0, maxSponsorCount),
+    };
+  }
+  const activeMap = new Map(activeSponsors.map(s => [s.id, s]));
+  const unavailableMap = new Map(unavailableSponsors.map(s => [s.id, s]));
+  const visibleActive: ISponsor[] = [];
+  const visibleUnavailable: ISponsor[] = [];
+  for (const id of sponsorOrder) {
+    if (visibleActive.length >= maxSponsorCount) break;
+    const active = activeMap.get(id);
+    if (active) { visibleActive.push(active); continue; }
+    const unavail = unavailableMap.get(id);
+    if (unavail) { visibleUnavailable.push(unavail); }
+  }
+  return { visibleActive, visibleUnavailable };
+}
+
 /** Maximum number of transient-error retries before giving up and showing an error. */
 const MAX_RETRIES = 3;
 
@@ -179,6 +215,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   title,
   mockMode,
   mockSponsorCount,
+  maxSponsorCount,
   mockSimulatedHint,
   showTeamsAccessPendingHint,
   showVersionMismatchHint,
@@ -236,7 +273,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   const isEditMode = displayMode === DisplayMode.Edit;
 
   const [sponsors, setSponsors] = React.useState<ISponsor[]>([]);
-  const [allUnavailable, setAllUnavailable] = React.useState(false);
+  const [sponsorOrder, setSponsorOrder] = React.useState<string[]>([]);
   const [unavailableSponsors, setUnavailableSponsors] = React.useState<ISponsor[]>([]);
   // Start in loading state immediately for guests and demo mode so the shimmer
   // is visible on the very first render — before the first useEffect tick.
@@ -289,16 +326,16 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
       // "No sponsors found" — no sponsors are assigned, so no tiles appear.
       if (mockSimulatedHint === 'noSponsors') {
         setSponsors([]);
-        setAllUnavailable(false);
+        setSponsorOrder([]);
         setUnavailableSponsors([]);
       } else if (mockSimulatedHint === 'sponsorUnavailable') {
         // All sponsors are unavailable — show their tiles read-only.
         setSponsors([]);
-        setAllUnavailable(true);
+        setSponsorOrder(mockSponsors.map(s => s.id));
         setUnavailableSponsors(mockSponsors);
       } else {
         setSponsors(mockSponsors);
-        setAllUnavailable(false);
+        setSponsorOrder(mockSponsors.map(s => s.id));
         setUnavailableSponsors([]);
       }
       setGuestHasTeamsAccess(mockSimulatedHint === 'teamsAccessPending' ? false : undefined);
@@ -331,8 +368,8 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
           const active = result.activeSponsors.map(({ photoUrl: _photoUrl, managerPhotoUrl: _managerPhotoUrl, ...s }) => s);
           setSponsors(active);
           sponsorIdsRef.current = active.map(s => s.id);
+          setSponsorOrder(result.sponsorOrder ?? active.map(s => s.id));
           // All unavailable = sponsors were assigned but every account is disabled/deleted.
-          setAllUnavailable(active.length === 0 && result.unavailableCount > 0);
           setUnavailableSponsors(result.unavailableSponsors ?? []);
           setGuestHasTeamsAccess(result.guestHasTeamsAccess);
           setPresenceToken(result.presenceToken);
@@ -493,7 +530,8 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   // Edit mode: always show a live preview using mock sponsor cards so page authors
   // can see the real layout and adjust display settings before going live.
   if (isEditMode) {
-    const mockCompact = cardLayout === 'compact' || (cardLayout === 'auto' && mockSponsors.length >= cardLayoutAutoThreshold);
+    const visibleMockSponsors = mockSponsors.slice(0, maxSponsorCount);
+    const mockCompact = cardLayout === 'compact' || (cardLayout === 'auto' && visibleMockSponsors.length >= cardLayoutAutoThreshold);
     // Hide the sponsor list only when simulating "No sponsors found" — in that
     // state no sponsors are assigned at all so no tiles would appear. For
     // "Sponsor not available" the tiles ARE shown (read-only) so the editor can
@@ -516,7 +554,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
           {title && <h2 className={styles.title}>{title}</h2>}
           {showMockCards && (
           <SponsorList
-            sponsors={mockSponsors}
+            sponsors={visibleMockSponsors}
             hostTenantId={hostTenantId}
             compact={mockCompact}
             showBusinessPhones={showBusinessPhones}
@@ -597,23 +635,28 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   }
 
   // View mode + guest user: render the sponsor list.
-  // When all sponsors are unavailable but their profile data is available, we still
-  // show their tiles (read-only, no popup) so the guest can see who their sponsors are,
-  // even if those accounts are currently disabled or deleted.
-  //
+  // When some sponsors are unavailable we still show their tiles (read-only, no popup)
+  // so the guest can see who their sponsors are. Active accounts "nachrücken" to fill
+  // the visible slots: only active accounts count toward the maxSponsorCount cap.
+  const { visibleActive, visibleUnavailable } = buildVisibleSponsorSets(
+    sponsors, unavailableSponsors, sponsorOrder, maxSponsorCount
+  );
+  const someUnavailable = visibleUnavailable.length > 0;
+  const noActiveSponsor = visibleActive.length === 0;
+
   // When nothing meaningful remains to show beyond the title (no tiles, no banners),
   // hide the entire web part so the guest never sees a lone heading.
   const hasVisibleContent =
     loading ||
     !!error ||
-    sponsors.length > 0 ||
-    (allUnavailable && unavailableSponsors.length > 0) ||
-    (allUnavailable && showSponsorUnavailableHint) ||
-    (!allUnavailable && sponsors.length === 0 && showNoSponsorsHint) ||
+    visibleActive.length > 0 ||
+    someUnavailable ||
+    (noActiveSponsor && someUnavailable && showSponsorUnavailableHint) ||
+    (noActiveSponsor && !someUnavailable && showNoSponsorsHint) ||
     (guestHasTeamsAccess === false && showTeamsAccessPendingHint) ||
     (versionMismatch && showVersionMismatchHint);
   if (!hasVisibleContent) return null;
-  const noResults = !loading && !error && sponsors.length === 0 && unavailableSponsors.length === 0;
+  const noResults = !loading && !error && visibleActive.length === 0 && !someUnavailable;
   const contentClassNames = (loading || error || noResults) ? `${styles.webPart} ${styles.webPartContent}` : styles.webPart;
   return (
     <FluentProvider theme={v9Theme} id={`${fluentProviderId}-view`}>
@@ -636,11 +679,11 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
             </MessageBarBody>
           </MessageBar>
         )}
-        {!loading && !error && sponsors.length > 0 && (
+        {!loading && !error && visibleActive.length > 0 && (
           <SponsorList
-            sponsors={sponsors}
+            sponsors={visibleActive}
             hostTenantId={hostTenantId}
-            compact={cardLayout === 'compact' || (cardLayout === 'auto' && sponsors.length >= cardLayoutAutoThreshold)}
+            compact={cardLayout === 'compact' || (cardLayout === 'auto' && visibleActive.length >= cardLayoutAutoThreshold)}
             showBusinessPhones={showBusinessPhones}
             showMobilePhone={showMobilePhone}
             showWorkLocation={showWorkLocation}
@@ -667,12 +710,13 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
         )}
         {/* Unavailable sponsors: show tiles read-only (no hover popup) so the guest
             can still see who their sponsors are, even if the accounts are currently
-            disabled or deleted. */}
-        {!loading && !error && allUnavailable && unavailableSponsors.length > 0 && (
+            disabled or deleted. Shown whenever there are unavailable sponsors in the
+            visible set — not only when all sponsors are unavailable. */}
+        {!loading && !error && someUnavailable && (
           <SponsorList
-            sponsors={unavailableSponsors}
+            sponsors={visibleUnavailable}
             hostTenantId={hostTenantId}
-            compact={cardLayout === 'compact' || (cardLayout === 'auto' && unavailableSponsors.length >= cardLayoutAutoThreshold)}
+            compact={cardLayout === 'compact' || (cardLayout === 'auto' && visibleUnavailable.length >= cardLayoutAutoThreshold)}
             showBusinessPhones={showBusinessPhones}
             showMobilePhone={showMobilePhone}
             showWorkLocation={showWorkLocation}
@@ -697,11 +741,12 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
             v9Theme={v9Theme}
           />
         )}
-        {/* "Sponsor not available" notice — rendered below the tiles (if any). */}
-        {!loading && !error && allUnavailable && showSponsorUnavailableHint && (
+        {/* "Sponsor not available" notice — rendered below the tiles (if any).
+            Only shown when no active sponsor is visible in the current set. */}
+        {!loading && !error && noActiveSponsor && someUnavailable && showSponsorUnavailableHint && (
           <MessageBar
             intent="warning"
-            className={unavailableSponsors.length > 0 ? styles.teamsAccessBanner : undefined}
+            className={styles.teamsAccessBanner}
           >
             <MessageBarBody>
               <b>{strings.SponsorUnavailableTitle}</b><br />
@@ -709,7 +754,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
             </MessageBarBody>
           </MessageBar>
         )}
-        {!loading && !error && sponsors.length === 0 && !allUnavailable && showNoSponsorsHint && (
+        {!loading && !error && noActiveSponsor && !someUnavailable && showNoSponsorsHint && (
           <MessageBar intent="info">
             <MessageBarBody>
               <b>{strings.NoSponsorsTitle}</b><br />

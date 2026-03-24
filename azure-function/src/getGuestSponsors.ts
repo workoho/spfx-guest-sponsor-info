@@ -463,6 +463,13 @@ interface ISponsorsResult {
    * read-only tiles alongside the "sponsor not available" notice.
    */
   unavailableSponsors?: ISponsor[];
+  /**
+   * Entra object IDs of all sponsors in the original Graph response order.
+   * Used by the client to walk the list in priority order and let active
+   * accounts "nachrücken" when higher-priority sponsors are unavailable,
+   * while still displaying unavailable accounts alongside the active ones.
+   */
+  sponsorOrder?: string[];
 }
 
 /**
@@ -1245,6 +1252,7 @@ export async function getGuestSponsors(
     // else → undefined: neither permission granted, client falls open.
 
     const result: ISponsorsResult = { activeSponsors, unavailableCount };
+    result.sponsorOrder = sponsorIds;
     if (unavailableSponsors.length > 0) result.unavailableSponsors = unavailableSponsors;
     if (guestHasTeamsAccess !== undefined) result.guestHasTeamsAccess = guestHasTeamsAccess;
 

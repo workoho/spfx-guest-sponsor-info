@@ -43,6 +43,13 @@ export interface ISponsorsResult {
    * the "sponsor not available" notice.
    */
   unavailableSponsors?: ISponsor[];
+  /**
+   * Entra object IDs of all sponsors in the original Graph response order.
+   * Used by the client to walk the list in priority order and let active
+   * accounts "nachrücken" when higher-priority sponsors are unavailable,
+   * while still displaying unavailable accounts alongside the active ones.
+   */
+  sponsorOrder?: string[];
 }
 
 interface IPresenceSnapshot {
@@ -225,6 +232,7 @@ export async function getSponsors(client: MSGraphClientV3): Promise<ISponsorsRes
   return {
     activeSponsors,
     unavailableCount,
+    sponsorOrder: candidates.map(s => s.id),
     ...(unavailableSponsors.length > 0 ? { unavailableSponsors } : {}),
   };
 }
