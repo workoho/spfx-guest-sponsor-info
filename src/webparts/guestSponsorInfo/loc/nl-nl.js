@@ -20,6 +20,7 @@ define([], function() {
     "MockSimulatedHintVersionMismatchOption": "Update beschikbaar",
     "MockSimulatedHintSponsorUnavailableOption": "Sponsor niet beschikbaar",
     "MockSimulatedHintNoSponsorsOption": "Geen sponsoren gevonden",
+    "MaxSponsorCountFieldLabel": "Zichtbare sponsors (live pagina)",
     "MockSponsorCountFieldLabel": "Aantal demosponsors",
 
     "PresenceAvailable": "Beschikbaar",

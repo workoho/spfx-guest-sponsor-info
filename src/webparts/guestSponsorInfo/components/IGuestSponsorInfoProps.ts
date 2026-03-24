@@ -23,6 +23,8 @@ export interface IGuestSponsorInfoProps {
    * making live Graph calls.
    */
   mockMode: boolean;
+  /** Maximum number of sponsors to display on the live page (1–5). Default: 2. */
+  maxSponsorCount: number;
   /** Number of mock sponsor cards to display in demo mode (1–5). Default: 2. */
   mockSponsorCount: number;
   /** Notification to simulate in demo mode. Default: 'none'. */

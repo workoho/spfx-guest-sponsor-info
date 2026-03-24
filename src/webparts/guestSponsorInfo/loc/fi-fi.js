@@ -20,6 +20,7 @@ define([], function() {
     "MockSimulatedHintVersionMismatchOption": "Päivitys saatavilla",
     "MockSimulatedHintSponsorUnavailableOption": "Sponsori ei ole käytettävissä",
     "MockSimulatedHintNoSponsorsOption": "Sponsoreita ei löydy",
+    "MaxSponsorCountFieldLabel": "Näkyvien sponsoreiden määrä (live-sivu)",
     "MockSponsorCountFieldLabel": "Demosponsorien määrä",
 
     "PresenceAvailable": "Saatavilla",

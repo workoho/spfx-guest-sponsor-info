@@ -20,6 +20,7 @@ define([], function() {
     "MockSimulatedHintVersionMismatchOption": "有可用更新",
     "MockSimulatedHintSponsorUnavailableOption": "赞助商不可用",
     "MockSimulatedHintNoSponsorsOption": "未找到赞助商",
+    "MaxSponsorCountFieldLabel": "可见赞助人数（公开页面）",
     "MockSponsorCountFieldLabel": "演示赞助商数量",
 
     "PresenceAvailable": "有空",

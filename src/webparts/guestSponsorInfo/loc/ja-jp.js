@@ -20,6 +20,7 @@ define([], function() {
     "MockSimulatedHintVersionMismatchOption": "更新が利用可能です",
     "MockSimulatedHintSponsorUnavailableOption": "スポンサーが利用できません",
     "MockSimulatedHintNoSponsorsOption": "スポンサーが見つかりません",
+    "MaxSponsorCountFieldLabel": "表示するスポンサー数（公開ページ）",
     "MockSponsorCountFieldLabel": "デモスポンサーの人数",
 
     "PresenceAvailable": "連絡可能",

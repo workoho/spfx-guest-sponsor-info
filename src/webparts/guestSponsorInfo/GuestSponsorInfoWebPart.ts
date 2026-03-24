@@ -32,6 +32,8 @@ export interface IGuestSponsorInfoWebPartProps {
    * Replaces the former mockTeamsUnavailable boolean with a dropdown selection.
    * Default: 'none'.
    */
+  /** Maximum number of sponsors shown to visitors on the live page (1–5). Default: 2. */
+  maxSponsorCount: number;
   /** Number of mock sponsor cards to show in demo mode (1–5). Default: 2. */
   mockSponsorCount: number;
   mockSimulatedHint: 'none' | 'teamsAccessPending' | 'versionMismatch' | 'sponsorUnavailable' | 'noSponsors';
@@ -107,6 +109,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
         graphClient: this._graphClient, // undefined until onInit resolves
         title: this.properties.title,
         mockMode: this.properties.mockMode ?? false,
+        maxSponsorCount: this.properties.maxSponsorCount ?? 2,
         mockSponsorCount: this.properties.mockSponsorCount ?? 2,
         mockSimulatedHint: this.properties.mockSimulatedHint ?? 'none',
         showTeamsAccessPendingHint: this.properties.showTeamsAccessPendingHint ?? true,
@@ -447,6 +450,14 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
               groupFields: [
                 PropertyPaneTextField('title', {
                   label: strings.TitleFieldLabel
+                }),
+                PropertyPaneHorizontalRule(),
+                PropertyPaneSlider('maxSponsorCount', {
+                  label: strings.MaxSponsorCountFieldLabel,
+                  min: 1,
+                  max: 5,
+                  step: 1,
+                  value: this.properties.maxSponsorCount ?? 2,
                 }),
                 PropertyPaneHorizontalRule(),
                 PropertyPaneSlider('mockSponsorCount', {

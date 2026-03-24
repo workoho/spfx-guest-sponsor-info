@@ -20,6 +20,7 @@ declare interface IGuestSponsorInfoWebPartStrings {
   MockSimulatedHintSponsorUnavailableOption: string;
   MockSimulatedHintNoSponsorsOption: string;
   /** Slider label for the demo sponsor count. */
+  MaxSponsorCountFieldLabel: string;
   MockSponsorCountFieldLabel: string;
 
   // Display toggles
