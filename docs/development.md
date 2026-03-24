@@ -50,8 +50,8 @@ workbench URL printed on startup.
 | `npm test` | Compile and run unit tests |
 | `npm start` | Start dev server (hot-reload, hosted workbench) |
 | `npm run clean` | Delete all build output |
-| `npm run lint` | Run all linters (TypeScript · SCSS · Markdown) |
-| `npm run fix` | Auto-fix formatting issues |
+| `npm run lint` | Run all linters (TypeScript · SCSS · Markdown · JSON · shell) |
+| `npm run fix` | Auto-fix all formatting issues (ESLint · Stylelint · Prettier · shfmt · Markdownlint) |
 
 ## Testing
 

@@ -10,7 +10,8 @@ Authoritative versions are in `package.json` (`engines`, `dependencies`, `devDep
 Always validate your changes before considering a task done:
 
 1. **Lint** — always run `npm run lint` after every change (fast, catches most issues early).
-   Per-type: `npm run lint:ts` · `npm run lint:scss` · `npm run lint:md` · `npm run lint:loc`
+   Per-type: `npm run lint:ts` · `npm run lint:scss` · `npm run lint:md` · `npm run lint:loc` · `npm run lint:sh`
+   Auto-fix: `npm run fix` (runs ESLint · Stylelint · Prettier for JSON · shfmt for shell · Markdownlint)
 2. **Test** — run `npm test` when you changed logic, components, or services.
    Skip for pure documentation, config, or style-only changes.
 3. **Build** — run `npm run build` only when the packaging artifact (`.sppkg`) is relevant,

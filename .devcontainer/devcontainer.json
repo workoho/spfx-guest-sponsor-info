@@ -36,9 +36,7 @@
   },
   "remoteUser": "vscode",
   "postCreateCommand": "/bin/bash .devcontainer/post-create.sh",
-  "forwardPorts": [
-    4321
-  ],
+  "forwardPorts": [4321],
   "containerEnv": {
     "npm_config_save_exact": "true",
     // Pass the host GITHUB_TOKEN into the container so `gh` and the MCP server
@@ -68,10 +66,7 @@
           "github": {
             "type": "stdio",
             "command": "npx",
-            "args": [
-              "-y",
-              "@modelcontextprotocol/server-github@latest"
-            ],
+            "args": ["-y", "@modelcontextprotocol/server-github@latest"],
             "env": {
               "GITHUB_PERSONAL_ACCESS_TOKEN": "${localEnv:GITHUB_TOKEN}"
             }
@@ -84,6 +79,7 @@
         "dbaeumer.vscode-eslint",
         "EditorConfig.EditorConfig",
         "esbenp.prettier-vscode",
+        "foxundermoon.shell-format",
         "GitHub.copilot-chat",
         "github.vscode-github-actions",
         "GitHub.vscode-pull-request-github",
@@ -98,7 +94,9 @@
         "openai.chatgpt",
         "SharePoint.deployToSPOnline",
         "stylelint.vscode-stylelint",
-        "vivaxy.vscode-conventional-commits"
+        "usernamehw.errorlens",
+        "vivaxy.vscode-conventional-commits",
+        "eamodio.gitlens"
       ]
     }
   }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Auto-fix all lint issues (TypeScript/ESLint, SCSS, Markdown) for both
+# Auto-fix all lint issues (TypeScript/ESLint, SCSS, Markdown, JSON, shell) for both
 # the SPFx web part and the Azure Function.
 #
 # Usage:
@@ -18,23 +18,33 @@ set -euo pipefail
 # Always run from the repository root so npm scripts resolve correctly.
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-echo "[ 1/4 ] ESLint --fix (TypeScript — web part)..."
+echo "[ 1/6 ] ESLint --fix (TypeScript — web part)..."
 npm run fix:ts
 echo "  ✓ done"
 
 echo ""
-echo "[ 2/4 ] ESLint --fix (TypeScript — Azure Function)..."
+echo "[ 2/6 ] ESLint --fix (TypeScript — Azure Function)..."
 npm run fix:ts:func
 echo "  ✓ done"
 
 echo ""
-echo "[ 3/4 ] Stylelint --fix (SCSS)..."
+echo "[ 3/6 ] Stylelint --fix (SCSS)..."
 npm run fix:scss
 echo "  ✓ done"
 
 echo ""
-echo "[ 4/4 ] Markdownlint --fix (Docs)..."
+echo "[ 4/6 ] Markdownlint --fix (Docs)..."
 npm run fix:md
+echo "  ✓ done"
+
+echo ""
+echo "[ 5/6 ] Prettier --write (JSON/JSONC)..."
+npm run fix:json
+echo "  ✓ done"
+
+echo ""
+echo "[ 6/6 ] shfmt --write (shell scripts)..."
+npm run fix:sh
 echo "  ✓ done"
 
 echo ""

@@ -49,6 +49,16 @@ npm run prepare
 # to the canonical value ensures git hooks are always active in the container.
 git config core.hooksPath .husky/_
 
+# Configure delta as the git diff pager for syntax-highlighted diffs.
+# Side-by-side mode is off by default (too wide for most terminals) but can
+# be toggled with `delta --side-by-side` or by setting GIT_PAGER at runtime.
+if command -v delta &>/dev/null; then
+  git config --global core.pager delta
+  git config --global interactive.diffFilter "delta --color-only"
+  git config --global delta.navigate true
+  git config --global delta.line-numbers true
+fi
+
 # Install/upgrade the Bicep CLI through the Azure CLI.
 # 'az bicep install' is idempotent and always fetches the latest release,
 # so the version is up to date on every container rebuild — no stale binary

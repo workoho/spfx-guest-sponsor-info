@@ -1,0 +1,28 @@
+# Ignore generated / build output
+lib/
+lib-amd/
+lib-commonjs/
+temp/
+release/
+dist/
+node_modules/
+.rush/
+
+# Lockfiles — reformatting these creates noise in diffs
+package-lock.json
+azure-function/package-lock.json
+
+# TypeScript and SCSS are handled by ESLint and Stylelint respectively
+**/*.ts
+**/*.tsx
+**/*.scss
+
+# Markdown is handled by markdownlint
+**/*.md
+
+# Shell scripts are handled by shfmt
+**/*.sh
+
+# SPFx generated type stubs
+**/*.scss.ts
+**/*.module.scss.d.ts
