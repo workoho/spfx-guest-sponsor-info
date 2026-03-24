@@ -437,6 +437,51 @@ a corresponding update to the `extract()` expression in `monitoring.bicep`.
 API errors (network timeouts, HTTP 404, rate-limit responses) are logged at info level
 only and do not fail the invocation or cause retries.
 
+The timer always records the fetched GitHub version in a shared in-memory variable
+(`releaseState.ts`). The request handler reads this cache to enrich version-mismatch
+traces without making an additional GitHub API call.
+
+### Request-Time Version-Mismatch Logging
+
+The web part sends its own version as `X-Client-Version` on every API request.
+When the function detects that this differs from its own version it emits a structured
+WARNING — but **throttled to once per hour per function instance** to avoid flooding
+Application Insights when many guests are active simultaneously. One trace per hour
+per instance is sufficient for KQL alert windows of ≥ 2 h.
+
+By the time the first mismatch trace is written, the timer (`runOnStartup: true`) has
+almost always already completed its GitHub check and populated the in-memory cache.
+The request handler cross-references the cached GitHub version to emit the most
+specific token it can:
+
+| Token | Condition | Meaning |
+|---|---|---|
+| `[WEBPART_UPDATE_AVAILABLE]` | function = GitHub latest, web part < latest | S3: only the web part is outdated |
+| `[FUNCTION_UPDATE_AVAILABLE]` | web part = GitHub latest, function < latest | S4: only the function is outdated |
+| `[VERSION_MISMATCH]` | GitHub cache empty, or both behind latest | Mismatch with `olderComponent` hint |
+
+**Trace format:**
+
+```text
+[WEBPART_UPDATE_AVAILABLE] webPartVersion=X functionVersion=Y latestVersion=Y
+[FUNCTION_UPDATE_AVAILABLE] functionVersion=X webPartVersion=Y latestVersion=Y
+[VERSION_MISMATCH] functionVersion=X webPartVersion=Y olderComponent=webpart|function [latestVersion=Y]
+```
+
+`latestVersion` is omitted from `[VERSION_MISMATCH]` only in the rare cold-start window
+between instance launch and the first completed timer run (typically < 10 s).
+
+**Hierarchy of severity (informational, highest to lowest):**
+
+1. `[VERSION_MISMATCH]` / `[WEBPART_UPDATE_AVAILABLE]` / `[FUNCTION_UPDATE_AVAILABLE]` —
+   the two running components are incompatible *right now*; the admin knows which to update.
+2. `[NEW_RELEASE_AVAILABLE]` / `[WEBPART_UPDATE_AVAILABLE]` / `[FUNCTION_UPDATE_AVAILABLE]` —
+   a newer GitHub release exists but nothing is broken yet.
+
+These tokens are not currently backed by dedicated KQL alert rules (no Bicep resource).
+They are visible in Application Insights logs and can be used for ad-hoc KQL queries or
+as the basis for future alert rules if needed.
+
 ### Azure Monitor KQL Alert Rule (New-Release Notification)
 
 The Bicep module `monitoring.bicep` provisions an optional
