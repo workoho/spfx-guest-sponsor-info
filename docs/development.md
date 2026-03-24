@@ -25,6 +25,36 @@ SharePoint Online tenant. Accept the certificate warning at
 `https://localhost:4321` once per browser session, then open the hosted
 workbench URL printed on startup.
 
+### First-session checklist (devcontainer)
+
+A few things only you can set up — the rest is automated by `post-create.sh`.
+
+**Before building the container — set on your host OS once:**
+
+```bash
+# ~/.bashrc or ~/.zshrc on the host machine
+export GITHUB_TOKEN=ghp_...                           # GitHub PAT — used by gh and the MCP server
+export SPFX_SERVE_TENANT_DOMAIN=contoso.sharepoint.com  # your SPO tenant domain
+git config --global user.name  "Your Name"            # needed for git commits
+git config --global user.email "you@example.com"
+```
+
+These are injected into the container at build time. If you change them
+afterwards, rebuild the container ("Dev Containers: Rebuild Container").
+In **GitHub Codespaces** all four are set automatically — skip this step.
+
+**After the container starts:**
+
+1. Run `./scripts/bootstrap.sh` — creates `.env` from `.env.example`.
+   Skip if you already set `SPFX_SERVE_TENANT_DOMAIN` on the host (it is
+   picked up automatically via `containerEnv`).
+2. Run `az login` — only needed if you intend to work on the Azure Function.
+   Not required for web part development.
+
+`post-create.sh` handles everything else automatically: `npm install`,
+git hooks (husky), git identity, `git-cliff`, `delta`, and the Bicep CLI.
+Check the terminal output during container start for any warnings.
+
 ## Development Environment
 
 A complete inventory of the toolchain — what is strictly required, what is
