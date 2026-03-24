@@ -186,6 +186,57 @@ Guest detection uses two signals in combination:
 
 ---
 
+## Sponsor priority and automatic delegation
+
+When a guest has multiple sponsors, the order in which they are stored in Entra
+matters. Directory governance tools that manage sponsor assignments — such as
+[EasyLife 365 Collaboration](https://www.easylife365.cloud) — store sponsors in
+explicit priority order:
+
+1. **Primary sponsor** — the first point of contact; typically the internal
+   employee who initiated the guest invitation or owns the business relationship
+2. **Secondary sponsor** — a backup for when the primary is unavailable or has
+   left the organisation
+3. **Tertiary (and further)** — additional fallback contacts for long-running
+   partnerships or complex governance structures
+
+The web part honours this ordering and implements **automatic delegation**:
+
+- Only active accounts count toward the **visible sponsor limit** (configured
+  via the *"Visible sponsors (live page)"* slider in the property pane,
+  default: 2)
+- When a higher-priority sponsor is unavailable (account disabled, departed, or
+  deleted), the next active sponsor in the list **steps in** to fill the vacant
+  visible slot — no configuration change needed
+- Unavailable sponsors are still shown as **read-only tiles** alongside the
+  active ones, so the guest can see the full picture of who their sponsors are,
+  even if some cannot currently be contacted
+- The "**sponsor not available**" notice appears only when **no active sponsor
+  is visible** in the current set — not only when every globally-assigned
+  sponsor is gone
+
+**Example** with *Visible sponsors = 2* and three sponsors assigned in order A
+→ B → C:
+
+| A | B | C | What the guest sees |
+|---|---|---|---|
+| ✅ active | ✅ active | — | A, B — full contact |
+| 🔒 unavailable | ✅ active | ✅ active | A (read-only) · B, C — full contact |
+| 🔒 unavailable | 🔒 unavailable | ✅ active | A, B (read-only) · C — full contact + notice |
+| 🔒 unavailable | 🔒 unavailable | 🔒 unavailable | A, B (read-only tiles) + unavailable notice |
+
+The guest always sees who their sponsors are — even if no one is currently
+reachable — and always has at least one active contact to reach out to whenever
+one exists in the list.
+
+> This feature works out of the box with any tool that maintains sponsors in
+> priority order. [EasyLife 365 Collaboration](https://www.easylife365.cloud)
+> is one such tool: it manages the full lifecycle of Microsoft 365 collaboration
+> workspaces, including guest onboarding workflows and prioritised sponsor
+> assignments, making it a natural complement to this web part.
+
+---
+
 ## Resilience
 
 The web part is designed to degrade gracefully rather than show errors unless
@@ -196,7 +247,7 @@ something is genuinely unrecoverable:
 - **Progressive photo loading** — sponsor names and titles appear in the first
   render; photos fill in asynchronously without blocking the initial display
 - **Active-sponsor filtering** — three categories of non-reachable accounts are
-  silently excluded before rendering:
+  silently excluded from the active set before rendering:
   - **Disabled accounts** — sponsors whose Entra account has been deactivated
     (e.g. departed employees still in the soft-delete grace period)
   - **Shared and room mailboxes** — system accounts that are technically valid
@@ -204,8 +255,12 @@ something is genuinely unrecoverable:
   - **Deleted sponsors** — accounts whose directory object no longer exists
     (hard-deleted or past the soft-delete period)
 
-  When all assigned sponsors fall into one of these categories, the guest
-  receives a clear informational notice rather than an empty page
+  Unavailable sponsors are **not hidden** — they still appear as read-only
+  tiles so the guest can see who their sponsors are. Active sponsors step in
+  to fill the visible slots in priority order (see
+  [Sponsor priority and automatic delegation](#sponsor-priority-and-automatic-delegation)
+  above). A clear informational notice appears when no active sponsor remains
+  in the visible set.
 - **Non-blocking SPFx initialisation** — Graph and AAD client acquisition runs
   in the background after `onInit()` resolves, so the host page layout is never
   held up waiting for this web part to finish initialising

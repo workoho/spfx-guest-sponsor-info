@@ -8,6 +8,8 @@
   // Run test suites serially in a single worker to prevent parallel fs access issues on
   // Node 22 and to keep CI output deterministic and easy to read.
   "maxWorkers": 1,
+  // Polyfills and global stubs for Fluent UI v9 (e.g. ResizeObserver used by MessageBar).
+  "setupFiles": ["<rootDir>/src/__mocks__/jest.setup.js"],
   // Map modules that jest cannot load natively (SCSS, AMD-format strings, browser-only SPFx packages).
   "moduleNameMapper": {
     // CSS/SCSS Modules: return a Proxy that echoes the key as a plain string so

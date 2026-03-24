@@ -24,8 +24,17 @@
     // prompt, PSReadLine, and optional PSGallery resources. Replaces the fragile
     // packages-microsoft-prod.deb approach that fails on ARM64/Codespaces.
     "ghcr.io/jpawlowski/devcontainer-features/powershell-extended:2": {
-      "installOhMyPosh": false
-    }
+      "installOhMyPosh": true,
+      // Pre-install Graph modules used by azure-function/infra/*.ps1
+      // (setup-app-registration.ps1, setup-graph-permissions.ps1).
+      // Az.* is intentionally omitted — the Azure CLI covers all Azure resource
+      // operations; Az PowerShell would add ~500 MB without adding new capability.
+      "resources": "Microsoft.Graph.Authentication;Microsoft.Graph.Applications"
+    },
+    // PnP PowerShell — cross-platform module for SharePoint Online management:
+    // .sppkg deployment to app catalog, site configuration, permission management.
+    // Depends on powershell-extended (above) and adds adamwojcikit.pnp-powershell-extension.
+    "ghcr.io/jpawlowski/devcontainer-features/pnp.powershell:1": {}
   },
   "build": {
     "dockerfile": "Dockerfile",
@@ -36,15 +45,21 @@
   },
   "remoteUser": "vscode",
   "postCreateCommand": "/bin/bash .devcontainer/post-create.sh",
-  "forwardPorts": [
-    4321
-  ],
+  "forwardPorts": [4321],
   "containerEnv": {
     "npm_config_save_exact": "true",
     // Pass the host GITHUB_TOKEN into the container so `gh` and the MCP server
     // authenticate automatically. In Codespaces this is set automatically.
     // Locally: export GITHUB_TOKEN=<your PAT> before opening the devcontainer.
-    "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}"
+    "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}",
+    // SPFx hosted workbench tenant domain — used by config/serve.json ({tenantdomain}
+    // placeholder) and dev-webpart.sh. Set once on your host OS (e.g. add
+    //   export SPFX_SERVE_TENANT_DOMAIN=contoso.sharepoint.com
+    // to ~/.bashrc or ~/.profile) and every container rebuild picks it up
+    // automatically. As a fallback, copy .env.example to .env and set the
+    // variable there — the script loads .env before starting the dev server.
+    // In Codespaces, add it as a Codespaces secret (repository scope).
+    "SPFX_SERVE_TENANT_DOMAIN": "${localEnv:SPFX_SERVE_TENANT_DOMAIN}"
   },
   "customizations": {
     "vscode": {
@@ -60,10 +75,7 @@
           "github": {
             "type": "stdio",
             "command": "npx",
-            "args": [
-              "-y",
-              "@modelcontextprotocol/server-github@latest"
-            ],
+            "args": ["-y", "@modelcontextprotocol/server-github@latest"],
             "env": {
               "GITHUB_PERSONAL_ACCESS_TOKEN": "${localEnv:GITHUB_TOKEN}"
             }
@@ -76,6 +88,7 @@
         "dbaeumer.vscode-eslint",
         "EditorConfig.EditorConfig",
         "esbenp.prettier-vscode",
+        "foxundermoon.shell-format",
         "GitHub.copilot-chat",
         "github.vscode-github-actions",
         "GitHub.vscode-pull-request-github",
@@ -90,7 +103,9 @@
         "openai.chatgpt",
         "SharePoint.deployToSPOnline",
         "stylelint.vscode-stylelint",
-        "vivaxy.vscode-conventional-commits"
+        "usernamehw.errorlens",
+        "vivaxy.vscode-conventional-commits",
+        "eamodio.gitlens"
       ]
     }
   }

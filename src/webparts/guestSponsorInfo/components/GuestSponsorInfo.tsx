@@ -1,6 +1,8 @@
 import * as React from 'react';
 import { DisplayMode } from '@microsoft/sp-core-library';
-import { MessageBar, MessageBarType } from '@fluentui/react';
+import { FluentProvider, MessageBar, MessageBarBody, Skeleton, SkeletonItem, mergeClasses, webLightTheme, webDarkTheme } from '@fluentui/react-components';
+import type { Theme } from '@fluentui/react-components';
+import { createV9Theme } from '@fluentui/react-migration-v8-v9';
 import * as strings from 'GuestSponsorInfoWebPartStrings';
 import styles from './GuestSponsorInfo.module.scss';
 import type { IGuestSponsorInfoProps } from './IGuestSponsorInfoProps';
@@ -47,9 +49,11 @@ interface ISponsorListProps {
    * no keyboard activation. Used when all sponsors are unavailable.
    */
   readOnly?: boolean;
+  /** Fluent v9 theme to forward into SponsorCard portal FluentProviders. */
+  v9Theme?: Theme;
 }
 
-const SponsorList: React.FC<ISponsorListProps> = ({ sponsors, hostTenantId, compact, showBusinessPhones, showMobilePhone, showWorkLocation, showCity, showCountry, showStreetAddress, showPostalCode, showState, azureMapsSubscriptionKey, externalMapProvider, showManager, showPresence, showSponsorJobTitle, showManagerJobTitle, showSponsorDepartment, showManagerDepartment, showSponsorPhoto, showManagerPhoto, useInformalAddress, onActiveCardChange, guestHasTeamsAccess, readOnly }) => {
+const SponsorList: React.FC<ISponsorListProps> = ({ sponsors, hostTenantId, compact, showBusinessPhones, showMobilePhone, showWorkLocation, showCity, showCountry, showStreetAddress, showPostalCode, showState, azureMapsSubscriptionKey, externalMapProvider, showManager, showPresence, showSponsorJobTitle, showManagerJobTitle, showSponsorDepartment, showManagerDepartment, showSponsorPhoto, showManagerPhoto, useInformalAddress, onActiveCardChange, guestHasTeamsAccess, readOnly, v9Theme }) => {
   const [activeId, setActiveId] = React.useState<string | null>(null);
   const showTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -111,6 +115,7 @@ const SponsorList: React.FC<ISponsorListProps> = ({ sponsors, hostTenantId, comp
             showManagerPhoto={showManagerPhoto}
             useInformalAddress={useInformalAddress}
             guestHasTeamsAccess={guestHasTeamsAccess}
+            v9Theme={v9Theme}
           />
         </li>
       ))}
@@ -119,31 +124,85 @@ const SponsorList: React.FC<ISponsorListProps> = ({ sponsors, hostTenantId, comp
 };
 
 /**
- * Pure-CSS loading skeleton — uses the identical DOM structure and CSS classes
- * as the real sponsor cards so spacing is pixel-perfect and requires no manual
- * height arithmetic.  Two placeholder cards are rendered (matching the typical
- * mock-data count) to give a realistic sense of the list size.
+ * Loading skeleton using Fluent UI Skeleton + SkeletonItem components.
+ * Reuses the real card CSS classes so spacing is pixel-perfect.
+ * Fluent’s Skeleton handles the shimmer animation and automatically
+ * respects prefers-reduced-motion without custom media-query code.
  */
 const SponsorGridSkeleton: React.FC<{ compact: boolean }> = ({ compact }) => (
   <ul className={compact ? styles.sponsorGridCompact : styles.sponsorGrid} aria-busy="true">
     {[0, 1].map(i => (
       <li key={i} className={styles.sponsorItem}>
         {compact ? (
-          <div className={`${styles.cardCompact} ${styles.skeletonItem}`}>
-            <div className={styles.skeletonCircleCompact} />
-            <div className={styles.skeletonLine} style={{ width: 120 }} />
-          </div>
+          <Skeleton
+            className={mergeClasses(styles.cardCompact, styles.skeletonItem)}
+            aria-label={strings.LoadingMessage}
+          >
+            <SkeletonItem shape="circle" size={40} />
+            <SkeletonItem
+              shape="rectangle"
+              size={16}
+              style={{ width: 120, borderRadius: 'var(--borderRadiusLarge, 6px)' }}
+            />
+          </Skeleton>
         ) : (
-          <div className={`${styles.card} ${styles.skeletonItem}`}>
-            <div className={styles.skeletonCircle} />
-            <div className={styles.skeletonLine} style={{ width: 88 }} />
-            <div className={styles.skeletonLine} style={{ width: 64 }} />
-          </div>
+          <Skeleton
+            className={mergeClasses(styles.card, styles.skeletonItem)}
+            aria-label={strings.LoadingMessage}
+          >
+            <SkeletonItem shape="circle" size={72} />
+            <SkeletonItem
+              shape="rectangle"
+              size={12}
+              style={{ width: 88, borderRadius: 'var(--borderRadiusLarge, 6px)' }}
+            />
+            <SkeletonItem
+              shape="rectangle"
+              size={12}
+              style={{ width: 64, borderRadius: 'var(--borderRadiusLarge, 6px)' }}
+            />
+          </Skeleton>
         )}
       </li>
     ))}
   </ul>
 );
+
+/**
+ * Builds the two visible sponsor sets, respecting both the configured cap and
+ * the original Entra ordering. Only active accounts count toward the cap;
+ * unavailable accounts (disabled / deleted) are shown alongside the active
+ * ones in their original position so the guest can always see who their
+ * sponsors are, while active accounts "nachrücken" to fill the visible slots.
+ *
+ * Falls back to independent slice() when sponsorOrder is empty (e.g. older
+ * Function versions or the direct Graph path without ordering info).
+ */
+function buildVisibleSponsorSets(
+  activeSponsors: ISponsor[],
+  unavailableSponsors: ISponsor[],
+  sponsorOrder: string[],
+  maxSponsorCount: number
+): { visibleActive: ISponsor[]; visibleUnavailable: ISponsor[] } {
+  if (sponsorOrder.length === 0) {
+    return {
+      visibleActive: activeSponsors.slice(0, maxSponsorCount),
+      visibleUnavailable: unavailableSponsors.slice(0, maxSponsorCount),
+    };
+  }
+  const activeMap = new Map(activeSponsors.map(s => [s.id, s]));
+  const unavailableMap = new Map(unavailableSponsors.map(s => [s.id, s]));
+  const visibleActive: ISponsor[] = [];
+  const visibleUnavailable: ISponsor[] = [];
+  for (const id of sponsorOrder) {
+    if (visibleActive.length >= maxSponsorCount) break;
+    const active = activeMap.get(id);
+    if (active) { visibleActive.push(active); continue; }
+    const unavail = unavailableMap.get(id);
+    if (unavail) { visibleUnavailable.push(unavail); }
+  }
+  return { visibleActive, visibleUnavailable };
+}
 
 /** Maximum number of transient-error retries before giving up and showing an error. */
 const MAX_RETRIES = 3;
@@ -155,12 +214,15 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   graphClient,
   title,
   mockMode,
+  mockSponsorCount,
+  maxSponsorCount,
   mockSimulatedHint,
   showTeamsAccessPendingHint,
   showVersionMismatchHint,
   showSponsorUnavailableHint,
   showNoSponsorsHint,
   cardLayout,
+  cardLayoutAutoThreshold,
   hostTenantId,
   functionUrl,
   presenceUrl,
@@ -187,7 +249,13 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   useInformalAddress,
   clientVersion,
   onProxyStatusChange,
+  onVersionMismatch,
+  fluentProviderId,
+  theme,
 }) => {
+  // Slice the full MOCK_SPONSORS pool to the count configured in the property pane.
+  const mockSponsors = MOCK_SPONSORS.slice(0, mockSponsorCount);
+
   // Helper: pick the informal string variant when useInformalAddress is enabled and
   // the current locale provides one (languages with T-V distinction like de, fr, es, it, nl).
   const fstr = <K extends keyof typeof strings>(key: K): string => {
@@ -206,7 +274,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   const isEditMode = displayMode === DisplayMode.Edit;
 
   const [sponsors, setSponsors] = React.useState<ISponsor[]>([]);
-  const [allUnavailable, setAllUnavailable] = React.useState(false);
+  const [sponsorOrder, setSponsorOrder] = React.useState<string[]>([]);
   const [unavailableSponsors, setUnavailableSponsors] = React.useState<ISponsor[]>([]);
   // Start in loading state immediately for guests and demo mode so the shimmer
   // is visible on the very first render — before the first useEffect tick.
@@ -242,9 +310,9 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
       .then((functionVersion) => {
         if (!cancelled) {
           onProxyStatusChange?.('ok');
-          setVersionMismatch(
-            !!(clientVersion && functionVersion && clientVersion !== functionVersion)
-          );
+          const detected = !!(clientVersion && functionVersion && clientVersion !== functionVersion);
+          setVersionMismatch(detected);
+          onVersionMismatch?.(detected);
         }
       })
       .catch(() => { if (!cancelled) { onProxyStatusChange?.('error'); } });
@@ -259,16 +327,16 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
       // "No sponsors found" — no sponsors are assigned, so no tiles appear.
       if (mockSimulatedHint === 'noSponsors') {
         setSponsors([]);
-        setAllUnavailable(false);
+        setSponsorOrder([]);
         setUnavailableSponsors([]);
       } else if (mockSimulatedHint === 'sponsorUnavailable') {
         // All sponsors are unavailable — show their tiles read-only.
         setSponsors([]);
-        setAllUnavailable(true);
-        setUnavailableSponsors(MOCK_SPONSORS);
+        setSponsorOrder(mockSponsors.map(s => s.id));
+        setUnavailableSponsors(mockSponsors);
       } else {
-        setSponsors(MOCK_SPONSORS);
-        setAllUnavailable(false);
+        setSponsors(mockSponsors);
+        setSponsorOrder(mockSponsors.map(s => s.id));
         setUnavailableSponsors([]);
       }
       setGuestHasTeamsAccess(mockSimulatedHint === 'teamsAccessPending' ? false : undefined);
@@ -301,8 +369,8 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
           const active = result.activeSponsors.map(({ photoUrl: _photoUrl, managerPhotoUrl: _managerPhotoUrl, ...s }) => s);
           setSponsors(active);
           sponsorIdsRef.current = active.map(s => s.id);
+          setSponsorOrder(result.sponsorOrder ?? active.map(s => s.id));
           // All unavailable = sponsors were assigned but every account is disabled/deleted.
-          setAllUnavailable(active.length === 0 && result.unavailableCount > 0);
           setUnavailableSponsors(result.unavailableSponsors ?? []);
           setGuestHasTeamsAccess(result.guestHasTeamsAccess);
           setPresenceToken(result.presenceToken);
@@ -365,7 +433,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
       });
 
     return () => { cancelled = true; };
-  }, [isGuest, isEditMode, graphClient, mockMode, functionUrl, aadHttpClient, clientVersion, retryCount]);
+  }, [isGuest, isEditMode, graphClient, mockMode, mockSponsorCount, functionUrl, aadHttpClient, clientVersion, retryCount]);
 
   // Presence refresh: poll faster while a card is actively open and the tab is visible,
   // but back off when the tab is hidden to reduce Graph traffic.
@@ -445,111 +513,109 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   // populated strings object.
   if (!(strings as unknown as object | undefined)) return null;
 
+  // Derive a Fluent v9 theme from the SPFx host site theme supplied by the ThemeProvider
+  // service. Falls back to webLightTheme when the host theme is not yet available
+  // (e.g. first render in the workbench before ThemeProvider initialises, or tests).
+  // Without an explicit fallback, FluentProvider sets no token variables — Avatar
+  // colorful backgrounds disappear and PresenceBadge dots render as black.
+  // The second argument selects the correct v9 base theme so that v9 tokens with
+  // no direct v8 mapping (e.g. dark-mode semantic colours) default to the right
+  // values instead of always falling back to webLightTheme internally.
+  const v9Theme = theme
+    ? createV9Theme(
+        theme as unknown as Parameters<typeof createV9Theme>[0],
+        theme.isInverted ? webDarkTheme : webLightTheme
+      )
+    : webLightTheme;
+
   // Edit mode: always show a live preview using mock sponsor cards so page authors
   // can see the real layout and adjust display settings before going live.
   if (isEditMode) {
-    const mockCompact = cardLayout === 'compact' || (cardLayout === 'auto' && MOCK_SPONSORS.length > 2);
+    const visibleMockSponsors = mockSponsors.slice(0, maxSponsorCount);
+    const mockCompact = cardLayout === 'compact' || (cardLayout === 'auto' && visibleMockSponsors.length >= cardLayoutAutoThreshold);
     // Hide the sponsor list only when simulating "No sponsors found" — in that
     // state no sponsors are assigned at all so no tiles would appear. For
     // "Sponsor not available" the tiles ARE shown (read-only) so the editor can
     // see how the layout looks when all sponsors are unavailable.
-    const showMockCards = !mockMode || mockSimulatedHint !== 'noSponsors';
+    const showMockCards = mockSimulatedHint !== 'noSponsors';
     // When simulating "no sponsors" and the notice toggle is off, nothing remains
     // beyond the title — hide the entire web part so the editor sees the same
-    // empty result the guest would see.
+    // empty result the guest would see. The simulation hint is always respected
+    // regardless of whether mockMode is active.
     // Using an IIFE avoids TypeScript control-flow narrowing through the || chain.
     const hasEditContent = ((): boolean => {
-      if (!mockMode) return true;                               // always shows mock cards
-      if (mockSimulatedHint !== 'noSponsors') return true;     // shows tiles or sponsor-unavailable banner
-      if (versionMismatch) return true;                        // real version-mismatch ping result
+      if (mockSimulatedHint !== 'noSponsors') return true;     // shows tiles or a banner
       return showNoSponsorsHint;                               // only the notice banner remains
     })();
     if (!hasEditContent) return null;
     return (
-      <section className={styles.webPart}>
-        {title && <h2 className={styles.title}>{title}</h2>}
-        {showMockCards && (
-        <SponsorList
-          sponsors={MOCK_SPONSORS}
-          hostTenantId={hostTenantId}
-          compact={mockCompact}
-          showBusinessPhones={showBusinessPhones}
-          showMobilePhone={showMobilePhone}
-          showWorkLocation={showWorkLocation}
-          showCity={showCity}
-          showCountry={showCountry}
-          showStreetAddress={showStreetAddress}
-          showPostalCode={showPostalCode}
-          showState={showState}
-          azureMapsSubscriptionKey={azureMapsSubscriptionKey}
-          externalMapProvider={externalMapProvider}
-          showManager={showManager}
-          showPresence={showPresence}
-          showSponsorJobTitle={showSponsorJobTitle}
-          showManagerJobTitle={showManagerJobTitle}
-          showSponsorDepartment={showSponsorDepartment}
-          showManagerDepartment={showManagerDepartment}
-          showSponsorPhoto={showSponsorPhoto}
-          showManagerPhoto={showManagerPhoto}
-          useInformalAddress={useInformalAddress}
-          onActiveCardChange={() => undefined}
-          guestHasTeamsAccess={mockMode && mockSimulatedHint === 'teamsAccessPending' ? false : undefined}
-          readOnly={mockMode && mockSimulatedHint === 'sponsorUnavailable'}
-        />
-        )}
-        {/* Real version mismatch detected via ping: always shown to the editor, independent
-            of the showVersionMismatchHint guest-facing toggle. */}
-        {versionMismatch && mockSimulatedHint !== 'versionMismatch' && (
-          <MessageBar
-            messageBarType={MessageBarType.warning}
-            isMultiline
-            delayedRender={false}
-            className={styles.teamsAccessBanner}
-          >
-            <b>{strings.VersionMismatchTitle}</b><br />
-            {strings.VersionMismatchMessage}
-          </MessageBar>
-        )}
-        {mockMode && mockSimulatedHint === 'teamsAccessPending' && (
-          <MessageBar
-            messageBarType={MessageBarType.warning}
-            isMultiline
-            delayedRender={false}
-            className={styles.teamsAccessBanner}
-          >
-            <b>{strings.TeamsAccessPendingTitle}</b><br />
-            {fstr('TeamsAccessPendingMessage')}
-          </MessageBar>
-        )}
-        {mockMode && mockSimulatedHint === 'versionMismatch' && (
-          <MessageBar
-            messageBarType={MessageBarType.warning}
-            isMultiline
-            delayedRender={false}
-            className={styles.teamsAccessBanner}
-          >
-            <b>{strings.VersionMismatchTitle}</b><br />
-            {strings.VersionMismatchMessage}
-          </MessageBar>
-        )}
-        {mockMode && mockSimulatedHint === 'sponsorUnavailable' && showSponsorUnavailableHint && (
-          <MessageBar
-            messageBarType={MessageBarType.warning}
-            isMultiline
-            delayedRender={false}
-            className={styles.teamsAccessBanner}
-          >
-            <b>{strings.SponsorUnavailableTitle}</b><br />
-            {fstr('SponsorUnavailableMessage')}
-          </MessageBar>
-        )}
-        {mockMode && mockSimulatedHint === 'noSponsors' && showNoSponsorsHint && (
-          <MessageBar messageBarType={MessageBarType.info} isMultiline delayedRender={false}>
-            <b>{strings.NoSponsorsTitle}</b><br />
-            {fstr('NoSponsorsMessage')}
-          </MessageBar>
-        )}
-      </section>
+      <FluentProvider theme={v9Theme} id={`${fluentProviderId}-edit`}>
+        <section className={styles.webPart}>
+          {title && <h2 className={styles.title}>{title}</h2>}
+          {showMockCards && (
+          <SponsorList
+            sponsors={visibleMockSponsors}
+            hostTenantId={hostTenantId}
+            compact={mockCompact}
+            showBusinessPhones={showBusinessPhones}
+            showMobilePhone={showMobilePhone}
+            showWorkLocation={showWorkLocation}
+            showCity={showCity}
+            showCountry={showCountry}
+            showStreetAddress={showStreetAddress}
+            showPostalCode={showPostalCode}
+            showState={showState}
+            azureMapsSubscriptionKey={azureMapsSubscriptionKey}
+            externalMapProvider={externalMapProvider}
+            showManager={showManager}
+            showPresence={showPresence}
+            showSponsorJobTitle={showSponsorJobTitle}
+            showManagerJobTitle={showManagerJobTitle}
+            showSponsorDepartment={showSponsorDepartment}
+            showManagerDepartment={showManagerDepartment}
+            showSponsorPhoto={showSponsorPhoto}
+            showManagerPhoto={showManagerPhoto}
+            useInformalAddress={useInformalAddress}
+            onActiveCardChange={() => undefined}
+            guestHasTeamsAccess={mockSimulatedHint === 'teamsAccessPending' ? false : undefined}
+            readOnly={mockSimulatedHint === 'sponsorUnavailable'}
+            v9Theme={v9Theme}
+          />
+          )}
+          {mockSimulatedHint === 'teamsAccessPending' && (
+            <MessageBar intent="warning" className={styles.teamsAccessBanner}>
+              <MessageBarBody>
+                <b>{strings.TeamsAccessPendingTitle}</b><br />
+                {fstr('TeamsAccessPendingMessage')}
+              </MessageBarBody>
+            </MessageBar>
+          )}
+          {mockSimulatedHint === 'versionMismatch' && (
+            <MessageBar intent="info" className={styles.teamsAccessBanner}>
+              <MessageBarBody>
+                <b>{strings.VersionMismatchTitle}</b><br />
+                {strings.VersionMismatchMessage}
+              </MessageBarBody>
+            </MessageBar>
+          )}
+          {mockSimulatedHint === 'sponsorUnavailable' && showSponsorUnavailableHint && (
+            <MessageBar intent="warning" className={styles.teamsAccessBanner}>
+              <MessageBarBody>
+                <b>{strings.SponsorUnavailableTitle}</b><br />
+                {fstr('SponsorUnavailableMessage')}
+              </MessageBarBody>
+            </MessageBar>
+          )}
+          {mockSimulatedHint === 'noSponsors' && showNoSponsorsHint && (
+            <MessageBar intent="info">
+              <MessageBarBody>
+                <b>{strings.NoSponsorsTitle}</b><br />
+                {fstr('NoSponsorsMessage')}
+              </MessageBarBody>
+            </MessageBar>
+          )}
+        </section>
+      </FluentProvider>
     );
   }
 
@@ -559,142 +625,154 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   }
 
   // View mode + guest user: render the sponsor list.
-  // When all sponsors are unavailable but their profile data is available, we still
-  // show their tiles (read-only, no popup) so the guest can see who their sponsors are,
-  // even if those accounts are currently disabled or deleted.
-  //
+  // When some sponsors are unavailable we still show their tiles (read-only, no popup)
+  // so the guest can see who their sponsors are. Active accounts "nachrücken" to fill
+  // the visible slots: only active accounts count toward the maxSponsorCount cap.
+  const { visibleActive, visibleUnavailable } = buildVisibleSponsorSets(
+    sponsors, unavailableSponsors, sponsorOrder, maxSponsorCount
+  );
+  const someUnavailable = visibleUnavailable.length > 0;
+  const noActiveSponsor = visibleActive.length === 0;
+
   // When nothing meaningful remains to show beyond the title (no tiles, no banners),
   // hide the entire web part so the guest never sees a lone heading.
   const hasVisibleContent =
     loading ||
     !!error ||
-    sponsors.length > 0 ||
-    (allUnavailable && unavailableSponsors.length > 0) ||
-    (allUnavailable && showSponsorUnavailableHint) ||
-    (!allUnavailable && sponsors.length === 0 && showNoSponsorsHint) ||
+    visibleActive.length > 0 ||
+    someUnavailable ||
+    (noActiveSponsor && someUnavailable && showSponsorUnavailableHint) ||
+    (noActiveSponsor && !someUnavailable && showNoSponsorsHint) ||
     (guestHasTeamsAccess === false && showTeamsAccessPendingHint) ||
     (versionMismatch && showVersionMismatchHint);
   if (!hasVisibleContent) return null;
-  const noResults = !loading && !error && sponsors.length === 0 && unavailableSponsors.length === 0;
+  const noResults = !loading && !error && visibleActive.length === 0 && !someUnavailable;
   const contentClassNames = (loading || error || noResults) ? `${styles.webPart} ${styles.webPartContent}` : styles.webPart;
   return (
-    <section className={contentClassNames}>
-      {title && <h2 className={styles.title}>{title}</h2>}
-      {loading && <SponsorGridSkeleton compact={cardLayout === 'compact'} />}
-      {!loading && error && !isPermissionError && (
-        <MessageBar messageBarType={MessageBarType.error} isMultiline delayedRender={false}>
-          <b>{strings.ErrorMessageTitle}</b><br />
-          {error}
-        </MessageBar>
-      )}
-      {!loading && isPermissionError && error && (
-        <MessageBar messageBarType={MessageBarType.error} isMultiline delayedRender={false}>
-          <b>{strings.InsufficientPermissionsTitle}</b><br />
-          {error}
-        </MessageBar>
-      )}
-      {!loading && !error && sponsors.length > 0 && (
-        <SponsorList
-          sponsors={sponsors}
-          hostTenantId={hostTenantId}
-          compact={cardLayout === 'compact' || (cardLayout === 'auto' && sponsors.length > 2)}
-          showBusinessPhones={showBusinessPhones}
-          showMobilePhone={showMobilePhone}
-          showWorkLocation={showWorkLocation}
-          showCity={showCity}
-          showCountry={showCountry}
-          showStreetAddress={showStreetAddress}
-          showPostalCode={showPostalCode}
-          showState={showState}
-          azureMapsSubscriptionKey={azureMapsSubscriptionKey}
-          externalMapProvider={externalMapProvider}
-          showManager={showManager}
-          showPresence={showPresence}
-          showSponsorJobTitle={showSponsorJobTitle}
-          showManagerJobTitle={showManagerJobTitle}
-          showSponsorDepartment={showSponsorDepartment}
-          showManagerDepartment={showManagerDepartment}
-          showSponsorPhoto={showSponsorPhoto}
-          showManagerPhoto={showManagerPhoto}
-          useInformalAddress={useInformalAddress}
-          onActiveCardChange={setHasActiveCard}
-          guestHasTeamsAccess={guestHasTeamsAccess}
-        />
-      )}
-      {/* Unavailable sponsors: show tiles read-only (no hover popup) so the guest
-          can still see who their sponsors are, even if the accounts are currently
-          disabled or deleted. */}
-      {!loading && !error && allUnavailable && unavailableSponsors.length > 0 && (
-        <SponsorList
-          sponsors={unavailableSponsors}
-          hostTenantId={hostTenantId}
-          compact={cardLayout === 'compact' || (cardLayout === 'auto' && unavailableSponsors.length > 2)}
-          showBusinessPhones={showBusinessPhones}
-          showMobilePhone={showMobilePhone}
-          showWorkLocation={showWorkLocation}
-          showCity={showCity}
-          showCountry={showCountry}
-          showStreetAddress={showStreetAddress}
-          showPostalCode={showPostalCode}
-          showState={showState}
-          azureMapsSubscriptionKey={azureMapsSubscriptionKey}
-          externalMapProvider={externalMapProvider}
-          showManager={showManager}
-          showPresence={showPresence}
-          showSponsorJobTitle={showSponsorJobTitle}
-          showManagerJobTitle={showManagerJobTitle}
-          showSponsorDepartment={showSponsorDepartment}
-          showManagerDepartment={showManagerDepartment}
-          showSponsorPhoto={showSponsorPhoto}
-          showManagerPhoto={showManagerPhoto}
-          useInformalAddress={useInformalAddress}
-          onActiveCardChange={() => undefined}
-          readOnly
-        />
-      )}
-      {/* "Sponsor not available" notice — rendered below the tiles (if any). */}
-      {!loading && !error && allUnavailable && showSponsorUnavailableHint && (
-        <MessageBar
-          messageBarType={MessageBarType.warning}
-          isMultiline
-          delayedRender={false}
-          className={unavailableSponsors.length > 0 ? styles.teamsAccessBanner : undefined}
-        >
-          <b>{strings.SponsorUnavailableTitle}</b><br />
-          {fstr('SponsorUnavailableMessage')}
-        </MessageBar>
-      )}
-      {!loading && !error && sponsors.length === 0 && !allUnavailable && showNoSponsorsHint && (
-        <MessageBar messageBarType={MessageBarType.info} isMultiline delayedRender={false}>
-          <b>{strings.NoSponsorsTitle}</b><br />
-          {fstr('NoSponsorsMessage')}
-        </MessageBar>
-      )}
-      {!loading && !error && guestHasTeamsAccess === false && showTeamsAccessPendingHint && (
-        <MessageBar
-          messageBarType={MessageBarType.warning}
-          isMultiline
-          delayedRender={false}
-          className={styles.teamsAccessBanner}
-        >
-          <b>{strings.TeamsAccessPendingTitle}</b><br />
-          {fstr('TeamsAccessPendingMessage')}
-        </MessageBar>
-      )}
-      {versionMismatch && showVersionMismatchHint && (
-        <MessageBar
-          messageBarType={MessageBarType.warning}
-          isMultiline
-          delayedRender={false}
-          className={styles.teamsAccessBanner}
-        >
-          <b>{strings.VersionMismatchTitle}</b><br />
-          {strings.VersionMismatchMessage}
-        </MessageBar>
-      )}
-    </section>
+    <FluentProvider theme={v9Theme} id={`${fluentProviderId}-view`}>
+      <section className={contentClassNames}>
+        {title && <h2 className={styles.title}>{title}</h2>}
+        {loading && <SponsorGridSkeleton compact={cardLayout === 'compact'} />}
+        {!loading && error && !isPermissionError && (
+          <MessageBar intent="error">
+            <MessageBarBody>
+              <b>{strings.ErrorMessageTitle}</b><br />
+              {error}
+            </MessageBarBody>
+          </MessageBar>
+        )}
+        {!loading && isPermissionError && error && (
+          <MessageBar intent="error">
+            <MessageBarBody>
+              <b>{strings.InsufficientPermissionsTitle}</b><br />
+              {error}
+            </MessageBarBody>
+          </MessageBar>
+        )}
+        {!loading && !error && visibleActive.length > 0 && (
+          <SponsorList
+            sponsors={visibleActive}
+            hostTenantId={hostTenantId}
+            compact={cardLayout === 'compact' || (cardLayout === 'auto' && visibleActive.length >= cardLayoutAutoThreshold)}
+            showBusinessPhones={showBusinessPhones}
+            showMobilePhone={showMobilePhone}
+            showWorkLocation={showWorkLocation}
+            showCity={showCity}
+            showCountry={showCountry}
+            showStreetAddress={showStreetAddress}
+            showPostalCode={showPostalCode}
+            showState={showState}
+            azureMapsSubscriptionKey={azureMapsSubscriptionKey}
+            externalMapProvider={externalMapProvider}
+            showManager={showManager}
+            showPresence={showPresence}
+            showSponsorJobTitle={showSponsorJobTitle}
+            showManagerJobTitle={showManagerJobTitle}
+            showSponsorDepartment={showSponsorDepartment}
+            showManagerDepartment={showManagerDepartment}
+            showSponsorPhoto={showSponsorPhoto}
+            showManagerPhoto={showManagerPhoto}
+            useInformalAddress={useInformalAddress}
+            onActiveCardChange={setHasActiveCard}
+            guestHasTeamsAccess={guestHasTeamsAccess}
+            v9Theme={v9Theme}
+          />
+        )}
+        {/* Unavailable sponsors: show tiles read-only (no hover popup) so the guest
+            can still see who their sponsors are, even if the accounts are currently
+            disabled or deleted. Shown whenever there are unavailable sponsors in the
+            visible set — not only when all sponsors are unavailable. */}
+        {!loading && !error && someUnavailable && (
+          <SponsorList
+            sponsors={visibleUnavailable}
+            hostTenantId={hostTenantId}
+            compact={cardLayout === 'compact' || (cardLayout === 'auto' && visibleUnavailable.length >= cardLayoutAutoThreshold)}
+            showBusinessPhones={showBusinessPhones}
+            showMobilePhone={showMobilePhone}
+            showWorkLocation={showWorkLocation}
+            showCity={showCity}
+            showCountry={showCountry}
+            showStreetAddress={showStreetAddress}
+            showPostalCode={showPostalCode}
+            showState={showState}
+            azureMapsSubscriptionKey={azureMapsSubscriptionKey}
+            externalMapProvider={externalMapProvider}
+            showManager={showManager}
+            showPresence={showPresence}
+            showSponsorJobTitle={showSponsorJobTitle}
+            showManagerJobTitle={showManagerJobTitle}
+            showSponsorDepartment={showSponsorDepartment}
+            showManagerDepartment={showManagerDepartment}
+            showSponsorPhoto={showSponsorPhoto}
+            showManagerPhoto={showManagerPhoto}
+            useInformalAddress={useInformalAddress}
+            onActiveCardChange={() => undefined}
+            readOnly
+            v9Theme={v9Theme}
+          />
+        )}
+        {/* "Sponsor not available" notice — rendered below the tiles (if any).
+            Only shown when no active sponsor is visible in the current set. */}
+        {!loading && !error && noActiveSponsor && someUnavailable && showSponsorUnavailableHint && (
+          <MessageBar
+            intent="warning"
+            className={styles.teamsAccessBanner}
+          >
+            <MessageBarBody>
+              <b>{strings.SponsorUnavailableTitle}</b><br />
+              {fstr('SponsorUnavailableMessage')}
+            </MessageBarBody>
+          </MessageBar>
+        )}
+        {!loading && !error && noActiveSponsor && !someUnavailable && showNoSponsorsHint && (
+          <MessageBar intent="info">
+            <MessageBarBody>
+              <b>{strings.NoSponsorsTitle}</b><br />
+              {fstr('NoSponsorsMessage')}
+            </MessageBarBody>
+          </MessageBar>
+        )}
+        {!loading && !error && guestHasTeamsAccess === false && showTeamsAccessPendingHint && (
+          <MessageBar intent="warning" className={styles.teamsAccessBanner}>
+            <MessageBarBody>
+              <b>{strings.TeamsAccessPendingTitle}</b><br />
+              {fstr('TeamsAccessPendingMessage')}
+            </MessageBarBody>
+          </MessageBar>
+        )}
+        {versionMismatch && showVersionMismatchHint && (
+          <MessageBar intent="info" className={styles.teamsAccessBanner}>
+            <MessageBarBody>
+              <b>{strings.VersionMismatchTitle}</b><br />
+              {strings.VersionMismatchMessage}
+            </MessageBarBody>
+          </MessageBar>
+        )}
+      </section>
+    </FluentProvider>
   );
 };
 
 export default GuestSponsorInfo;
+
 

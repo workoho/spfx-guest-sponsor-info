@@ -59,4 +59,34 @@ RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
 RUN npm install --global azure-functions-core-tools@4 \
   && npm cache clean --force
 
+# delta — syntax-highlighting git diff pager (https://github.com/dandavison/delta).
+# Installed as a static binary; makes `git diff` and `git show` output readable
+# with colour and line numbers in the terminal — useful for both developers and agents.
+ARG DELTA_VERSION=0.18.2
+RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
+  && case "${arch}" in \
+  amd64|x86_64) delta_arch="x86_64" ;; \
+  arm64|aarch64) delta_arch="aarch64" ;; \
+  *) echo "Unsupported architecture: ${arch}" >&2; exit 1 ;; \
+  esac \
+  && curl -fsSLo /tmp/delta.tar.gz \
+  "https://github.com/dandavison/delta/releases/download/${DELTA_VERSION}/delta-${DELTA_VERSION}-${delta_arch}-unknown-linux-musl.tar.gz" \
+  && tar -xzf /tmp/delta.tar.gz -C /usr/local/bin \
+  --strip-components=1 \
+  "delta-${DELTA_VERSION}-${delta_arch}-unknown-linux-musl/delta" \
+  && rm /tmp/delta.tar.gz
+
+# shfmt — shell script formatter (https://github.com/mvdan/sh).
+# Installed as a static binary; no Go toolchain required at runtime.
+ARG SHFMT_VERSION=v3.10.0
+RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
+  && case "${arch}" in \
+  amd64|x86_64) shfmt_arch="amd64" ;; \
+  arm64|aarch64) shfmt_arch="arm64" ;; \
+  *) echo "Unsupported architecture: ${arch}" >&2; exit 1 ;; \
+  esac \
+  && curl -fsSLo /usr/local/bin/shfmt \
+  "https://github.com/mvdan/sh/releases/download/${SHFMT_VERSION}/shfmt_${SHFMT_VERSION}_linux_${shfmt_arch}" \
+  && chmod +x /usr/local/bin/shfmt
+
 

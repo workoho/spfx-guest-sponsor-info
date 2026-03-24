@@ -1,5 +1,6 @@
 import { MSGraphClientV3, AadHttpClient } from '@microsoft/sp-http';
 import { DisplayMode } from '@microsoft/sp-core-library';
+import type { IReadonlyTheme } from '@microsoft/sp-component-base';
 
 export interface IGuestSponsorInfoProps {
   /** SPFx login name (UPN) of the current user – used as a fallback for guest detection. */
@@ -22,6 +23,10 @@ export interface IGuestSponsorInfoProps {
    * making live Graph calls.
    */
   mockMode: boolean;
+  /** Maximum number of sponsors to display on the live page (1–5). Default: 2. */
+  maxSponsorCount: number;
+  /** Number of mock sponsor cards to display in demo mode (1–5). Default: 2. */
+  mockSponsorCount: number;
   /** Notification to simulate in demo mode. Default: 'none'. */
   mockSimulatedHint: 'none' | 'teamsAccessPending' | 'versionMismatch' | 'sponsorUnavailable' | 'noSponsors';
   /** Show the "Teams not set up yet" notice to guest users. Default: true. */
@@ -34,6 +39,8 @@ export interface IGuestSponsorInfoProps {
   showNoSponsorsHint: boolean;
   /** Card layout mode: 'full' (136px tiles), 'compact' (horizontal rows), or 'auto' (switches based on count). */
   cardLayout: 'auto' | 'full' | 'compact';
+  /** Minimum number of sponsors that triggers compact layout in 'auto' mode. Default: 3. */
+  cardLayoutAutoThreshold: number;
   /**
    * Entra ID tenant ID of the host tenant (where the sponsors live).
    * Used to generate Teams deep links that open in the guest-account context.
@@ -108,5 +115,24 @@ export interface IGuestSponsorInfoProps {
    * holding the proxyStatus state in both the component and the web part.
    */
   onProxyStatusChange?: (status: 'checking' | 'ok' | 'error') => void;
+  /**
+   * Called when a version mismatch between the web part and Azure Function is detected or
+   * cleared (edit mode only). Allows the web part class to surface the notice in the
+   * property pane near the version number without keeping this state in two places.
+   */
+  onVersionMismatch?: (detected: boolean) => void;
+  /**
+   * Unique prefix derived from the SPFx web part instance ID.
+   * Passed as `id` to every FluentProvider so multiple web part instances
+   * on the same page do not produce conflicting Fluent UI style-tag IDs.
+   */
+  fluentProviderId: string;
+  /**
+   * SPFx host site theme supplied by the ThemeProvider service.
+   * Passed to createV9Theme to produce a matching Fluent UI v9 theme for the
+   * FluentProvider that wraps the entire web part component tree.
+   * When undefined the FluentProvider falls back to webLightTheme.
+   */
+  theme?: IReadonlyTheme;
 }
 

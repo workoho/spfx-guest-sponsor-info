@@ -43,6 +43,12 @@ const SPONSOR = {
   photoUrl: undefined,
 };
 
+const SPONSOR_UNAVAILABLE = {
+  id: 'bbbbbbbb-2222-2222-2222-222222222222',
+  displayName: 'Bob Jones (unavailable)',
+  businessPhones: [] as string[],
+};
+
 // ─── DOM helpers ───────────────────────────────────────────────────────────────
 
 let container: HTMLDivElement;
@@ -68,8 +74,11 @@ function renderWebPart(overrides: Partial<IGuestSponsorInfoProps> = {}): void {
     graphClient: {} as never, // The actual client object is irrelevant; getSponsors is mocked.
     title: 'My Sponsors',
     mockMode: false,
+    maxSponsorCount: 2,
+    mockSponsorCount: 2,
     mockSimulatedHint: 'none',
     cardLayout: 'auto',
+    cardLayoutAutoThreshold: 3,
     hostTenantId: 'aaaabbbb-0000-0000-0000-000000000001',
     functionUrl: undefined,
     presenceUrl: undefined,
@@ -100,6 +109,7 @@ function renderWebPart(overrides: Partial<IGuestSponsorInfoProps> = {}): void {
     showSponsorUnavailableHint: true,
     showNoSponsorsHint: true,
     clientVersion: '0.0.1',
+    fluentProviderId: 'gsi-test',
   };
   ReactDOM.render(<GuestSponsorInfo {...defaults} {...overrides} />, container);
 }
@@ -212,15 +222,56 @@ describe('GuestSponsorInfo', () => {
 
     it('shows the "sponsor unavailable" message when all assigned sponsors are gone', async () => {
       // The guest has sponsors assigned in Entra, but every one of them was deleted.
-      mockGetSponsors.mockResolvedValue({ activeSponsors: [], unavailableCount: 2 });
+      mockGetSponsors.mockResolvedValue({
+        activeSponsors: [],
+        unavailableCount: 1,
+        unavailableSponsors: [SPONSOR_UNAVAILABLE],
+        sponsorOrder: [SPONSOR_UNAVAILABLE.id],
+      });
       act(() => { renderWebPart({}); });
       await flushAsync();
       expect(container.textContent).toContain('no longer available');
     });
 
+    it('shows unavailable sponsor tiles alongside the "unavailable" banner', async () => {
+      mockGetSponsors.mockResolvedValue({
+        activeSponsors: [],
+        unavailableCount: 1,
+        unavailableSponsors: [SPONSOR_UNAVAILABLE],
+        sponsorOrder: [SPONSOR_UNAVAILABLE.id],
+      });
+      act(() => { renderWebPart({}); });
+      await flushAsync();
+      expect(container.textContent).toContain('Bob Jones (unavailable)');
+    });
+
+    it('lets active sponsors nachrücken when a higher-priority sponsor is unavailable', async () => {
+      // Order: SPONSOR_UNAVAILABLE first, then SPONSOR (active).
+      // With maxSponsorCount=1, SPONSOR should fill the single visible slot.
+      mockGetSponsors.mockResolvedValue({
+        activeSponsors: [SPONSOR],
+        unavailableCount: 1,
+        unavailableSponsors: [SPONSOR_UNAVAILABLE],
+        sponsorOrder: [SPONSOR_UNAVAILABLE.id, SPONSOR.id],
+      });
+      act(() => { renderWebPart({ maxSponsorCount: 1 }); });
+      await flushAsync();
+      // Active sponsor should be visible.
+      expect(container.textContent).toContain('Alice Smith');
+      // Unavailable sponsor should also appear (read-only tile) since it came first.
+      expect(container.textContent).toContain('Bob Jones (unavailable)');
+      // Banner should NOT appear because there is one active sponsor visible.
+      expect(container.textContent).not.toContain('no longer available');
+    });
+
     it('shows remaining active sponsors even when some are unavailable', async () => {
       // One sponsor is still active; the deleted one should not prevent rendering.
-      mockGetSponsors.mockResolvedValue({ activeSponsors: [SPONSOR], unavailableCount: 1 });
+      mockGetSponsors.mockResolvedValue({
+        activeSponsors: [SPONSOR],
+        unavailableCount: 1,
+        unavailableSponsors: [SPONSOR_UNAVAILABLE],
+        sponsorOrder: [SPONSOR.id, SPONSOR_UNAVAILABLE.id],
+      });
       act(() => { renderWebPart({}); });
       await flushAsync();
       expect(container.textContent).toContain('Alice Smith');

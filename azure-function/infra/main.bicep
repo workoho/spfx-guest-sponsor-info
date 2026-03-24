@@ -148,6 +148,24 @@ param likelyAttackDenyRatePercentThreshold int = 80
 @minValue(0)
 param likelyAttackMinSuccessThreshold int = 1
 
+@metadata({ category: 'Monitoring' })
+@description('Enable info-only alert when a newer GitHub release of the function is available.')
+param enableNewReleaseAlert bool = true
+
+@metadata({ category: 'Monitoring' })
+@description('Enable operational alert when a hard-deleted Entra object remains referenced as a sponsor (Graph 404).')
+param enableBrokenSponsorAlert bool = false
+
+@metadata({ category: 'Monitoring' })
+@description('KQL evaluation frequency for the new-release alert in minutes.')
+@minValue(5)
+param newReleaseAlertEvaluationFrequencyInMinutes int = 60
+
+@metadata({ category: 'Monitoring' })
+@description('KQL lookback window for the new-release alert in minutes (default 720 = 12 h covers two 6-hour timer intervals).')
+@minValue(60)
+param newReleaseAlertWindowInMinutes int = 720
+
 @metadata({ category: 'Hosting' })
 @description('Consumption plan (Y1) daily memory-time budget in GB-seconds. When hit, the Function App is suspended until midnight UTC — the primary cost guard. 0 = unlimited (not recommended). Default 10 000 GB-s ≈ 13 000 typical invocations/day, stays within the monthly free tier (400 000 GB-s/month). Ignored when hostingPlan = "FlexConsumption" (Flex has no daily GB-second budget concept).')
 @minValue(0)
@@ -219,6 +237,10 @@ module monitoring './modules/monitoring.bicep' = {
     likelyAttackUniqueIpThreshold: likelyAttackUniqueIpThreshold
     likelyAttackDenyRatePercentThreshold: likelyAttackDenyRatePercentThreshold
     likelyAttackMinSuccessThreshold: likelyAttackMinSuccessThreshold
+    enableNewReleaseAlert: enableNewReleaseAlert
+    newReleaseAlertEvaluationFrequencyInMinutes: newReleaseAlertEvaluationFrequencyInMinutes
+    newReleaseAlertWindowInMinutes: newReleaseAlertWindowInMinutes
+    enableBrokenSponsorAlert: enableBrokenSponsorAlert
     operationalActionGroupResourceIds: operationalActionGroupResourceIds
     infoActionGroupResourceIds: infoActionGroupResourceIds
     defaultAlertNotificationEmail: defaultAlertNotificationEmail

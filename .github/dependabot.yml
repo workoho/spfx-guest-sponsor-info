@@ -18,13 +18,19 @@ updates:
       tooling:
         patterns:
           - "@commitlint/*"
+          - "@typescript-eslint/*"
           - "eslint*"
           - "eslint-*"
           - "husky"
+          - "lint-staged"
           - "markdownlint-cli2"
           - "stylelint"
           - "stylelint-*"
           - "typescript"
+      # Keep all Fluent UI v9 packages in sync in a single PR.
+      fluentui:
+        patterns:
+          - "@fluentui/*"
     ignore:
       # The @microsoft/sp-* and @microsoft/spfx-* packages form a tightly
       # coupled SPFx suite. They must all be upgraded together and only
@@ -35,14 +41,18 @@ updates:
       # @rushstack packages are part of the SPFx Heft build rig and are
       # coordinated with the SPFx release.
       - dependency-name: "@rushstack/*"
+      # @types/heft-jest is tightly coupled to the Heft build rig.
+      - dependency-name: "@types/heft-jest"
+      # css-loader is pinned to the version compatible with the SPFx webpack
+      # configuration. Major bumps require manual verification.
+      - dependency-name: "css-loader"
+        update-types: ["version-update:semver-major"]
       # SPFx ships with React 17 internally; a version mismatch causes subtle
       # build errors. Upgrade only alongside a full SPFx upgrade.
       - dependency-name: "react"
       - dependency-name: "react-dom"
       - dependency-name: "@types/react"
       - dependency-name: "@types/react-dom"
-      # @fluentui/react is tightly coupled to the SPFx Fluent UI version.
-      - dependency-name: "@fluentui/react"
 
   # ── npm dependencies (Azure Function) ────────────────────────────────────
   - package-ecosystem: npm

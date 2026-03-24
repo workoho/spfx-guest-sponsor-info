@@ -1,62 +1,121 @@
-// Mock the Fluent UI Callout so it renders inline (avoids portal / ResizeObserver issues).
-// The Callout's rendered children are still fully exercised.
+// Mock Fluent UI v9 components so they render inline (avoids portal / ResizeObserver issues).
+// All rendered children are still fully exercised.
 // NOTE: jest.mock must be placed before imports so the linting rule is satisfied
 // (Jest hoists it automatically at runtime regardless of source position).
-jest.mock('@fluentui/react', () => ({
+jest.mock('@fluentui/react-components', () => ({
+  // Avatar: renders initials derived from the name prop and an optional photo.
+  // data-badge-status exposes the presence badge status for tests.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  Callout: ({ children, role }: { children: React.ReactNode; role?: string }) => (
-    <div role={role ?? 'dialog'}>{children}</div>
-  ),
-  DirectionalHint: { rightTopEdge: 0, leftTopEdge: 1 },
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  Icon: ({ iconName, className }: { iconName: string; className?: string }) => (
-    <i className={className} data-icon-name={iconName} />
-  ),
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  IconButton: ({ iconProps, ariaLabel, onClick, className, disabled }: any) => (
-    <button type="button" aria-label={ariaLabel} onClick={onClick} className={className} disabled={disabled}>
-      <i data-icon-name={iconProps?.iconName} />
-    </button>
-  ),
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ActionButton: ({ href, text, children, iconProps, disabled, target, rel, styles: _styles, ...rest }: any) => {
-    const iconEl = iconProps?.iconName ? <i data-icon-name={iconProps.iconName} /> : null;
-    const label = text || children;
-    if (href && !disabled) {
-      return <a href={href} target={target} rel={rel} {...rest}>{iconEl}{label}</a>;
-    }
-    return <span aria-disabled={disabled ? 'true' : undefined} {...rest}>{iconEl}{label}</span>;
+  Avatar: ({ name, image, badge, size, className, ...rest }: any) => {
+    const parts = ((name as string) || '').trim().split(/\s+/).filter(Boolean);
+    const initials = parts.length >= 2
+      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+      : ((name as string) || '').substring(0, 2).toUpperCase();
+    return (
+      <div data-avatar-size={size} data-badge-status={badge?.status ?? 'none'} className={className} {...rest}>
+        <div className="initials">{initials}</div>
+        {image?.src && <img src={image.src} alt="" />}
+      </div>
+    );
   },
+  // Persona: renders avatar + text slots. Exposes the same data attributes as Avatar so
+  // existing tests that query the rich card header can continue to use the same selectors.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  Link: ({ href, children, className, styles: _styles, ...rest }: any) => (
+  Persona: ({ name, size, avatar, primaryText, secondaryText, tertiaryText, className }: any) => {
+    const parts = ((name as string) || '').trim().split(/\s+/).filter(Boolean);
+    const initials = parts.length >= 2
+      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+      : ((name as string) || '').substring(0, 2).toUpperCase();
+    const secondary = typeof secondaryText === 'object' && secondaryText !== null
+      ? secondaryText.children
+      : secondaryText;
+    const tertiary = typeof tertiaryText === 'object' && tertiaryText !== null
+      ? tertiaryText.children
+      : tertiaryText;
+    return (
+      <div data-persona="" data-size={size} className={className}>
+        <div data-avatar-size={size ?? 'medium'} data-badge-status={avatar?.badge?.status ?? 'none'}>
+          <div className="initials">{initials}</div>
+          {avatar?.image?.src && <img src={avatar.image.src} alt="" />}
+        </div>
+        <span>
+          <span data-primary-text="">{primaryText?.children ?? name}</span>
+          {secondary !== undefined && <span data-secondary-text="">{secondary}</span>}
+          {tertiary !== undefined && <span data-tertiary-text="">{tertiary}</span>}
+        </span>
+      </div>
+    );
+  },
+  // Button: renders as <a> when href is present and not disabled, otherwise <button>.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Button: ({ as: As, href, children, icon, disabled, disabledFocusable, onClick, className, 'aria-label': ariaLabel, target, rel, ...rest }: any) => {
+    const resolvedAs = As || 'button';
+    const isDisabled = disabled || disabledFocusable;
+    if (href && !isDisabled) {
+      return <a href={href} target={target} rel={rel} className={className} aria-label={ariaLabel} {...rest}>{icon}{children}</a>;
+    }
+    if (resolvedAs === 'a' && !href) {
+      return <button type="button" onClick={onClick} disabled={isDisabled} className={className} aria-label={ariaLabel} {...rest}>{icon}{children}</button>;
+    }
+    return <button type="button" onClick={onClick} disabled={isDisabled} className={className} aria-label={ariaLabel} {...rest}>{icon}{children}</button>;
+  },
+  // Tooltip: render children directly; tooltip behaviour is tested in Fluent UI itself.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  // Popover: render children when open. PopoverSurface renders with the given role.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Popover: ({ children, open }: { children: React.ReactNode; open?: boolean }) => open ? <>{children}</> : null,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  PopoverSurface: ({ children, role, ...rest }: any) => (
+    <div role={role ?? 'dialog'} {...rest}>{children}</div>
+  ),
+  // OverlayDrawer: renders children inside a dialog when open.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  OverlayDrawer: ({ children, open }: { children: React.ReactNode; open?: boolean }) => (
+    open ? <div role="dialog">{children}</div> : null
+  ),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  DrawerHeader: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  DrawerHeaderTitle: ({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) => (
+    <><span>{children}</span>{action}</>
+  ),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  DrawerBody: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Link: ({ href, children, className, ...rest }: any) => (
     <a href={href} className={className} {...rest}>{children}</a>
   ),
+  // makeStyles returns a hook that returns an empty style map (CSS-in-JS not needed in tests).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  Persona: ({ imageInitials, initialsColor, imageUrl, presence, isOutOfOffice, size, className, ...rest }: any) => (
-    <div
-      data-persona-size={size}
-      data-persona-presence={presence}
-      data-persona-ooo={isOutOfOffice}
-      className={className}
-      {...rest}
-    >
-      <div className="initials" style={{ backgroundColor: initialsColor }}>
-        {imageInitials}
-      </div>
-      {imageUrl && <img src={imageUrl} alt="" />}
-    </div>
-  ),
-  PersonaPresence: { none: 0, offline: 1, online: 2, away: 3, dnd: 4, blocked: 5, busy: 6 },
-  PersonaSize: { size40: 40, size72: 72 },
-  // Render children directly; tooltip callout behaviour is tested in Fluent UI itself.
+  makeStyles: () => () => ({} as any),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  TooltipHost: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  mergeClasses: (...classes: string[]) => classes.filter(Boolean).join(' '),
+  // FluentProvider: pass-through wrapper so nested providers in portals render in tests.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  Panel: ({ children, isOpen }: { children: React.ReactNode; isOpen?: boolean }) => (
-    isOpen ? <div role="dialog">{children}</div> : null
-  ),
-  PanelType: { custom: 'custom' },
+  FluentProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  tokens: {},
 }));
+
+// Mock Fluent UI v9 SVG icons as empty spans so tests don't need SVG support.
+jest.mock('@fluentui/react-icons', () =>
+  new Proxy(
+    {},
+    {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      get: (_target: any, prop: string): any => {
+        // bundleIcon returns a component that renders the Regular variant only.
+        if (prop === 'bundleIcon') {
+          return (_Filled: React.FC, Regular: React.FC) => Regular;
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const Icon = ({ className }: { className?: string }): React.ReactElement => <span data-icon-name={prop} className={className} />;
+        Icon.displayName = prop;
+        return Icon;
+      },
+    }
+  )
+);
 
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
@@ -665,18 +724,22 @@ describe('SponsorCard', () => {
   });
 
   describe('presence indicator', () => {
-    it('never renders a presence dot on the tile, regardless of card state', () => {
+    it('never renders a presence badge on the tile, only in the rich card', () => {
       render({ ...BASE_SPONSOR, presence: 'Available' }, 'test-tenant-id', true);
-      const persona = container.querySelector('[data-persona-presence]');
-      expect(persona).not.toBeNull();
-      expect(persona!.getAttribute('data-persona-presence')).toBe('0');
+      // Presence badge must not appear on the thumbnail tile — only inside the rich card header.
+      const thumbnailCard = container.querySelector('[role="button"]');
+      const thumbnailAvatar = thumbnailCard?.querySelector('[data-badge-status]');
+      expect(thumbnailAvatar).not.toBeNull();
+      expect(thumbnailAvatar!.getAttribute('data-badge-status')).toBe('none');
     });
 
     it('does not render a presence indicator when presence is absent', () => {
       render(BASE_SPONSOR);
-      const persona = container.querySelector('[data-persona-presence]');
-      expect(persona).not.toBeNull();
-      expect(persona!.getAttribute('data-persona-presence')).toBe('0');
+      // Even when no presence data is provided, the thumbnail avatar has no badge.
+      const thumbnailCard = container.querySelector('[role="button"]');
+      const thumbnailAvatar = thumbnailCard?.querySelector('[data-badge-status]');
+      expect(thumbnailAvatar).not.toBeNull();
+      expect(thumbnailAvatar!.getAttribute('data-badge-status')).toBe('none');
     });
 
     it('shows the presence label in the rich card when active', () => {
@@ -686,9 +749,11 @@ describe('SponsorCard', () => {
 
     it('does not render a presence indicator when hasTeams is false', () => {
       render({ ...BASE_SPONSOR, presence: 'Available', hasTeams: false });
-      const persona = container.querySelector('[data-persona-presence]');
-      expect(persona).not.toBeNull();
-      expect(persona!.getAttribute('data-persona-presence')).toBe('0');
+      // hasTeams=false → showPresenceIndicator is false → thumbnail avatar has no badge.
+      const thumbnailCard = container.querySelector('[role="button"]');
+      const thumbnailAvatar = thumbnailCard?.querySelector('[data-badge-status]');
+      expect(thumbnailAvatar).not.toBeNull();
+      expect(thumbnailAvatar!.getAttribute('data-badge-status')).toBe('none');
     });
 
     it('does not show presence label in rich card when hasTeams is false', () => {

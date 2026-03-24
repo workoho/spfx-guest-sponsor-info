@@ -15,17 +15,12 @@
   // ── TypeScript ─────────────────────────────────────────────────────────────
   "typescript.tsdk": "./node_modules/typescript/lib",
   // ── ESLint ─────────────────────────────────────────────────────────────────
-  "eslint.validate": [
-    "typescript",
-    "typescriptreact"
-  ],
+  "eslint.validate": ["typescript", "typescriptreact"],
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit"
   },
   // ── Stylelint ──────────────────────────────────────────────────────────────
-  "stylelint.validate": [
-    "scss"
-  ],
+  "stylelint.validate": ["scss"],
   "css.validate": false,
   "scss.validate": false,
   // ── Markdownlint ───────────────────────────────────────────────────────────
@@ -34,11 +29,33 @@
   },
   // ── Editor defaults ────────────────────────────────────────────────────────
   "editor.formatOnSave": true,
-  "editor.rulers": [
-    120
-  ],
+  "editor.formatOnPaste": false,
+  "editor.formatOnType": false,
+  "editor.rulers": [120],
   "files.trimTrailingWhitespace": true,
   "files.insertFinalNewline": true,
+  // ── Per-language formatters ────────────────────────────────────────────────
+  // TypeScript and SCSS use ESLint / Stylelint code-actions (see above);
+  // do NOT add Prettier here — it would conflict with ESLint rule set.
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[shellscript]": {
+    "editor.defaultFormatter": "foxundermoon.shell-format"
+  },
+  // Tell shell-format where to find the shfmt binary installed in the Dockerfile.
+  "shellformat.path": "/usr/local/bin/shfmt",
+  // Match shfmt flags used in fix:sh script: 2-space indent, case-indent.
+  "shellformat.flag": "-i 2 -ci",
+  "[bicep]": {
+    "editor.defaultFormatter": "ms-azuretools.vscode-bicep"
+  },
+  "[powershell]": {
+    "editor.defaultFormatter": "ms-vscode.powershell"
+  },
   // ── GitHub Copilot ─────────────────────────────────────────────────────────
   "github.copilot.chat.commitMessageGeneration.instructions": [
     {

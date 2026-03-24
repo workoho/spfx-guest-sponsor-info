@@ -17,7 +17,7 @@ details. The layout matches the built-in SharePoint People web part.
 
 | Solution | Author(s) |
 |---|---|
-| `guest-sponsor-info.sppkg` | [Julian Pawlowski](https://github.com/workoho) |
+| `guest-sponsor-info.sppkg` | [Workoho GmbH](https://github.com/workoho) ([Julian Pawlowski](https://github.com/jpawlowski)) |
 
 ## Prerequisites
 
@@ -28,6 +28,15 @@ details. The layout matches the built-in SharePoint People web part.
 | Microsoft Graph permissions | `User.Read` · `User.ReadBasic.All` (· `Presence.Read.All` optional) |
 
 ## Features
+
+Works out of the box with any standard Microsoft 365 environment — no
+third-party tools or paid add-ons required. Every feature below relies solely
+on Microsoft Graph, SharePoint Framework, and the included optional Azure
+Function. [EasyLife 365 Collaboration](https://easylife365.cloud/) pairs
+naturally as a companion: it automates sponsor assignments and the full guest
+lifecycle so the right information stays accurate over time — solid on its
+own, stronger together. [Workoho](https://www.workoho.com/), the author of
+this web part, is a Platinum EasyLife 365 partner and happy to advise.
 
 - **"Who is my contact here?"** — guests see their sponsor's photo, name, and
   job title directly on the SharePoint landing page — no searching, no asking
@@ -60,6 +69,12 @@ details. The layout matches the built-in SharePoint People web part.
   colleagues — not former employees or system accounts that are still lingering
   in the sponsor list; if all assigned sponsors have since left the organisation,
   the guest receives a clear notice instead of an empty page
+- **Automatic sponsor delegation** — when sponsors are stored in priority order
+  (primary, secondary, tertiary … as tools like
+  [EasyLife 365](https://easylife365.cloud/) do), the web part honours that
+  order: if a higher-priority sponsor is unavailable, the next active one steps
+  in automatically — no configuration change needed; unavailable sponsors are
+  still shown as read-only tiles so the guest sees the full picture
 - **Only shown to guests** — member users see nothing; the web part is invisible
   unless the visitor is actually a guest account
 - **Works without giving guests extra permissions** — if you've ever tried to
@@ -88,37 +103,96 @@ details. The layout matches the built-in SharePoint People web part.
 
 ### 1. Deploy the web part
 
-1. Download the latest `guest-sponsor-info.sppkg` from
-   [Releases](../../releases).
-2. Upload it to your SharePoint **App Catalog** and add the app to each target
-   site (**Site Contents → New → App → Guest Sponsor Info**).
-3. Approve any pending Graph permissions in **SharePoint Admin Center →
-   Advanced → API access** (often already pre-consented — the queue will
-   simply be empty).
+The web part's bundle is hosted in a **Site Collection App Catalog** directly
+on the guest landing page site itself. Because guest users already need read
+access to that site, no CDN configuration or extra permissions on the global
+App Catalog are required.
 
-### 2. Enable the SharePoint Public CDN
+**Enable the Site Collection App Catalog** (once, as **SharePoint
+Administrator**; no GUI available — PowerShell required).
 
-Guest users cannot reach assets hosted in the App Catalog by default. The
-simplest fix is to enable the Public CDN:
+On Windows, use the **SharePoint Online Management Shell** — no additional
+setup needed:
 
 ```powershell
-Connect-PnPOnline -Url "https://<tenant>-admin.sharepoint.com" -Interactive
-Set-PnPTenantCdnEnabled -CdnType Public -Enable $true
-Add-PnPTenantCdnOrigin -CdnType Public -OriginUrl "*/CLIENTSIDEASSETS"
+Connect-SPOService -Url "https://<tenant>-admin.sharepoint.com"
+Add-SPOSiteCollectionAppCatalog -Site "https://<tenant>.sharepoint.com/sites/<landing-site>"
 ```
 
-Propagation takes ≈ 15–30 min. After that, asset URLs are rewritten
-automatically — no redeployment needed.
+On macOS/Linux, use [PnP PowerShell](https://pnp.github.io/powershell/)
+(requires your own Entra app registration; pass its Client ID via `-ClientId`):
 
-> Cannot use the Public CDN? See
-> [docs/deployment.md](docs/deployment.md#option-b--app-catalog-permissions-alternative)
-> for the App Catalog permissions alternative.
+```powershell
+Connect-PnPOnline -Url "https://<tenant>-admin.sharepoint.com" `
+    -ClientId "<your-pnp-app-client-id>" -Interactive
+Add-PnPSiteCollectionAppCatalog -Site "https://<tenant>.sharepoint.com/sites/<landing-site>"
+```
 
-### 3. Verify external sharing
+**Upload and install the package:**
 
-External sharing must be enabled at the tenant level and on each site where
-the web part is placed: **SharePoint Admin Center → Policies → Sharing** → at
-least *Existing guests only*.
+1. Download the latest `guest-sponsor-info.sppkg` from
+   [Releases](../../releases).
+2. Navigate to the landing page site → **Site Contents** →
+   **Apps for SharePoint** and upload the `.sppkg` file.
+   *(The Site Collection App Catalog is also accessible directly at
+   `https://<tenant>.sharepoint.com/sites/<landing-site>/AppCatalog/`.)*
+3. The web part becomes available on all pages in this site collection
+   immediately — no additional "Add App" step is required.
+4. The required Microsoft Graph permissions (`User.Read`, `User.ReadBasic.All`,
+   `Presence.Read.All`) are pre-authorized by Microsoft for SharePoint Online —
+   the **SharePoint Admin Center → Advanced → API access** queue will simply
+   be empty and no manual consent is needed.
+
+### 2. Verify external sharing
+
+What matters is the sharing setting on the landing page site itself:
+**SharePoint Admin Center → Active sites → [site] → Policies → External
+sharing** — set to at least *Existing guests only*. If that option is greyed
+out, the tenant-level ceiling (**Policies → Sharing**) needs to be raised
+first.
+
+### 3. Verify guest access to the landing page site
+
+If your landing page site is already serving guests, Visitor access is most
+likely in place — but it's worth checking that it's configured in a way that
+works reliably for newly invited users too.
+
+> **New to the landing page?** Use a **Communication Site** (not a Team
+> Site) — it has a clean Visitor permission model with no attached Microsoft
+> 365 group. The instructions in this step then apply from scratch.
+
+Guests need at least **Read** (Visitor) permission. The built-in **Everyone**
+group is the most reliable option: it takes effect immediately and covers all
+B2B guests who have accepted their invitation — no backend group sync needed.
+
+If *Everyone* is not visible in the People Picker, enable the claim first:
+
+```powershell
+# SharePoint Online Management Shell:
+Set-SPOTenant -ShowEveryoneClaim $true
+
+# PnP PowerShell (cross-platform):
+Set-PnPTenant -ShowEveryoneClaim $true
+```
+
+Then add *Everyone* to the Visitors group via **Site Settings → People and
+Groups → [Site] Visitors → New → Add Users → Everyone**.
+
+> **Pitfall:** The similarly named *Everyone except external users* group
+> explicitly **excludes** B2B guests — do not use it here.
+
+**Alternative — static Entra security group:** If your organisation uses an
+automated guest invitation workflow (not implicit Teams/SharePoint invitations),
+a static security group populated at invitation time is a viable alternative.
+Entra ID immediately reflects the new membership; SharePoint then resolves it
+within seconds to a few minutes. Dynamic groups are slower because Entra must
+first re-evaluate its membership rule (up to 24 hours) before SharePoint sees
+the change. The *Everyone* group remains preferred because its
+`c:0(.s|true` claim is evaluated entirely within SharePoint's own
+authentication layer — no Entra group membership resolution required at all.
+See the [deployment guide](docs/deployment.md#verify-guest-access-to-the-landing-page-site)
+for full details, including an EasyLife 365 Collaboration tip for automated
+guest lifecycle scenarios.
 
 ### 4. Deploy the Guest Sponsor API
 
@@ -158,8 +232,7 @@ Edit a modern page → add the *Guest Sponsor Info* web part.
 ## Development
 
 ```bash
-npm install
-cp .env.example .env           # set SPFX_TENANT=<tenant>.sharepoint.com
+./scripts/bootstrap.sh         # install deps + create .env (then set SPFX_SERVE_TENANT_DOMAIN in .env)
 ./scripts/dev-webpart.sh       # SPFx dev server with hot-reload
 ```
 
@@ -171,9 +244,9 @@ az login                       # authenticate for Graph API access
 ```
 
 ```bash
-npm run build                  # full production build → .sppkg
-npm test                       # unit tests (Jest 29)
-npm run lint                   # TypeScript · SCSS · Markdown
+./scripts/build.sh             # CI-style clean build → .sppkg
+./scripts/test.sh              # unit tests (Jest 29)
+./scripts/lint.sh              # TypeScript · SCSS · Markdown
 ```
 
 > Full development guide (scripts, testing scenarios, release workflow, CI,

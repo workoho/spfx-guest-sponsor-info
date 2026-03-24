@@ -16,8 +16,7 @@ For a visual system overview, see [architecture-diagram.md](architecture-diagram
 ## Quick Start
 
 ```bash
-npm install                    # install dependencies
-cp .env.example .env           # fill in SPFX_TENANT=<your-tenant>.sharepoint.com
+# set SPFX_SERVE_TENANT_DOMAIN in .env, then:
 ./scripts/dev-webpart.sh       # starts SPFx dev server with hot-reload
 ```
 
@@ -26,10 +25,192 @@ SharePoint Online tenant. Accept the certificate warning at
 `https://localhost:4321` once per browser session, then open the hosted
 workbench URL printed on startup.
 
+### First-session checklist (devcontainer)
+
+`post-create.sh` runs automatically on container start and handles `npm install`,
+`.env` creation, git hooks, git identity, `git-cliff`, `delta`, and the Bicep CLI.
+Check the terminal output during container start for any warnings.
+
+The following steps require manual action after the container has started:
+
+1. **Set `SPFX_SERVE_TENANT_DOMAIN`** in `.env` (created automatically at
+   `<repo-root>/.env`). Without it, `./scripts/dev-webpart.sh` cannot start.
+2. **`az login`** — only needed for Azure Function development. Not required
+   for web part work.
+3. **GitHub token** — run `gh auth login` inside the container to enable
+   the `gh` CLI and the GitHub MCP server (gives AI agents access to issues,
+   PRs, and Actions runs). See the [GitHub MCP server](#devcontainer--github-mcp-server)
+   section for a persistent alternative via `GITHUB_TOKEN`.
+4. **Git identity** — if `post-create.sh` warned that `user.name` or
+   `user.email` was not found, set them inside the container:
+
+   ```bash
+   git config --global user.name  "Your Name"
+   git config --global user.email "you@example.com"
+   ```
+
+   Note: values set this way live in the container filesystem and are lost on
+   rebuild. For a persistent setup, configure your git identity on the host OS
+   — the container reads it from `~/.gitconfig` automatically at startup.
+
+In **GitHub Codespaces** steps 1–4 are handled automatically.
+
+## Development Environment
+
+A complete inventory of the toolchain — what is strictly required, what is
+convenient to install locally, and what the devcontainer adds on top.
+
+### Required (local setup without devcontainer)
+
+Install these manually when not using the devcontainer.
+
+| Tool | Purpose |
+|---|---|
+| **Node.js 22.x** | JavaScript runtime for the SPFx build, unit tests, and the Azure Function. Stay within the version range in `engines` in `package.json`. |
+| **npm** | Package manager — bundled with Node.js, no separate installation needed. |
+| **Git** | Version control. The pre-commit hooks (`husky`) enforce formatting and linting automatically before every commit. |
+
+### Recommended for local setup (optional)
+
+Only needed for specific workflows.
+
+| Tool | Install | Purpose |
+|---|---|---|
+| **Azure CLI** (`az`) | [docs.microsoft.com/cli/azure](https://learn.microsoft.com/cli/azure/install-azure-cli) | Authenticate against Azure for local Function development and infra deployments. |
+| **PowerShell** (`pwsh`) | [github.com/PowerShell](https://github.com/PowerShell/PowerShell#get-powershell) | Run the infra setup scripts (`setup-app-registration.ps1`, `setup-graph-permissions.ps1`) on macOS / Linux. |
+| **GitHub CLI** (`gh`) | [cli.github.com](https://cli.github.com) | Manage PRs, issues, and CI runs from the terminal; used by `./scripts/release-notes.sh`. |
+
+---
+
+### Devcontainer — CLI tools
+
+Everything below is pre-installed in the devcontainer and ready on the `PATH`
+after a container build. No manual step required.
+
+#### Search and navigation
+
+| Command | Tool | Purpose |
+|---|---|---|
+| `rg` | **ripgrep** | Fast full-text search — faster than `grep`, respects `.gitignore`. Great for finding all usages of a symbol across the codebase. |
+| `fd` | **fd-find** | Fast, readable alternative to `find` for locating files by name or pattern. |
+| `bat` | **bat** | `cat` with syntax highlighting and line numbers — handy for quick file inspection in the terminal. |
+| `fzf` | **fzf** | Interactive fuzzy finder for files, shell history, and any piped list. |
+
+#### Data processing
+
+| Command | Tool | Purpose |
+|---|---|---|
+| `jq` | **jq** | Parse and query JSON in the terminal — useful for inspecting Graph API responses or `package.json`. |
+| `yq` | **yq** | Same as `jq` but also understands YAML — useful for config files. |
+
+#### Shell script quality
+
+| Command | Tool | Purpose |
+|---|---|---|
+| `shellcheck` | **ShellCheck** | Static analyzer: catches bugs and portability issues in shell scripts before they run. |
+| `shfmt` | **shfmt** | Auto-formatter for shell scripts. Applied automatically at commit time via `lint-staged`. |
+
+#### Git workflow
+
+| Command | Tool | Purpose |
+|---|---|---|
+| `git diff` | **delta** | Renders `git diff` / `git show` with syntax highlighting and line numbers. Configured automatically as the default git pager. |
+
+#### Azure and cloud
+
+| Command | Tool | Purpose |
+|---|---|---|
+| `az` | **Azure CLI** | Manage Azure resources and authenticate for local Function development. |
+| `func` | **Azure Functions Core Tools** | Start the Azure Function locally for development and debugging. Used by `./scripts/dev-function.sh`. |
+| `gh` | **GitHub CLI** | Query PRs, issues, Actions runs, and releases; used by scripts and AI agents. |
+| `pwsh` | **PowerShell** | Run `.ps1` infra setup scripts without needing a Windows machine. |
+
+---
+
+### Devcontainer — VS Code extensions
+
+All extensions install automatically when the devcontainer starts.
+
+#### AI assistants
+
+| Extension | Purpose |
+|---|---|
+| **GitHub Copilot Chat** | Inline code completions and AI chat — integrated directly into the editor and terminal. |
+| **Claude** (Anthropic) | Alternative AI coding assistant. |
+| **ChatGPT** (OpenAI) | Alternative AI assistant. |
+
+#### Code quality — linting and formatting
+
+| Extension | Purpose |
+|---|---|
+| **ESLint** | Highlights TypeScript / JavaScript issues inline. Applies auto-fixes on save. |
+| **Stylelint** | Highlights SCSS issues inline. |
+| **Markdownlint** | Enforces Markdown style rules (heading levels, line length, blank lines). |
+| **Prettier — Code Formatter** | Auto-formats JSON and JSONC files on save. |
+| **shell-format** | Auto-formats shell scripts on save using `shfmt`. |
+| **Error Lens** | Renders ESLint and TypeScript diagnostics directly on the affected line — no need to hover over the red underline. |
+
+#### Git and GitHub
+
+| Extension | Purpose |
+|---|---|
+| **GitLens** | Inline git blame, per-line authorship, and full file history without leaving the editor. |
+| **GitHub Pull Requests** | Review, comment on, and merge PRs without switching to the browser. |
+| **GitHub Actions** | Monitor CI workflow runs and see job logs in the sidebar. |
+| **Conventional Commits** | GUI helper for composing commit messages that pass `commitlint` — avoids type / format errors. |
+
+#### Azure and infrastructure
+
+| Extension | Purpose |
+|---|---|
+| **Azure Developer CLI** | Deploy and manage the full app stack with `azd up` / `azd down`. |
+| **Azure Functions** | Browse, deploy, and live-debug Azure Functions from VS Code. |
+| **Azure Resources** | Browse subscriptions, resource groups, and resources in the sidebar. |
+| **Azure Storage** | Browse blob containers and table storage directly in the editor. |
+| **Bicep** | Syntax highlighting, validation (linting), and IntelliSense for `.bicep` infrastructure files. |
+| **Azure CLI Tools** | Syntax highlighting and basic IntelliSense for `.azcli` script files. |
+| **Docker** | Manage container images and Compose files from the sidebar. |
+| **PowerShell** | IntelliSense and integrated debugging for `.ps1` scripts. |
+
+#### SharePoint and general
+
+| Extension | Purpose |
+|---|---|
+| **Deploy to SharePoint Online** | Upload `.sppkg` to the SharePoint App Catalog directly from VS Code — no CLI needed. |
+| **EditorConfig** | Reads `.editorconfig` and enforces consistent line endings and indentation across every file type. |
+
+---
+
+### Devcontainer — GitHub MCP server
+
+The devcontainer ships a pre-configured
+[GitHub MCP server](https://github.com/modelcontextprotocol/servers/tree/main/src/github).
+It gives AI coding agents (Copilot, Claude, etc.) structured access to the
+GitHub API — issues, PRs, Actions runs, and releases — as first-class tools,
+without the agent having to parse `gh` CLI output.
+
+Both the MCP server and the `gh` CLI authenticate via `GITHUB_TOKEN`. Set it
+once on your host machine and every container rebuild picks it up automatically:
+
+```bash
+# add to ~/.bashrc or ~/.zshrc on your host OS
+export GITHUB_TOKEN=ghp_...   # a GitHub Personal Access Token (classic or fine-grained)
+```
+
+In **GitHub Codespaces** the token is injected automatically — no action needed.
+
+As a short-lived alternative you can run `gh auth login` inside a running
+container, but credentials are stored in the container filesystem and will be
+lost on the next rebuild.
+
+---
+
 ## Scripts
 
 | Script | Purpose |
 |---|---|
+| `./scripts/bootstrap.sh` | Install deps + create `.env` (runs automatically in the devcontainer; run manually outside it) |
+| `./scripts/reset.sh` | Wipe build outputs + node_modules, then re-bootstrap |
 | `./scripts/dev-webpart.sh` | Start SPFx web part dev server |
 | `./scripts/dev-function.sh` | Start Azure Function locally |
 | `./scripts/test.sh` | Run tests |
@@ -49,8 +230,8 @@ workbench URL printed on startup.
 | `npm test` | Compile and run unit tests |
 | `npm start` | Start dev server (hot-reload, hosted workbench) |
 | `npm run clean` | Delete all build output |
-| `npm run lint` | Run all linters (TypeScript · SCSS · Markdown) |
-| `npm run fix` | Auto-fix formatting issues |
+| `npm run lint` | Run all linters (TypeScript · SCSS · Markdown · JSON · shell) |
+| `npm run fix` | Auto-fix all formatting issues (ESLint · Stylelint · Prettier · shfmt · Markdownlint) |
 
 ## Testing
 
@@ -64,7 +245,7 @@ Coverage output is written to `jest-output/coverage/`.
 
 ### Testing scenarios
 
-- **Hosted workbench as member:** `SPFX_TENANT` in `.env` +
+- **Hosted workbench as member:** `SPFX_SERVE_TENANT_DOMAIN` in `.env` (or set on host OS) +
   `./scripts/dev-webpart.sh`. Verifies the non-guest path.
 - **Hosted workbench as guest:** Requires a second M365 tenant where your
   account is a guest with sponsors assigned, API permissions consented, and
@@ -158,18 +339,11 @@ The VS Code task "npm watch (functions)" also provides this.
 ## Build from Source
 
 ```bash
-npm install        # install dependencies
-npm run build      # compile, test, bundle, and package
+./scripts/build.sh    # clean install + compile + test + bundle + package
 ```
 
 The packaged solution is written to
 `sharepoint/solution/guest-sponsor-info.sppkg`.
-
-For a CI-style clean build from scratch:
-
-```bash
-./scripts/build.sh    # runs npm ci first
-```
 
 ## Publishing a Release
 

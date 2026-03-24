@@ -12,7 +12,7 @@ define([], function() {
     "ErrorMessage": "Não foi possível carregar as informações do patrocinador. Tente novamente mais tarde.",
     "EditModePlaceholder": "Informações do Patrocinador Convidado — alterne para o modo de exibição para ver os patrocinadores.",
     "GuestOnlyPlaceholder": "Este web part é visível apenas para usuários convidados no modo de exibição.",
-    "MockModeFieldLabel": "Modo de demonstração (dados fictícios)",
+    "MockModeFieldLabel": "Sempre exibir patrocinadores demo (modo demo público)",
     "MockModePlaceholder": "Informações do Patrocinador Convidado — Modo de demonstração ativo. Alterne para o modo de exibição para ver os dados fictícios.",
     "MockSimulatedHintFieldLabel": "Simular notificação de convidado",
     "MockSimulatedHintNoneOption": "Nenhuma notificação",
@@ -20,6 +20,8 @@ define([], function() {
     "MockSimulatedHintVersionMismatchOption": "Atualização disponível",
     "MockSimulatedHintSponsorUnavailableOption": "Patrocinador não disponível",
     "MockSimulatedHintNoSponsorsOption": "Nenhum patrocinador encontrado",
+    "MaxSponsorCountFieldLabel": "Patrocinadores visíveis (página ao vivo)",
+    "MockSponsorCountFieldLabel": "Número de patrocinadores de demonstração",
 
     "PresenceAvailable": "Disponível",
     "PresenceAvailableIdle": "Disponível, inativo",
@@ -73,7 +75,7 @@ define([], function() {
     "OpenAddressInMapLabel": "Abrir no mapa",
 
     "TeamsAccessPendingTitle": "Microsoft Teams ainda não configurado",
-    "TeamsAccessPendingMessage": "Seu acesso de convidado ao Microsoft Teams nesta organização ainda não foi configurado. Sua própria conta do Teams não é afetada. Peça ao seu patrocinador para adicioná-lo a uma equipe — depois disso, recursos do Teams como chat, chamadas e reuniões ficarão disponíveis aqui.",
+    "TeamsAccessPendingMessage": "Seu acesso de convidado ao Microsoft Teams nesta organização ainda não foi configurado. Sua própria conta do Teams não é afetada. Peça ao seu patrocinador para adicionar você a uma equipe — depois disso, recursos do Teams como chat, chamadas e reuniões ficarão disponíveis aqui.",
     "TeamsNotReadyChatTooltip": "Chat indisponível aqui — seu acesso de convidado do Teams ainda não foi configurado",
     "TeamsNotReadyCallTooltip": "Chamada indisponível aqui — seu acesso de convidado do Teams ainda não foi configurado",
 
@@ -91,6 +93,7 @@ define([], function() {
     "DisplayGroupName": "Exibição",
     "CardLayoutFieldLabel": "Layout do cartão",
     "CardLayoutAutoOption": "Automático",
+    "CardLayoutAutoThresholdFieldLabel": "Mudar para layout compacto a partir deste número de patrocinadores",
     "CardLayoutFullOption": "Completo",
     "CardLayoutCompactOption": "Compacto",
     "ShowBusinessPhonesFieldLabel": "Mostrar telefone comercial",
@@ -123,6 +126,7 @@ define([], function() {
     "AuthorSectionPartnerTagline": "O EasyLife 365 automatiza o gerenciamento do ciclo de vida no Teams, sites SharePoint, Viva Engage e outros espaços do Microsoft 365 — incluindo integração de convidados e gerenciamento de patrocinadores.",
     "AuthorSectionSourceCodeLabel": "Código-fonte no GitHub",
     "AuthorSectionVersionLabel": "Versão do web part",
+    "NewReleaseAvailableLabel": "Nova versão disponível — abrir no GitHub Releases",
     "ShowSponsorJobTitleFieldLabel": "Mostrar cargo do patrocinador",
     "ShowManagerJobTitleFieldLabel": "Mostrar cargo do responsável",
     "ShowSponsorDepartmentFieldLabel": "Mostrar departamento do patrocinador",

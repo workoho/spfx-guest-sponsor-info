@@ -10,13 +10,15 @@ Authoritative versions are in `package.json` (`engines`, `dependencies`, `devDep
 Always validate your changes before considering a task done:
 
 1. **Lint** — always run `npm run lint` after every change (fast, catches most issues early).
-   Per-type: `npm run lint:ts` · `npm run lint:scss` · `npm run lint:md` · `npm run lint:loc`
+   Per-type: `npm run lint:ts` · `npm run lint:scss` · `npm run lint:md` · `npm run lint:loc` · `npm run lint:sh`
+   Auto-fix: `npm run fix` (runs ESLint · Stylelint · Prettier for JSON · shfmt for shell · Markdownlint)
 2. **Test** — run `npm test` when you changed logic, components, or services.
    Skip for pure documentation, config, or style-only changes.
 3. **Build** — run `npm run build` only when the packaging artifact (`.sppkg`) is relevant,
    e.g. before a release. Not needed for regular development changes.
 
-For interactive development use `npm start` (hosted workbench with hot-reload; requires `SPFX_TENANT` in `.env`).
+For interactive development use `npm start` (hosted workbench with hot-reload; requires `SPFX_SERVE_TENANT_DOMAIN` —
+set in `.env` or as a host OS env var, see `.devcontainer/devcontainer.json`).
 For a CI-style clean build from scratch use `./scripts/build.sh` (runs `npm ci` first).
 
 If any lint errors or test failures appear after your changes, fix them before finishing.
@@ -24,18 +26,20 @@ Do not suppress linter rules or skip tests to make the pipeline green.
 
 ## Key scripts
 
-| Script                                     | Purpose                          |
-| ------------------------------------------ | -------------------------------- |
-| `./scripts/dev-webpart.sh`                 | Start SPFx web part dev server   |
-| `./scripts/dev-function.sh`                | Start Azure Function locally     |
-| `./scripts/test.sh`                        | Run tests                        |
-| `./scripts/lint.sh`                        | Run all linters                  |
-| `./scripts/lint-fix.sh`                    | Auto-fix lint issues locally     |
-| `./scripts/build.sh`                       | CI-style clean build → `.sppkg`  |
-| `./scripts/release-notes.sh`               | Preview release notes locally    |
-| `./scripts/set-version.sh v1.x.y`          | Stamp a release version          |
-| `./scripts/set-version.sh v1.x.y --commit` | Stamp, commit, and tag a release |
-| `./scripts/upgrade-spfx.sh 1.x.y`          | Guided SPFx upgrade              |
+| Script                                     | Purpose                                               |
+| ------------------------------------------ | ----------------------------------------------------- |
+| `./scripts/bootstrap.sh`                   | Install deps + create `.env` (run once after cloning) |
+| `./scripts/reset.sh`                       | Wipe build outputs + node_modules, then re-bootstrap  |
+| `./scripts/dev-webpart.sh`                 | Start SPFx web part dev server                        |
+| `./scripts/dev-function.sh`                | Start Azure Function locally                          |
+| `./scripts/test.sh`                        | Run tests                                             |
+| `./scripts/lint.sh`                        | Run all linters                                       |
+| `./scripts/lint-fix.sh`                    | Auto-fix lint issues locally                          |
+| `./scripts/build.sh`                       | CI-style clean build → `.sppkg`                       |
+| `./scripts/release-notes.sh`               | Preview release notes locally                         |
+| `./scripts/set-version.sh v1.x.y`          | Stamp a release version                               |
+| `./scripts/set-version.sh v1.x.y --commit` | Stamp, commit, and tag a release                      |
+| `./scripts/upgrade-spfx.sh 1.x.y`          | Guided SPFx upgrade                                   |
 
 The release workflow is documented in `docs/development.md` → "Publishing a Release".
 

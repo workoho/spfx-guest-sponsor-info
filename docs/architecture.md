@@ -170,6 +170,12 @@ is not self-scoped — GDPR concern). The function sidesteps all of this.
   than `user` / `linked`. Without the permission the filter is skipped (fail-open).
 - Excluded sponsors/managers are counted in `unavailableCount`.
 - Max 5 sponsors enforced at the Graph query level.
+- `sponsorOrder` — the array of all sponsor IDs in the original Graph response
+  order — is always returned alongside `activeSponsors` and
+  `unavailableSponsors`. The client uses it to reconstruct the full
+  priority-ordered list and implement automatic delegation: active sponsors
+  step into vacated visible slots while unavailable ones are still rendered as
+  read-only tiles in their original position.
 
 ### Runtime
 
@@ -244,12 +250,14 @@ find all authorization rejections.
 - `AUTH_AUDIENCE_MISMATCH` — token audience does not match `ALLOWED_AUDIENCE`
 - `AUTH_CONFIG_TENANT_MISSING` / `AUTH_CONFIG_AUDIENCE_MISSING` — server misconfiguration
 
-**Operational alerting:** Bicep deploys three optional Azure Monitor Scheduled Query alerts
+**Operational alerting:** Bicep deploys four optional Azure Monitor Scheduled Query alerts
 (`Microsoft.Insights/scheduledQueryRules`):
 
 - Service outage operational email alert (`enableServiceOutageAlert`)
 - Auth/config regression operational email alert (`enableAuthConfigRegressionAlert`)
 - Likely attack/noise info alert (`enableLikelyAttackInfoAlert`)
+- New GitHub release available info alert (`enableNewReleaseAlert`) — see
+  [Update and Release Management](#update-and-release-management)
 
 Action-group wiring is parameterized via `operationalActionGroupResourceIds` and
 `infoActionGroupResourceIds`.
@@ -356,7 +364,8 @@ All colours reference SPFx theme tokens via `var()` + `"[theme:]"` dual declarat
 
 ### Hosted workbench
 
-- **As member:** `SPFX_TENANT` in `.env` + `./scripts/dev-webpart.sh`. Verifies non-guest path.
+- **As member:** `SPFX_SERVE_TENANT_DOMAIN` in `.env` (or set on host OS) +
+  `./scripts/dev-webpart.sh`. Verifies non-guest path.
 - **As guest:** Requires a second M365 tenant with your account as guest, sponsors assigned,
   API permissions consented, `.sppkg` deployed or localhost script loading enabled.
 
@@ -368,3 +377,166 @@ All colours reference SPFx theme tokens via `var()` + `"[theme:]"` dual declarat
 
 Property pane toggle. Shows two fictitious sponsors without Graph calls.
 Development/visual review only — disable before production.
+
+## Update and Release Management
+
+### Web Part — Version Check in the Property Pane
+
+When a site editor opens the property pane for the first time in a browser session,
+the web part calls the GitHub Releases API in the background (fire-and-forget):
+
+```text
+GET https://api.github.com/repos/workoho/spfx-guest-sponsor-info/releases/latest
+```
+
+If the API returns a newer semver tag than the currently deployed web part version,
+a dismissable badge appears in the property pane header linking directly to the
+release notes page on GitHub.
+
+**Design decisions:**
+
+- **Lazy check on `onPropertyPaneOpened`.** The check is deferred until the property
+  pane is opened for the first time. Non-editors (view-only page visitors) never
+  trigger a GitHub API call.
+- **In-memory flag (`_githubCheckDone`).** Re-opening the property pane within the
+  same browser-tab session does not repeat the network call.
+- **sessionStorage cache (1 h TTL).** The result (`{ version, url, ts }`) is persisted
+  in `sessionStorage` so that navigating between edit/view mode or refreshing the
+  page within the same tab does not re-fetch. The cache expires after 1 hour.
+- **Namespaced key.** The sessionStorage key is prefixed with `this.manifest.id`
+  (the web part component UUID) to avoid collisions with other web parts or
+  extensions that may also use sessionStorage.
+- **Only published releases.** The `/releases/latest` endpoint returns only published
+  GitHub Releases with release notes — bare git tags are never included.
+- **Link target.** The badge `href` uses the `html_url` field from the API response
+  (the canonical release notes page) rather than a constructed tag URL.
+
+### Azure Function — Periodic GitHub Release Check
+
+A dedicated Timer-triggered Azure Function (`checkGitHubRelease`) runs every 6 hours
+and immediately on every deployment or restart (`runOnStartup: true`). It calls the
+same GitHub Releases API as the web part and compares the response against the
+function's own `package.json` version.
+
+**When the function is up to date** it logs an info-level trace:
+
+```text
+[checkGitHubRelease] Function is up to date (vX.Y.Z).
+```
+
+**When a newer release is found** it logs a structured WARNING to Application Insights:
+
+```text
+[NEW_RELEASE_AVAILABLE] currentVersion=X latestVersion=Y url=Z
+```
+
+This trace is the trigger signal for the Azure Monitor KQL alert rule described below.
+The key=value tokens in this message are intentionally stable — changing them requires
+a corresponding update to the `extract()` expression in `monitoring.bicep`.
+
+API errors (network timeouts, HTTP 404, rate-limit responses) are logged at info level
+only and do not fail the invocation or cause retries.
+
+The timer always records the fetched GitHub version in a shared in-memory variable
+(`releaseState.ts`). The request handler reads this cache to enrich version-mismatch
+traces without making an additional GitHub API call.
+
+### Request-Time Version-Mismatch Logging
+
+The web part sends its own version as `X-Client-Version` on every API request.
+When the function detects that this differs from its own version it emits a structured
+WARNING — but **throttled to once per hour per function instance** to avoid flooding
+Application Insights when many guests are active simultaneously. One trace per hour
+per instance is sufficient for KQL alert windows of ≥ 2 h.
+
+By the time the first mismatch trace is written, the timer (`runOnStartup: true`) has
+almost always already completed its GitHub check and populated the in-memory cache.
+The request handler cross-references the cached GitHub version to emit the most
+specific token it can:
+
+| Token | Condition | Meaning |
+|---|---|---|
+| `[WEBPART_UPDATE_AVAILABLE]` | function = GitHub latest, web part < latest | S3: only the web part is outdated |
+| `[FUNCTION_UPDATE_AVAILABLE]` | web part = GitHub latest, function < latest | S4: only the function is outdated |
+| `[VERSION_MISMATCH]` | GitHub cache empty, or both behind latest | Mismatch with `olderComponent` hint |
+
+**Trace format:**
+
+```text
+[WEBPART_UPDATE_AVAILABLE] webPartVersion=X functionVersion=Y latestVersion=Y
+[FUNCTION_UPDATE_AVAILABLE] functionVersion=X webPartVersion=Y latestVersion=Y
+[VERSION_MISMATCH] functionVersion=X webPartVersion=Y olderComponent=webpart|function [latestVersion=Y]
+```
+
+`latestVersion` is omitted from `[VERSION_MISMATCH]` only in the rare cold-start window
+between instance launch and the first completed timer run (typically < 10 s).
+
+**Hierarchy of severity (informational, highest to lowest):**
+
+1. `[VERSION_MISMATCH]` / `[WEBPART_UPDATE_AVAILABLE]` / `[FUNCTION_UPDATE_AVAILABLE]` —
+   the two running components are incompatible *right now*; the admin knows which to update.
+2. `[NEW_RELEASE_AVAILABLE]` / `[WEBPART_UPDATE_AVAILABLE]` / `[FUNCTION_UPDATE_AVAILABLE]` —
+   a newer GitHub release exists but nothing is broken yet.
+
+These tokens are not currently backed by dedicated KQL alert rules (no Bicep resource).
+They are visible in Application Insights logs and can be used for ad-hoc KQL queries or
+as the basis for future alert rules if needed.
+
+### Azure Monitor KQL Alert Rule (New-Release Notification)
+
+The Bicep module `monitoring.bicep` provisions an optional
+`Microsoft.Insights/scheduledQueryRules` resource that watches Application Insights for
+`[NEW_RELEASE_AVAILABLE]` traces. Its purpose is to send **one informational notification
+per GitHub release version** to the configured info action group, with automatic resolution
+once the function is updated.
+
+**KQL query (simplified):**
+
+```kql
+let window = 720m;
+traces
+| where timestamp > ago(window)
+| where message has "[NEW_RELEASE_AVAILABLE]"
+| extend latestVersion = extract(@"latestVersion=(\d+\.\d+\.\d+)", 1, message)
+| where isnotempty(latestVersion)
+| project latestVersion
+```
+
+**Alert properties:**
+
+| Property | Value | Rationale |
+|---|---|---|
+| Severity | 4 (Verbose / Informational) | Lowest severity; informational only, no paging |
+| Evaluation frequency | 60 min | One notification quickly after a new release appears |
+| Lookback window | 720 min (12 h) | Covers two 6-hour timer intervals to tolerate one missed run |
+| `autoMitigate` | `true` | Alert instance resolves automatically when traces stop |
+| Dimension split | `latestVersion` | One independent alert instance per GitHub release version |
+
+**Why `autoMitigate: true` + dimension split is the right architecture:**
+
+Each unique `latestVersion` value produces an independent alert instance in Azure Monitor.
+This means:
+
+1. **No duplicate notifications.** While v1.5.0 is pending, the same `latestVersion`
+   dimension value keeps **the existing** instance "fired" — Azure Monitor suppresses
+   further notifications for it.
+2. **Automatic resolution after update.** Once the function is updated to v1.5.0+, the
+   timer stops emitting `[NEW_RELEASE_AVAILABLE]` with `latestVersion=1.5.0`. After the
+   12-hour lookback window elapses with no matching traces, `autoMitigate` resolves the
+   alert instance for that version — no manual intervention needed.
+3. **Cascading release handling.** If v1.6.0 is published while the v1.5.0 notification
+   is still pending, the function starts emitting `latestVersion=1.6.0` immediately. The
+   v1.6.0 dimension creates a **new** alert instance and fires its own notification
+   independently. The v1.5.0 instance auto-mitigates after its window elapses.
+
+**Bicep parameters:**
+
+| Parameter | Default | Description |
+|---|---|---|
+| `enableNewReleaseAlert` | `true` | Deploy the alert rule |
+| `newReleaseAlertEvaluationFrequencyInMinutes` | `60` | How often Azure Monitor evaluates the KQL |
+| `newReleaseAlertWindowInMinutes` | `720` | Lookback window for the KQL query |
+
+The alert is routed to the info action group (`infoActionGroupResourceIds` /
+`defaultAlertNotificationEmail`), the same group used by the
+likely-attack info alert.

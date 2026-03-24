@@ -10,11 +10,14 @@ import {
   PropertyPaneTextField,
   PropertyPaneCheckbox,
   PropertyPaneDropdown,
+  PropertyPaneSlider,
 } from '@microsoft/sp-property-pane';
 import { PropertyPaneCustomField } from '@microsoft/sp-property-pane/lib/propertyPaneFields/propertyPaneCustomField/PropertyPaneCustomField';
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
 import { MSGraphClientV3, AadHttpClient } from '@microsoft/sp-http';
-import { initializeIcons, MessageBar, MessageBarType } from '@fluentui/react';
+import { ThemeProvider, IReadonlyTheme, ThemeChangedEventArgs } from '@microsoft/sp-component-base';
+import { FluentProvider, MessageBar, MessageBarBody, webLightTheme, webDarkTheme } from '@fluentui/react-components';
+import { createV9Theme } from '@fluentui/react-migration-v8-v9';
 
 import * as strings from 'GuestSponsorInfoWebPartStrings';
 import GuestSponsorInfo from './components/GuestSponsorInfo';
@@ -29,6 +32,10 @@ export interface IGuestSponsorInfoWebPartProps {
    * Replaces the former mockTeamsUnavailable boolean with a dropdown selection.
    * Default: 'none'.
    */
+  /** Maximum number of sponsors shown to visitors on the live page (1–5). Default: 2. */
+  maxSponsorCount: number;
+  /** Number of mock sponsor cards to show in demo mode (1–5). Default: 2. */
+  mockSponsorCount: number;
   mockSimulatedHint: 'none' | 'teamsAccessPending' | 'versionMismatch' | 'sponsorUnavailable' | 'noSponsors';
   /** Show the "Teams not set up yet" notice to guest users. Default: true. */
   showTeamsAccessPendingHint: boolean;
@@ -38,8 +45,10 @@ export interface IGuestSponsorInfoWebPartProps {
   showSponsorUnavailableHint: boolean;
   /** Show the "No sponsors found" notice when no sponsors are assigned. Default: true. */
   showNoSponsorsHint: boolean;
-  /** Card layout: 'auto' switches to compact when >2 sponsors. Default: 'auto'. */
+  /** Card layout: 'auto' switches to compact when sponsors reach the threshold. Default: 'auto'. */
   cardLayout: 'auto' | 'full' | 'compact';
+  /** Number of sponsors at which 'auto' switches to compact layout. Default: 3. */
+  cardLayoutAutoThreshold: number;
   functionUrl: string;
   functionClientId: string;
   /** Show business phone numbers in the contact card. Default: true. */
@@ -87,6 +96,23 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
   private _graphClient: MSGraphClientV3 | undefined;
   private _aadHttpClient: AadHttpClient | undefined;
   private _proxyStatus: 'checking' | 'ok' | 'error' = 'checking';
+  private _versionMismatch = false;
+  private _newVersionAvailable: { version: string; url: string } | false = false;
+  private _githubCheckDone = false;
+
+  /**
+   * sessionStorage key for the cached GitHub release check result.
+   * Uses the manifest component ID as a namespace so the key is globally unique
+   * within the shared sessionStorage of a SharePoint page and cannot collide
+   * with keys written by other web parts or first-party SharePoint code.
+   */
+  private get _githubCacheKey(): string {
+    return `${this.manifest.id}/github-release`;
+  }
+  /** Cache TTL in milliseconds (1 hour). */
+  private static readonly _GITHUB_CACHE_TTL = 3_600_000;
+  private _themeProvider: ThemeProvider | undefined;
+  private _theme: IReadonlyTheme | undefined;
 
   public render(): void {
     const element: React.ReactElement<IGuestSponsorInfoProps> = React.createElement(
@@ -98,12 +124,15 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
         graphClient: this._graphClient, // undefined until onInit resolves
         title: this.properties.title,
         mockMode: this.properties.mockMode ?? false,
+        maxSponsorCount: this.properties.maxSponsorCount ?? 2,
+        mockSponsorCount: this.properties.mockSponsorCount ?? 2,
         mockSimulatedHint: this.properties.mockSimulatedHint ?? 'none',
         showTeamsAccessPendingHint: this.properties.showTeamsAccessPendingHint ?? true,
         showVersionMismatchHint: this.properties.showVersionMismatchHint ?? false,
         showSponsorUnavailableHint: this.properties.showSponsorUnavailableHint ?? true,
         showNoSponsorsHint: this.properties.showNoSponsorsHint ?? true,
         cardLayout: this.properties.cardLayout ?? 'auto',
+        cardLayoutAutoThreshold: this.properties.cardLayoutAutoThreshold ?? 3,
         hostTenantId: this.context.pageContext.aadInfo.tenantId.toString(),
         functionUrl: this.properties.functionUrl
           ? `https://${this.properties.functionUrl.replace(/^https?:\/\//i, '').replace(/\/$/, '')}/api/getGuestSponsors`
@@ -136,12 +165,21 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
         showManagerDepartment: this.properties.showManagerDepartment ?? false,
         useInformalAddress: this.properties.useInformalAddress ?? false,
         clientVersion: this.manifest.version,
+        fluentProviderId: `gsi-${this.context.instanceId}`,
         onProxyStatusChange: (status: 'checking' | 'ok' | 'error') => {
           this._proxyStatus = status;
           if (this.context.propertyPane.isPropertyPaneOpen()) {
             this.context.propertyPane.refresh();
           }
         },
+        onVersionMismatch: (detected: boolean) => {
+          if (this._versionMismatch === detected) return;
+          this._versionMismatch = detected;
+          if (this.context.propertyPane.isPropertyPaneOpen()) {
+            this.context.propertyPane.refresh();
+          }
+        },
+        theme: this._theme,
       }
     );
 
@@ -150,16 +188,80 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
 
   protected async onInit(): Promise<void> {
     await super.onInit();
-    // Register the Fluent UI MDL2 icon font. Passing disableWarnings suppresses
-    // the "icons re-registered" console warning that occurs when multiple web parts
-    // or the SharePoint page itself have already called initializeIcons().
-    initializeIcons(undefined, { disableWarnings: true });
+    // Consume the SPFx ThemeProvider service so the FluentProvider can receive the
+    // host site's v8-style theme and convert it to a v9 theme via createV9Theme.
+    this._themeProvider = this.context.serviceScope.consume(ThemeProvider.serviceKey);
+    this._theme = this._themeProvider?.tryGetTheme();
+    this._themeProvider?.themeChangedEvent.add(this, this._handleThemeChanged);
     // Acquire Graph and AAD clients in the background — do NOT await them here.
     // SPFx awaits the onInit() Promise before rendering any web part on the page,
     // so blocking here would delay the entire page. Instead we resolve immediately
     // and re-render once clients are ready. The React component already shows a
     // shimmer while clients are undefined, so there is no visible flash.
     this._acquireClientsInBackground();
+  }
+
+  private _handleThemeChanged = (args: ThemeChangedEventArgs): void => {
+    this._theme = args.theme;
+    this.render();
+  };
+
+  /**
+   * Fetches the latest release tag from GitHub and compares it against the
+   * current manifest version. When a newer release exists the property pane
+   * badge is updated so the page editor can navigate straight to the download.
+   * Called lazily from onPropertyPaneOpened the first time the pane is opened;
+   * errors are silently ignored because this is purely informational.
+   */
+  private _checkGitHubRelease(): void {
+    fetch(
+      'https://api.github.com/repos/workoho/spfx-guest-sponsor-info/releases/latest',
+      { headers: { Accept: 'application/vnd.github+json' } }
+    )
+      .then((res): Promise<{ tag_name: string; html_url: string } | null> =>
+        res.ok ? (res.json() as Promise<{ tag_name: string; html_url: string }>) : Promise.resolve(null)
+      )
+      .then((data) => {
+        const tag = data?.tag_name;
+        const releaseUrl = data?.html_url;
+        // No valid tag or URL means an API error or unexpected shape — don't cache;
+        // a retry is acceptable on the next pane open.
+        if (typeof tag !== 'string' || !tag) return;
+        if (typeof releaseUrl !== 'string' || !releaseUrl) return;
+        const latest = tag.replace(/^v/, '');
+        const current = this.manifest.version.split('.').slice(0, 3).join('.');
+        const newer = this._isNewerVersion(latest, current);
+        // Persist both outcomes so the next pane open (even after a view↔edit
+        // switch) doesn't re-fetch within the cache TTL window.
+        try {
+          sessionStorage.setItem(
+            this._githubCacheKey,
+            JSON.stringify({
+              version: newer ? latest : null,
+              url: newer ? releaseUrl : null,
+              ts: Date.now()
+            })
+          );
+        } catch { /* sessionStorage unavailable — ignore */ }
+        if (newer) {
+          this._newVersionAvailable = { version: latest, url: releaseUrl };
+          if (this.context.propertyPane.isPropertyPaneOpen()) {
+            this.context.propertyPane.refresh();
+          }
+        }
+      })
+      .catch(() => { /* informational only — silent on failure */ });
+  }
+
+  private _isNewerVersion(candidate: string, current: string): boolean {
+    const parse = (v: string): number[] => v.split('.').map(n => parseInt(n, 10) || 0);
+    const a = parse(candidate);
+    const b = parse(current);
+    for (let i = 0; i < 3; i++) {
+      if ((a[i] ?? 0) > (b[i] ?? 0)) return true;
+      if ((a[i] ?? 0) < (b[i] ?? 0)) return false;
+    }
+    return false;
   }
 
   /**
@@ -191,11 +293,35 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
   }
 
   protected onDispose(): void {
+    this._themeProvider?.themeChangedEvent.remove(this, this._handleThemeChanged);
     ReactDom.unmountComponentAtNode(this.domElement);
   }
 
   protected get dataVersion(): Version {
     return Version.parse('1.0');
+  }
+
+  protected onPropertyPaneOpened(): void {
+    if (this._githubCheckDone) return;
+    this._githubCheckDone = true;
+    // Restore from sessionStorage cache so that view↔edit mode switches or page
+    // saves (which re-instantiate the web part without a full browser reload)
+    // don't trigger a redundant GitHub API call.
+    try {
+      const raw = sessionStorage.getItem(this._githubCacheKey);
+      if (raw) {
+        const { version, url, ts } = JSON.parse(raw) as
+          { version: string | null; url: string | null; ts: number };
+        if (Date.now() - ts < GuestSponsorInfoWebPart._GITHUB_CACHE_TTL) {
+          if (version && url) {
+            this._newVersionAvailable = { version, url };
+            this.context.propertyPane.refresh();
+          }
+          return; // cache hit — skip fetch
+        }
+      }
+    } catch { /* sessionStorage unavailable or corrupt — proceed with live fetch */ }
+    this._checkGitHubRelease();
   }
 
   protected onPropertyPaneFieldChanged(propertyPath: string, oldValue: unknown, newValue: unknown): void {
@@ -210,6 +336,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
       this.context.propertyPane.refresh();
     } else if (
       propertyPath === 'mockMode' ||
+      propertyPath === 'cardLayout' ||
       propertyPath === 'showCity' ||
       propertyPath === 'showCountry' ||
       propertyPath === 'showWorkLocation' ||
@@ -389,6 +516,48 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
     metaLine.appendChild(separator);
     metaLine.appendChild(versionLink);
 
+    if (this._versionMismatch) {
+      const updateSep = document.createElement('span');
+      updateSep.textContent = ' · ';
+      const updateBadge = document.createElement('span');
+      updateBadge.textContent = `\u2191\u00a0${strings.VersionMismatchTitle}`;
+      updateBadge.title = strings.VersionMismatchMessage;
+      updateBadge.style.display = 'inline-block';
+      updateBadge.style.padding = '1px 7px';
+      updateBadge.style.borderRadius = '4px';
+      updateBadge.style.backgroundColor = '#eff6fc';
+      updateBadge.style.color = '#005a9e';
+      updateBadge.style.border = '1px solid #c7e0f4';
+      updateBadge.style.fontWeight = '700';
+      updateBadge.style.fontSize = '11px';
+      updateBadge.style.cursor = 'help';
+      metaLine.appendChild(updateSep);
+      metaLine.appendChild(updateBadge);
+    }
+
+    if (this._newVersionAvailable) {
+      const newRelSep = document.createElement('span');
+      newRelSep.textContent = ' \u00b7 ';
+      const semverLatest = this._newVersionAvailable.version.split('.').slice(0, 3).join('.');
+      const newRelBadge = document.createElement('a');
+      newRelBadge.textContent = `\u2191\u00a0v${semverLatest}`;
+      newRelBadge.href = this._newVersionAvailable.url;
+      newRelBadge.target = '_blank';
+      newRelBadge.rel = 'noopener noreferrer';
+      newRelBadge.title = strings.NewReleaseAvailableLabel;
+      newRelBadge.style.display = 'inline-block';
+      newRelBadge.style.padding = '1px 7px';
+      newRelBadge.style.borderRadius = '4px';
+      newRelBadge.style.backgroundColor = '#f0fdf4';
+      newRelBadge.style.color = '#15803d';
+      newRelBadge.style.border = '1px solid #86efac';
+      newRelBadge.style.fontWeight = '700';
+      newRelBadge.style.fontSize = '11px';
+      newRelBadge.style.textDecoration = 'none';
+      metaLine.appendChild(newRelSep);
+      metaLine.appendChild(newRelBadge);
+    }
+
     footer.appendChild(metaLine);
     footer.appendChild(document.createElement('br'));
     footer.appendChild(munichLine);
@@ -427,22 +596,37 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                 PropertyPaneTextField('title', {
                   label: strings.TitleFieldLabel
                 }),
+                PropertyPaneHorizontalRule(),
+                PropertyPaneSlider('maxSponsorCount', {
+                  label: strings.MaxSponsorCountFieldLabel,
+                  min: 1,
+                  max: 5,
+                  step: 1,
+                  value: this.properties.maxSponsorCount ?? 2,
+                }),
+                PropertyPaneHorizontalRule(),
+                PropertyPaneSlider('mockSponsorCount', {
+                  label: strings.MockSponsorCountFieldLabel,
+                  min: 1,
+                  max: 5,
+                  step: 1,
+                  value: this.properties.mockSponsorCount ?? 2,
+                }),
                 PropertyPaneCheckbox('mockMode', {
                   text: strings.MockModeFieldLabel
                 }),
-                ...(this.properties.mockMode ? [
-                  PropertyPaneDropdown('mockSimulatedHint', {
-                    label: strings.MockSimulatedHintFieldLabel,
-                    options: [
-                      { key: 'none', text: strings.MockSimulatedHintNoneOption },
-                      { key: 'teamsAccessPending', text: strings.MockSimulatedHintTeamsAccessPendingOption },
-                      { key: 'versionMismatch', text: strings.MockSimulatedHintVersionMismatchOption },
-                      { key: 'sponsorUnavailable', text: strings.MockSimulatedHintSponsorUnavailableOption },
-                      { key: 'noSponsors', text: strings.MockSimulatedHintNoSponsorsOption },
-                    ],
-                    selectedKey: this.properties.mockSimulatedHint ?? 'none',
-                  })
-                ] : [])
+                PropertyPaneHorizontalRule(),
+                PropertyPaneDropdown('mockSimulatedHint', {
+                  label: strings.MockSimulatedHintFieldLabel,
+                  options: [
+                    { key: 'none', text: strings.MockSimulatedHintNoneOption },
+                    { key: 'teamsAccessPending', text: strings.MockSimulatedHintTeamsAccessPendingOption },
+                    { key: 'versionMismatch', text: strings.MockSimulatedHintVersionMismatchOption },
+                    { key: 'sponsorUnavailable', text: strings.MockSimulatedHintSponsorUnavailableOption },
+                    { key: 'noSponsors', text: strings.MockSimulatedHintNoSponsorsOption },
+                  ],
+                  selectedKey: this.properties.mockSimulatedHint ?? 'none',
+                })
               ]
             },
             {
@@ -489,6 +673,15 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                   ],
                   selectedKey: this.properties.cardLayout ?? 'auto',
                 }),
+                ...((this.properties.cardLayout ?? 'auto') === 'auto' ? [
+                  PropertyPaneSlider('cardLayoutAutoThreshold', {
+                    label: strings.CardLayoutAutoThresholdFieldLabel,
+                    min: 1,
+                    max: 5,
+                    step: 1,
+                    value: this.properties.cardLayoutAutoThreshold ?? 3,
+                  }),
+                ] : []),
                 PropertyPaneHorizontalRule(),
                 PropertyPaneCheckbox('showPresence', {
                   text: strings.ShowPresenceFieldLabel,
@@ -604,18 +797,20 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                     onRender: (element: HTMLElement | undefined) => {
                       if (!element) return;
                       const status = this._proxyStatus;
-                      const messageBarType = status === 'ok' ? MessageBarType.success
-                        : status === 'error' ? MessageBarType.error
-                        : MessageBarType.info;
+                      const intent: 'success' | 'error' | 'info' = status === 'ok' ? 'success'
+                        : status === 'error' ? 'error'
+                        : 'info';
                       const text = status === 'ok' ? strings.ProxyStatusOk
                         : status === 'error' ? strings.ProxyStatusError
                         : strings.ProxyStatusChecking;
                       ReactDom.render(
-                        React.createElement(MessageBar, {
-                          messageBarType,
-                          isMultiline: false,
-                          styles: { root: { marginTop: 8 } },
-                        }, text),
+                        React.createElement(FluentProvider,
+                          { theme: this._theme ? createV9Theme(this._theme as unknown as Parameters<typeof createV9Theme>[0], this._theme.isInverted ? webDarkTheme : webLightTheme) : undefined, id: `gsi-pp-${this.context.instanceId}` },
+                          React.createElement(MessageBar,
+                            { intent, style: { marginTop: 8 } },
+                            React.createElement(MessageBarBody, null, text)
+                          )
+                        ),
                         element
                       );
                     },

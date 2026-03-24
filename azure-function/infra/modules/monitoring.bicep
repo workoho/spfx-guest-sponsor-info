@@ -21,6 +21,12 @@ param enableAuthConfigRegressionAlert bool = true
 @description('Enable info-only alert for likely attack/noise spikes (high 401/403 from many IPs).')
 param enableLikelyAttackInfoAlert bool = true
 
+@description('Enable info-only alert when a newer GitHub release of the function is available.')
+param enableNewReleaseAlert bool = true
+
+@description('Enable operational alert when a hard-deleted Entra object remains referenced as a sponsor (Graph 404).')
+param enableBrokenSponsorAlert bool = false
+
 // ── Alert timing ─────────────────────────────────────────────────────────────
 
 @description('KQL alert evaluation frequency in minutes.')
@@ -71,6 +77,16 @@ param likelyAttackDenyRatePercentThreshold int = 80
 @minValue(0)
 param likelyAttackMinSuccessThreshold int = 1
 
+// ── New-release check alert thresholds ───────────────────────────────────────
+
+@description('KQL evaluation frequency for the new-release alert in minutes.')
+@minValue(5)
+param newReleaseAlertEvaluationFrequencyInMinutes int = 60
+
+@description('KQL lookback window for the new-release alert in minutes. Must be at least twice the function timer interval (6 h) to tolerate one missed timer invocation.')
+@minValue(60)
+param newReleaseAlertWindowInMinutes int = 720
+
 // ── Action groups ────────────────────────────────────────────────────────────
 
 @description('Action group resource IDs for operational email alerts. Leave empty to create alert rules without notifications.')
@@ -98,6 +114,41 @@ var appInsightsResourceName = '${functionAppName}-insights'
 // ── KQL queries ──────────────────────────────────────────────────────────────
 // Triple-quoted raw strings (no interpolation); placeholders are substituted
 // with replace() so that the final query is a plain string in the ARM template.
+
+// Matches the structured WARNING logged by the checkGitHubRelease timer trigger.
+// The `latestVersion` column is used as an alert dimension so that each distinct
+// GitHub release version creates an independent alert instance.
+// autoMitigate: true — the instance resolves automatically once the function is
+// updated (no more [NEW_RELEASE_AVAILABLE] traces for that latestVersion value).
+// When the function is then updated but a subsequent newer release appears, the
+// same mechanism fires a fresh notification — one email per unique latestVersion.
+var newReleaseAlertQueryRaw = '''
+let window = __WINDOW__m;
+traces
+| where timestamp > ago(window)
+| where message has "[NEW_RELEASE_AVAILABLE]"
+| extend latestVersion = extract(@"latestVersion=(\\d+\\.\\d+\\.\\d+)", 1, message)
+| where isnotempty(latestVersion)
+| project latestVersion
+'''
+#disable-next-line prefer-interpolation
+var newReleaseAlertQuery = replace(newReleaseAlertQueryRaw, '__WINDOW__', string(newReleaseAlertWindowInMinutes))
+
+// Matches the structured WARNING logged by getGuestSponsors when a sponsor object
+// returns Graph HTTP 404 (hard-deleted Entra account still referenced as a sponsor).
+// Dimension split on sponsorId so each distinct broken reference fires and
+// auto-mitigates independently — no alert noise when unrelated guests are affected.
+var brokenSponsorAlertQueryRaw = '''
+let window = __WINDOW__m;
+traces
+| where timestamp > ago(window)
+| where message has "[BROKEN_SPONSOR_REF]"
+| extend sponsorId = extract(@"sponsorId=([a-f0-9]{8}\\.\\.\\.[a-f0-9]{4})", 1, message)
+| where isnotempty(sponsorId)
+| project sponsorId
+'''
+#disable-next-line prefer-interpolation
+var brokenSponsorAlertQuery = replace(brokenSponsorAlertQueryRaw, '__WINDOW__', string(alertWindowInMinutes))
 
 var serviceOutageAlertQueryRaw = '''
 let window = __WINDOW__m;
@@ -353,6 +404,95 @@ resource likelyAttackInfoAlert 'Microsoft.Insights/scheduledQueryRules@2021-08-0
     }
     actions: {
       actionGroups: effectiveInfoActionGroupIds
+    }
+    autoMitigate: true
+  }
+}
+
+resource newReleaseAlert 'Microsoft.Insights/scheduledQueryRules@2021-08-01' = if (enableNewReleaseAlert) {
+  name: '${functionAppName}-new-release-kql'
+  location: location
+  tags: tags
+  properties: {
+    description: 'Info-only alert when a newer GitHub release of the Guest Sponsor Info function is available. Fires once per unique version; auto-mitigates when the function is updated.'
+    enabled: true
+    scopes: [
+      appInsights.id
+    ]
+    evaluationFrequency: 'PT${newReleaseAlertEvaluationFrequencyInMinutes}M'
+    windowSize: 'PT${newReleaseAlertWindowInMinutes}M'
+    // Severity 4 = Verbose / informational — lowest possible severity.
+    severity: 4
+    criteria: {
+      allOf: [
+        {
+          query: newReleaseAlertQuery
+          timeAggregation: 'Count'
+          operator: 'GreaterThan'
+          threshold: 0
+          // Dimension split: one alert instance per unique latestVersion value.
+          // Azure Monitor fires a new notification whenever a previously unseen
+          // latestVersion appears and auto-mitigates each instance independently.
+          dimensions: [
+            {
+              name: 'latestVersion'
+              operator: 'Include'
+              values: ['*']
+            }
+          ]
+          failingPeriods: {
+            numberOfEvaluationPeriods: 1
+            minFailingPeriodsToAlert: 1
+          }
+        }
+      ]
+    }
+    actions: {
+      actionGroups: effectiveInfoActionGroupIds
+    }
+    autoMitigate: true
+  }
+}
+
+resource brokenSponsorAlert 'Microsoft.Insights/scheduledQueryRules@2021-08-01' = if (enableBrokenSponsorAlert) {
+  name: '${functionAppName}-broken-sponsor-ref-kql'
+  location: location
+  tags: tags
+  properties: {
+    description: 'Operational alert when a hard-deleted Entra object remains referenced as a sponsor (Graph 404). Fires per unique pseudonymized sponsor OID; auto-mitigates when the reference is resolved.'
+    enabled: true
+    scopes: [
+      appInsights.id
+    ]
+    evaluationFrequency: 'PT${alertEvaluationFrequencyInMinutes}M'
+    windowSize: 'PT${alertWindowInMinutes}M'
+    // Severity 3 = Warning — operational issue requiring admin attention but not an outage.
+    severity: 3
+    criteria: {
+      allOf: [
+        {
+          query: brokenSponsorAlertQuery
+          timeAggregation: 'Count'
+          operator: 'GreaterThan'
+          threshold: 0
+          // Dimension split: one alert instance per unique pseudonymized sponsorId.
+          // Alerts resolve independently once the broken reference is cleaned up.
+          dimensions: [
+            {
+              name: 'sponsorId'
+              operator: 'Include'
+              values: ['*']
+            }
+          ]
+          failingPeriods: {
+            numberOfEvaluationPeriods: 1
+            minFailingPeriodsToAlert: 1
+          }
+        }
+      ]
+    }
+    actions: {
+      actionGroups: effectiveOperationalActionGroupIds
     }
     autoMitigate: true
   }

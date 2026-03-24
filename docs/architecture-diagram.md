@@ -32,8 +32,8 @@ flowchart LR
     AzAdmin(["🧑‍💼 Azure Admin"]):::admin
 
     subgraph spo["☁️ SharePoint Online"]
-        Catalog["📦 App Catalog"]:::delivery
-        CDN["🌐 Public CDN"]:::delivery
+        SCAC["📦 Site Collection App Catalog (landing page site)"]:::delivery
+        Visitors["👥 Visitors (landing page site)"]:::delivery
     end
 
     subgraph entra["🔐 Microsoft Entra ID"]
@@ -49,36 +49,38 @@ flowchart LR
 
     Graph[("🕸️ Microsoft Graph")]:::msgraph
 
-    SpAdmin -- "① deploys .sppkg"        --> Catalog
-    Catalog -- "publishes assets"         --> CDN
+    SpAdmin -- "① uploads .sppkg"              --> SCAC
+    SpAdmin -- "② grants access (Everyone)"    --> Visitors
 
-    AzAdmin -- "② creates App Registration" --> AppReg
-    AppReg  -. "auto-creates"            .-> SP
-    AzAdmin -- "③ deploys function"      --> Func
-    Func    -. "EasyAuth bound to"       .-> SP
-    AzAdmin -- "④ grants permissions"    --> MI
-    AzAdmin -. "④ configures"           .-> SP
-    Func    -. "uses"                   .-> MI
-    MI      -- "Graph app permissions"   --> Graph
-    AzAdmin -. "connects"               .-> AI
+    AzAdmin -- "③ creates App Registration"    --> AppReg
+    AppReg  -. "auto-creates"                .-> SP
+    AzAdmin -- "④ deploys function"           --> Func
+    Func    -. "EasyAuth bound to"            .-> SP
+    AzAdmin -- "⑤ grants permissions"         --> MI
+    AzAdmin -. "⑤ configures"               .-> SP
+    Func    -. "uses"                        .-> MI
+    MI      -- "Graph app permissions"        --> Graph
+    AzAdmin -. "connects"                    .-> AI
 
     style spo   fill:#eff6ff,stroke:#3b82f6
     style entra fill:#fffbeb,stroke:#d97706
     style azure fill:#f0fdf4,stroke:#059669
 
-    %% 0–1   SharePoint delivery chain
-    linkStyle 0,1   stroke:#94a3b8,stroke-width:1.5px
-    %% 2     App Registration creation
+    %% 0     SharePoint delivery (step ①)
+    linkStyle 0     stroke:#94a3b8,stroke-width:1.5px
+    %% 1     guest Visitor access (step ②)
+    linkStyle 1     stroke:#94a3b8,stroke-width:1.5px
+    %% 2     App Registration creation (step ③)
     linkStyle 2     stroke:#d97706,stroke-width:2px
     %% 3     AppReg auto-creates SP
     linkStyle 3     stroke:#d97706,stroke-width:1px
-    %% 4     Function deployment
+    %% 4     Function deployment (step ④)
     linkStyle 4     stroke:#059669,stroke-width:2px
     %% 5     EasyAuth bound to SP
     linkStyle 5     stroke:#d97706,stroke-width:1.5px
-    %% 6     permission grant to MI
+    %% 6     permission grant to MI (step ⑤)
     linkStyle 6     stroke:#059669,stroke-width:2px
-    %% 7     SP configuration (step ④)
+    %% 7     SP configuration (step ⑤)
     linkStyle 7     stroke:#d97706,stroke-width:2px
     %% 8     Func uses MI
     linkStyle 8     stroke:#a7f3d0,stroke-width:1.5px
@@ -92,11 +94,12 @@ flowchart LR
 
 | Step | Who | What happens | Required role / permission |
 |---|---|---|---|
-| 1 | SharePoint Admin | Deploys `.sppkg` to the App Catalog | **SharePoint Administrator** |
-| 2 | Azure Admin | Runs `setup-app-registration.ps1` — creates the App Registration | **Application Administrator** |
-| 3 | Azure Admin | Deploys the ARM template — creates Azure resources and Storage role assignments; EasyAuth config binds the Function to the Service Principal as its token validation endpoint | **Owner** on the target resource group¹ |
-| 4 | Azure Admin | Runs `setup-graph-permissions.ps1` — grants Graph app roles to the Managed Identity (`User.Read.All`, `Presence.Read.All`, …) | **Privileged Role Administrator**² |
-| 4 | Azure Admin | Same script — creates the Service Principal (Enterprise App) if not yet present (no user has signed in yet); sets `appRoleAssignmentRequired: false` so guests need no individual assignment; exposes `user_impersonation` scope and pre-authorizes SharePoint Online Web Client Extensibility | **Application Administrator** |
+| 1 | SharePoint Admin | Enables Site Collection App Catalog on the landing page site and uploads `.sppkg` | **SharePoint Administrator** (+ **Site Collection Admin** on the landing page site) |
+| 2 | SharePoint Admin | Verifies (or sets up) guest Visitor access on the landing page site. Recommended: enable `ShowEveryoneClaim` if not already set, then add the *Everyone* group to the Visitors group. Skip if guests already have reliable Visitor access. | **SharePoint Administrator** |
+| 3 | Azure Admin | Runs `setup-app-registration.ps1` — creates the App Registration | **Application Administrator** |
+| 4 | Azure Admin | Deploys the ARM template — creates Azure resources and Storage role assignments; EasyAuth config binds the Function to the Service Principal as its token validation endpoint | **Owner** on the target resource group¹ |
+| 5 | Azure Admin | Runs `setup-graph-permissions.ps1` — grants Graph app roles to the Managed Identity (`User.Read.All`, `Presence.Read.All`, …) | **Privileged Role Administrator**² |
+| 5 | Azure Admin | Same script — creates the Service Principal (Enterprise App) if not yet present (no user has signed in yet); sets `appRoleAssignmentRequired: false` so guests need no individual assignment; exposes `user_impersonation` scope and pre-authorizes SharePoint Online Web Client Extensibility | **Application Administrator** |
 
 ¹ `Contributor` alone is not sufficient — the template creates
 `Microsoft.Authorization/roleAssignments` on the Storage Account.

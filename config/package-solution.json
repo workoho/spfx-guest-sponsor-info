@@ -41,10 +41,7 @@
       },
       "screenshotPaths": [],
       "videoUrl": "",
-      "categories": [
-        "Collaboration",
-        "Social"
-      ]
+      "categories": ["Collaboration", "Social"]
     },
     "webApiPermissionRequests": [
       {

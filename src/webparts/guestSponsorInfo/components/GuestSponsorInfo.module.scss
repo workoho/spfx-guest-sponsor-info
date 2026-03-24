@@ -1,5 +1,3 @@
-@import '~@fluentui/react/dist/sass/References.scss';
-
 /* ─── Web part shell ─────────────────────────────────────────────────────── */
 
 .webPart {
@@ -19,78 +17,35 @@
 
 /* ─── Loading skeleton ───────────────────────────────────────────────────── */
 
-@keyframes skeleton-wave {
-  from { background-position: -400px 0; }
-  to   { background-position:  400px 0; }
-}
-
-// Reusable shimmer gradient — uses CSS custom properties so it follows the
-// current SharePoint theme automatically.
-@mixin skeleton-pulse {
-  background-color: var(--neutralLight, #edebe9);
-  background-image: linear-gradient(
-    90deg,
-    var(--neutralLight,           #edebe9) 0%,
-    var(--neutralQuaternaryAlt,   #e1dfdd) 50%,
-    var(--neutralLight,           #edebe9) 100%
-  );
-  background-size: 400px 100%;
-  animation: skeleton-wave 1.4s ease-in-out infinite;
-}
-
-// Applied to the wrapper div to suppress hover/click cues on skeleton cards.
+// Applied to the Skeleton wrapper to suppress hover/click cues on skeleton cards.
 .skeletonItem {
   pointer-events: none;
   cursor: default !important;
-}
-
-// 72px filled circle — stands in for the Persona coin in full-layout cards.
-.skeletonCircle {
-  @include skeleton-pulse;
-
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-// 40px filled circle — stands in for the Persona coin in compact-layout cards.
-.skeletonCircleCompact {
-  @include skeleton-pulse;
-
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-// Pill-shaped bar that mimics a line of text.
-.skeletonLine {
-  @include skeleton-pulse;
-
-  height: 12px;
-  border-radius: 6px;
 }
 
 .title {
   font-size: 20px;
   font-weight: 600;
   margin: 0 0 16px;
-  color: var(--bodyText);
-  color: "[theme:bodyText, default: #323130]";
+  color: var(--colorNeutralForeground1, #242424);
 }
 
 
 /* ─── Sponsor card grid ──────────────────────────────────────────────────── */
 
+// CSS Grid with auto-fill + minmax: every row always spans the full container
+// width. Each column is at least 136 px wide and grows equally to fill the
+// available space (1fr).  The grid adapts to the SharePoint column width
+// automatically — no hard-coded breakpoints needed for the column count.
+// Left and right grid edges align with the web-part container so the tiles
+// terminate at the same visual boundary as SharePoint's own section chrome.
 .sponsorGrid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));
   gap: 16px;
   list-style: none;
   margin: 0;
   padding: 0;
-  max-width: 100%;
 }
 
 .sponsorItem {
@@ -102,22 +57,21 @@
 
 .card {
   position: relative;
-  width: 136px;
+  width: 100%; // fills the grid cell — the column width (minmax 136px, 1fr) is the constraint
   box-sizing: border-box;
-  min-height: 122px; // border-box: 12 padding + 72 avatar + 8 gap + 18px name (≥1 line) + 12 padding
+  min-height: 122px; // 12px padding + 72px avatar + 8px gap + at least 18px name + 12px padding
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
   padding: 12px; // equal on all sides — half of the 24px detail-row left inset
-  border-radius: 4px;
+  border-radius: var(--borderRadiusMedium, 4px);
   cursor: pointer;
   outline: none;
   background: transparent;
 
   &:focus-visible {
-    box-shadow: 0 0 0 2px var(--themePrimary);
-    box-shadow: 0 0 0 2px "[theme:themePrimary, default: #0078d4]";
+    box-shadow: 0 0 0 2px var(--colorStrokeFocus2, #000);
   }
 
   // Read-only tiles (e.g. unavailable sponsors): no pointer cursor.
@@ -139,12 +93,11 @@
   font-size: 14px;
   font-weight: 600;
   text-align: center;
-  color: var(--bodyText);
-  color: "[theme:bodyText, default: #323130]";
-  line-height: 1.3;
+  color: var(--colorNeutralForeground1, #242424);
+  line-height: var(--lineHeightBase300, 20px);
   max-width: 100%;
 
-  // Wrap up to 3 lines with trailing ellipsis — job title is never shown in the grid card.
+  // Wrap up to 3 lines with trailing ellipsis.
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -155,9 +108,12 @@
 
 /* ─── Compact layout (horizontal row variant) ────────────────────────────── */
 
+// Single-column grid: every sponsor row spans the full container width.
+// This creates a consistent left–right alignment matching the section chrome,
+// and guarantees that even a single sponsor fills the container edge-to-edge.
 .sponsorGridCompact {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 4px;
   list-style: none;
   margin: 0;
@@ -166,21 +122,19 @@
 
 .cardCompact {
   position: relative;
-  display: flex;
+  display: inline-flex;
   flex-direction: row;
   align-items: center;
   gap: 10px;
   padding: 6px;
-  border-radius: 4px;
+  border-radius: var(--borderRadiusMedium, 4px);
   cursor: pointer;
   outline: none;
   background: transparent;
   max-width: 100%;
-  box-sizing: border-box;
 
   &:focus-visible {
-    box-shadow: 0 0 0 2px var(--themePrimary);
-    box-shadow: 0 0 0 2px "[theme:themePrimary, default: #0078d4]";
+    box-shadow: 0 0 0 2px var(--colorStrokeFocus2, #000);
   }
 }
 
@@ -193,9 +147,8 @@
 .cardNameCompact {
   font-size: 14px;
   font-weight: 600;
-  color: var(--bodyText);
-  color: "[theme:bodyText, default: #323130]";
-  line-height: 1.3;
+  color: var(--colorNeutralForeground1, #242424);
+  line-height: var(--lineHeightBase300, 20px);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -216,29 +169,34 @@
 }
 
 .richCard {
-  width: 340px;
-
-  // max-height is deliberately "off-phase" relative to the body row height (32px):
-  //   pinned area = header (92px) + actions (56px) + divider (1px) = 149px
-  //   149px + 7.5 × 32px = 389px
-  // The 0.5-row remainder leaves the scroll body (240px) offset by half a row
-  // so trailing rows are visibly cut mid-way regardless of content count,
-  // making the scroll affordance instinctive without a gradient overlay.
-  // Row height: Fluent UI medium density (4px grid) = 32px.
-  max-height: min(389px, 80vh);
+  // Outer container that carries the shared shadow for the entire card.
+  // The shadow follows the outer bounding box, so it adapts automatically:
+  // collapsed (header only) → shadow shaped like the header;
+  // expanded (header + body) → shadow encompasses both as one unit.
+  width: 360px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  background-color: var(--white, #fff);
-  background-color: "[theme:white, default: #ffffff]";
-  border-radius: 4px;
-
-  // Warm-grey outline (#E7E5E4) — same hue the MS People Card uses.
-  // The Fluent UI Callout applies depth-16 elevation (box-shadow) on its own
-  // container; no custom shadow is needed here.
-  border: 1px solid #E7E5E4;
   position: relative;
+  border-radius: var(--borderRadiusLarge, 8px);
+  box-shadow: var(--shadow16, 0 0 2px rgb(0 0 0 / 12%), 0 8px 16px rgb(0 0 0 / 14%));
   animation: rich-card-enter 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+// Header panel: avatar, name, presence label, action buttons.
+// Sits on top of the detail body via z-index so the header's bottom edge
+// overlaps the body top — creating the layered card-behind-card effect.
+// The shared shadow lives on the outer .richCard wrapper, not here.
+.richCardHeaderPanel {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  background-color: var(--colorNeutralBackground1, #fff);
+  border-radius: var(--borderRadiusLarge, 8px);
+  border: 1px solid var(--colorNeutralStroke2, #e0e0e0);
 }
 
 // Scrollable area below the sticky header + action row.
@@ -248,24 +206,35 @@
   overflow-y: auto;
   max-height: 0;
   opacity: 0;
+  position: relative;
+  z-index: 1;
+  background-color: var(--colorNeutralBackground1, #fff);
+  border: 1px solid var(--colorNeutralStroke2, #e0e0e0);
+  border-top: none; // seamless join to header panel edge
+  border-radius: 0 0 var(--borderRadiusLarge, 8px) var(--borderRadiusLarge, 8px);
 
-  // padding-bottom intentionally only in .richCardBodyExpanded:
-  // padding is outside the content box and adds to rendered height even when
-  // max-height is 0, which would push the card past the divider line.
+  // Tuck under the header panel so the header shadow falls on top of this area,
+  // creating the layered card-behind-card effect from the Teams people card.
+  margin-top: -8px;
+  padding-top: 8px;
 
-  // ease-in-out (cubic-bezier(0.4, 0, 0.2, 1)) starts slowly, peaks in the middle
-  // and decelerates — the eye sees the whole travel arc, making the accordion
-  // feel deliberate rather than instantaneous. 480ms is long enough to be clearly
-  // perceptible after the 1 s header-only pause.
-  transition: max-height 480ms cubic-bezier(0.4, 0, 0.2, 1), opacity 360ms ease-in-out;
-  border-top: 1px solid #E7E5E4; // matches .richCard border colour
+  // curveEasyEase (Fluent v9 --curveEasyEase ≈ cubic-bezier(0.33, 0, 0.67, 1))
+  // starts slowly, peaks in the middle and decelerates — the eye sees the whole
+  // travel arc. durationSlower (400 ms) gives the expansion a deliberate feel
+  // without being sluggish after the short header-only pause.
+  // durationNormal (200 ms) for opacity — a quick fade is less distracting than
+  // matching the slower height animation.
+  transition:
+    max-height var(--durationSlower, 400ms) var(--curveEasyEase, cubic-bezier(0.33, 0, 0.67, 1)),
+    opacity var(--durationNormal, 200ms) ease-in-out;
 }
 
 .richCardBodyExpanded {
-  // CSS cannot animate max-height to 'auto'; use a value comfortably above
-  // the visible scroll window (389 − 149 = 240px). The outer .richCard clamps
-  // what the user sees; this value only affects animation timing accuracy.
-  max-height: 400px;
+  // CSS cannot animate max-height to 'auto'; use a value generously above the
+  // visible scroll area so that the transition-duration maps closely to real
+  // travel distance. The row-count is offset by half a row (0.5 × 32px = 16px)
+  // so trailing content is visibly cut mid-way, hinting at scroll.
+  max-height: min(300px, 50vh);
   opacity: 1;
   padding-bottom: 24px; // matches the 24px left-edge inset used by all info rows
 }
@@ -273,72 +242,12 @@
 /* Header: large avatar + name / title / presence */
 
 .richHeader {
-  display: flex;
-  gap: 12px;
-
-  // 12px on three sides, 8px bottom — with the 4px actions top-padding below,
-  // the visual gap between persona and buttons equals the gap from buttons to
-  // the divider line (both 12px).
-  padding: 12px 12px 8px;
-}
-
-.richAvatarWrapper {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.richPresenceDot {
-  position: absolute;
-
-  // Exact match for Fluent UI PersonaPresence at size72:
-  // content-box 20 × 20 px, right: -2px, bottom: -2px (native border-box outer
-  // edge lands at -4 px; our box-shadow replicates that identically).
-  bottom: -2px;
-  right: -2px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  box-shadow: 0 0 0 2px var(--white, #fff);
-  box-shadow: 0 0 0 2px "[theme:white, default: #ffffff]";
-  transition: background-color 300ms ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.richHeaderText {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  min-width: 0; // prevent text from pushing container wider
-}
-
-.richName {
-  font-size: 15px; // Tier 1: Fluent UI mediumPlus — same as manager name
-  font-weight: 600;
-  color: var(--bodyText);
-  color: "[theme:bodyText, default: #323130]";
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.richJobTitle {
-  font-size: 12px; // Tier 2: Fluent UI small
-  color: var(--neutralSecondary);
-  color: "[theme:neutralSecondary, default: #666666]";
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.richPresenceLabel {
-  font-size: 12px; // Tier 2
-  font-weight: 400;
-  margin-top: 2px;
-  transition: color 300ms ease;
+  // Persona handles the internal flex layout (avatar ↔ text, gap, alignment).
+  // This class adds only the outer padding that positions the header within the card.
+  // 24px on all sides matches the section titles and info rows for a consistent edge rhythm.
+  // No bottom padding — the button's own padding (spacingHorizontalSNudge)
+  // provides sufficient visual separation from the avatar block.
+  padding: 24px 24px 0;
 }
 
 /* Action buttons row */
@@ -346,22 +255,23 @@
 .richActions {
   display: flex;
   justify-content: flex-start; // left-aligned, matching MS People Card
-  gap: 4px;
-  padding: 4px 12px 12px; // 4px top + 8px (header bottom) = 12px gap above buttons
+  // spacingHorizontalM (12px): button icon-area is 44px, gap between them is
+  // 12px — matches the Teams People Card action row density.
+  gap: 12px;
+  padding: 0 24px 16px;
 }
 
 /* Section title */
 
 .richSectionTitle {
-  // 12px matches Microsoft's People Card section label size.
-  // Reduced top padding shrinks the inter-section dead zone so the half-row
-  // height offset more reliably lands on visible content, not blank space.
-  font-size: 12px;
+  // Body1Strong (14px semibold) — Fluent v9 standard for section headings.
+  // colorNeutralForeground1 (#242424) matches the near-black used by MS apps
+  // for section labels to give them clear visual weight without being pure black.
+  font-size: 14px; // tokens.fontSizeBase300
   font-weight: 600;
   letter-spacing: 0.01em;
   padding: 24px 24px 2px;
-  color: var(--neutralSecondary);
-  color: "[theme:neutralSecondary, default: #666666]";
+  color: var(--colorNeutralForeground1, #242424);
 }
 
 .richSection {
@@ -370,10 +280,19 @@
   padding: 0;
 }
 
+// Separator line before the "Reports to" section. Uses 24px side margins to
+// align with the content columns rather than spanning the full card width,
+// matching the Microsoft Teams people-card design.
+.richSectionDivider {
+  height: 1px;
+  background-color: var(--colorNeutralStroke2, #e0e0e0);
+  margin: 24px 24px 0;
+}
+
 .mapPreviewInline {
   // indent to align under the text column:
-  // left-edge (24px) + icon width (20px) + gap (12px) = 56px
-  padding: 4px 24px 8px 56px;
+  // left-edge (24px) + icon width (24px) + gap (12px) = 60px
+  padding: 4px 24px 8px 60px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -383,15 +302,13 @@
   width: 100%;
   max-width: 100%;
   height: auto;
-  border-radius: 4px;
-  border: 1px solid var(--neutralLight, #edebe9);
-  border: 1px solid "[theme:neutralLight, default: #edebe9]";
+  border-radius: var(--borderRadiusMedium, 4px);
+  border: 1px solid var(--colorNeutralStroke2, #e0e0e0);
 }
 
 .mapPreviewStatus {
-  font-size: 12px;
-  color: var(--neutralSecondary, #666);
-  color: "[theme:neutralSecondary, default: #666666]";
+  font-size: 12px; // tokens.fontSizeBase200
+  color: var(--colorNeutralForeground2, #616161);
 }
 
 
@@ -416,13 +333,24 @@
 
 // Applied only on rows that contain a CopyButton. Rows without a copy action
 // (e.g. department, address map) get no hover highlight — nothing to trigger.
+// Guarded by @media (hover: hover) so the highlight is only applied on devices
+// with a precise pointer (mouse/trackpad). On touch devices the styles are
+// skipped entirely — no flash when a row is tapped.
 .richInfoRowInteractive {
-  &:hover {
-    background-color: var(--neutralLighter, #f3f2f1);
-    background-color: "[theme:neutralLighter, default: #f3f2f1]";
+  @media (hover: hover) {
+    &:hover {
+      background-color: var(--colorNeutralBackground2, #f5f5f5);
 
-    .copyButton {
-      opacity: 1;
+      // Fluent v9 Link elements handle their own hover colour via Griffel styles.
+      // For plain-text values (officeLocation, address without map link) we
+      // darken via brightness — no theme token needed, works with any colour scheme.
+      .richInfoValue:not(a) {
+        filter: brightness(0.75);
+      }
+
+      .copyButton {
+        opacity: 1;
+      }
     }
   }
 }
@@ -433,24 +361,21 @@
 }
 
 .richInfoIcon {
-  font-size: 15px; // Tier 1 — matches action button icons above
+  font-size: 24px; // matches Fluent UI v9 Button large icon size (24 × 24 px)
   flex-shrink: 0;
-  width: 20px;
+  width: 24px;
   text-align: center;
-  color: var(--neutralSecondary);
-  color: "[theme:neutralSecondary, default: #666666]";
+  color: var(--colorNeutralForeground2, #616161);
 }
 
 .richInfoMeta {
-  font-size: 12px; // Tier 2
-  color: var(--neutralSecondary);
-  color: "[theme:neutralSecondary, default: #666666]";
+  font-size: 14px; // tokens.fontSizeBase300 — body text
+  color: var(--colorNeutralForeground2, #616161);
 }
 
 .richInfoValue {
-  font-size: 12px; // Tier 2: Fluent UI small
-  color: var(--link, #0078d4);
-  color: "[theme:link, default: #0078d4]";
+  font-size: 14px; // tokens.fontSizeBase300 — body text
+  color: var(--colorBrandForeground1, #0f6cbd);
   overflow-wrap: break-word; // breaks only at valid points (@ . -), not mid-glyph
   text-decoration: none;
 
@@ -484,56 +409,44 @@
 
 .copyButtonCopied {
   opacity: 1 !important;
-  color: var(--successText, #107C10);
-  color: "[theme:successText, default: #107C10]";
+  color: var(--colorStatusSuccessForeground1, #107C10);
 }
 
 /* Manager row */
 
 .managerRow {
-  display: flex;
-  gap: 12px;
-  padding: 6px 24px 12px;
-  align-items: center;
+  // Persona handles internal flex layout (avatar ↔ text, gap, alignment).
+  // This wrapper only provides the outer padding within the card section.
+  // No bottom padding — .richCardBodyExpanded already provides 24px below the last section.
+  padding: 6px 24px 0;
 }
 
-.managerText {
-  flex: 1;
-  min-width: 0;
-}
+// Mobile / drawer flattening — when the richCard is inside an OverlayDrawer,
+// the card-behind-card elevation is unnecessary because the drawer itself
+// provides the container chrome.
+.richCardFlat {
+  width: auto;
+  box-shadow: none; // drawer provides its own chrome
+  animation: none;  // suppress desktop enter animation — drawer has its own
 
-.managerName {
-  font-size: 15px; // same size as sponsor, but regular weight — subtle hierarchy
-  font-weight: 400;
-  color: var(--bodyText);
-  color: "[theme:bodyText, default: #323130]";
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+  .richCardHeaderPanel {
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+    background: transparent;
+  }
 
-.managerJobTitle {
-  font-size: 10px;
-  color: var(--neutralSecondary);
-  color: "[theme:neutralSecondary, default: #666666]";
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+  .richCardBody {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    margin-top: 0;
+    padding-top: 0;
+  }
 
-.managerDept {
-  font-size: 10px;
-  color: var(--neutralTertiary);
-  color: "[theme:neutralTertiary, default: #a19f9d]";
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.departmentValue {
-  font-size: 12px; // Tier 2
-  color: var(--bodyText);
-  color: "[theme:bodyText, default: #323130]";
+  .richCardBodyExpanded {
+    max-height: none;
+  }
 }
 
 /* ─── Teams access pending banner ────────────────────────────────────── */

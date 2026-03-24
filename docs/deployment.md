@@ -11,7 +11,6 @@ For a visual system overview (including a setup checklist diagram), see
 ## Table of Contents
 
 - [SharePoint Deployment](#sharepoint-deployment)
-- [Guest Access Requirements](#guest-access-requirements)
 - [Guest Sponsor API](#guest-sponsor-api)
 - [Inline Address Map (Azure Maps)](#inline-address-map-azure-maps)
 - [Updating the Function](#updating-the-function)
@@ -22,40 +21,149 @@ For a visual system overview (including a setup checklist diagram), see
 
 ## SharePoint Deployment
 
+### Enable the Site Collection App Catalog
+
+The web part's bundle is hosted in a **Site Collection App Catalog** directly
+on the guest landing page site. Because guest users already need read access
+to that site, no CDN configuration or additional permissions on the global
+App Catalog are required.
+
+Enable the Site Collection App Catalog once as a **SharePoint Administrator**.
+There is no GUI option for this step — PowerShell is required.
+
+On Windows, the **SharePoint Online Management Shell** is the simplest option
+— it works with your existing credentials and requires no additional setup:
+
+```powershell
+# Install once:
+# Install-Module Microsoft.Online.SharePoint.PowerShell -Scope CurrentUser
+
+Connect-SPOService -Url "https://<tenant>-admin.sharepoint.com"
+Add-SPOSiteCollectionAppCatalog -Site "https://<tenant>.sharepoint.com/sites/<landing-site>"
+```
+
+On macOS or Linux (or if you prefer a cross-platform tool), use
+[PnP PowerShell](https://pnp.github.io/powershell/). Note that current
+versions of PnP PowerShell require you to register your own Entra app and
+pass its Client ID — the built-in interactive login was removed:
+
+```powershell
+# Install once (PowerShell 7+):
+# Install-Module PnP.PowerShell -Scope CurrentUser
+
+Connect-PnPOnline -Url "https://<tenant>-admin.sharepoint.com" `
+    -ClientId "<your-pnp-app-client-id>" -Interactive
+Add-PnPSiteCollectionAppCatalog -Site "https://<tenant>.sharepoint.com/sites/<landing-site>"
+```
+
 ### Upload and install
 
 1. Download the latest `guest-sponsor-info.sppkg` from
    [Releases](https://github.com/workoho/spfx-guest-sponsor-info/releases).
-2. Upload it to your SharePoint **App Catalog**.
-3. Check **SharePoint Admin Center → Advanced → API access** for pending
-   permission requests and approve them if present.
-   In many tenants the required Graph permissions (`User.Read`,
-   `User.ReadBasic.All`, `Presence.Read.All`) are already pre-consented by the
-   *SharePoint Online Client Extensibility Web Application Principal* — the
-   queue will simply be empty and no action is needed.
-4. Add the *Guest Sponsor Info* web part to a modern page.
+2. Navigate to the landing page site → **Site Contents** →
+   **Apps for SharePoint** and upload the `.sppkg` file.
+   *(The Site Collection App Catalog library is also directly accessible at
+   `https://<tenant>.sharepoint.com/sites/<landing-site>/AppCatalog/`.)*
+3. The web part becomes available on all pages within this site collection
+   immediately — no additional “Add App” step is required.
 
-### Tenant-wide vs. per-site deployment
+### Verify guest access to the landing page site
 
-The upload dialog offers *"Make this solution available to all sites in the
-organization"*. **For a minimal-footprint deployment, leave this unchecked**
-and add the app manually only to target sites (**Site Contents → New → App →
-Guest Sponsor Info**).
+If your landing page site is already in use, Visitor access for guests is most
+likely already configured — but it's worth checking that the approach works
+reliably for newly invited users. If you're setting up a fresh landing page,
+use a **Communication Site** (not a Team Site): it has a clean Visitor
+permission model with no attached Microsoft 365 group, which simplifies guest
+access management.
 
-| | Per site (recommended) | Tenant-wide |
-|---|---|---|
-| Web part in toolbox | Only sites where admin added the app | Every modern site |
-| Admin effort | Once per target site | Once, at upload |
-| Guest data exposure | None | None — renders `null` for member users |
-| New sites | Manual per site | Automatic |
+Guests need at least **Read** (Visitor) permission on the landing page site
+to view it. Rather than a dynamic Entra group — which can take up to 24 hours
+to reflect new members, meaning freshly invited guests may see an access-denied
+page until the next sync — use the built-in **Everyone** group. It covers every
+authenticated user including B2B guests who have accepted their invitation, and
+takes effect immediately.
 
-**Per-site is the recommended default** — the web part is only available where
-explicitly needed. Guest landing sites are typically a known, stable set.
+The *Everyone* group is controlled by the `ShowEveryoneClaim` tenant setting,
+which defaults to `$false` on tenants provisioned after March 2018. If
+*Everyone* does not appear in the People Picker, enable it first:
 
-If you expect guest-accessible sites to grow over time and prefer to avoid
-per-site admin steps, the tenant-wide option works equally well.
+```powershell
+# SharePoint Online Management Shell (Windows):
+(Get-SPOTenant).ShowEveryoneClaim   # check current value
+Set-SPOTenant -ShowEveryoneClaim $true
+
+# PnP PowerShell (cross-platform):
+(Get-PnPTenant).ShowEveryoneClaim
+Set-PnPTenant -ShowEveryoneClaim $true
+```
+
+Then add *Everyone* to the site's Visitors group. The easiest path is the GUI:
+**Site Settings → People and Groups → [Site] Visitors → New → Add Users**
+→ search for *Everyone* → **Share**. Alternatively via PowerShell:
+
+```powershell
+# SharePoint Online Management Shell (Windows):
+# Connect-SPOService must already be active (see Enable step above)
+Add-SPOUser -Site "https://<tenant>.sharepoint.com/sites/<landing-site>" `
+    -LoginName "c:0(.s|true" -Group "<SiteName> Visitors"
+
+# PnP PowerShell (cross-platform; connect to the site, not the admin URL):
+Connect-PnPOnline -Url "https://<tenant>.sharepoint.com/sites/<landing-site>" `
+    -ClientId "<your-pnp-app-client-id>" -Interactive
+Add-PnPGroupMember -LoginName "c:0(.s|true" -Group "<SiteName> Visitors"
+```
+
+> **Pitfall — similar-sounding groups:**
+>
+> - *Everyone* — includes B2B guests ✓
+> - *Everyone except external users* — **excludes** guests ✗
+
+#### Alternative: static Entra security group
+
+If your organisation uses an **automated guest invitation workflow** — rather than
+implicit invitations triggered by sharing content in Teams or SharePoint — a
+dedicated static Entra security group populated at invitation time is a viable
+alternative. The group membership is immediately correct in Entra ID, so SharePoint
+Online can resolve it on the next access check, typically within seconds to a few
+minutes. This contrasts with dynamic Entra groups, where Entra itself must first
+re-evaluate the dynamic membership rule — a process that can take up to 24 hours —
+before SharePoint can reflect the change.
+
+The *Everyone* group remains the **recommended approach**, however, because the
+`c:0(.s|true` claim is evaluated entirely within SharePoint Online's own
+authentication layer: SharePoint simply checks whether the incoming request carries
+a valid, authenticated identity — with no need to query Entra ID for group
+membership at all. A static group still requires SharePoint to resolve the user's
+current Entra group memberships before granting access, which introduces a
+dependency on that resolution path even though it is normally fast.
+
+> **Tip:** [EasyLife 365 Collaboration](https://easylife365.cloud/) is purpose-built
+> for automated Microsoft 365 guest lifecycle management and can ensure that a static
+> site-access group is populated for every guest invitation — including guests who
+> would otherwise be invited implicitly through Teams or SharePoint.
+> [Workoho](https://www.workoho.com/), the author of this web part, is a Platinum
+> implementation partner of EasyLife 365.
+
+### External sharing
+
+SharePoint's tenant-level sharing setting acts as a **ceiling**: individual
+sites cannot be more permissive than the tenant allows, but they can be
+more restrictive. What matters here is the setting on the landing page site
+itself:
+
+- **Active sites → [landing page site] → Policies → External sharing** —
+  set to at least *Existing guests only*.
+
+If that option is greyed out or missing, the tenant-level ceiling is too
+restrictive. Raise it under **SharePoint Admin Center → Policies → Sharing**
+to at least *Existing guests only*, then configure the site.
 
 ### Required Graph permissions
+
+All three permissions below are **pre-authorized by Microsoft** for the
+*SharePoint Online Client Extensibility Web Application Principal*. No manual
+consent in **SharePoint Admin Center → Advanced → API access** is needed —
+the queue will simply be empty.
 
 | Scope | Resource | Reason |
 |---|---|---|
@@ -66,124 +174,6 @@ per-site admin steps, the tenant-wide option works equally well.
 > **Why not `User.Read.All`?**
 > `User.ReadBasic.All` is sufficient for sponsor profiles and does not expose
 > sensitive account data such as `accountEnabled` or `onPremisesSyncEnabled`.
-
----
-
-## Guest Access Requirements
-
-The web part's JavaScript and CSS bundle is packaged with
-`includeClientSideAssets: true` and re-hosted by SharePoint. By default, guest
-users cannot reach those assets, causing the web part to fail silently or show
-"Something went wrong" errors for guests only.
-
-**Step 1** has two options — choose whichever fits your environment. Steps 2
-and 3 are always required.
-
-### Step 1 – Make web part assets accessible to guests
-
-#### Option A – SharePoint Public CDN (recommended)
-
-When the **Public CDN** is enabled with the `*/CLIENTSIDEASSETS` origin,
-SharePoint rewrites asset URLs to `https://publiccdn.sharepointonline.com/…`
-— a publicly accessible edge cache. Guest users (and even anonymous users on
-public-access sites) can download the bundle without further configuration.
-
-This is the **simplest and most performant** option. No claim setting changes
-or App Catalog permissions are needed.
-
-```powershell
-# Install PnP PowerShell once (PowerShell 7+, cross-platform):
-# Install-Module PnP.PowerShell -Scope CurrentUser
-
-Connect-PnPOnline -Url "https://<tenant>-admin.sharepoint.com" -Interactive
-
-# Enable the Public CDN (idempotent).
-Set-PnPTenantCdnEnabled -CdnType Public -Enable $true
-
-# Add the SPFx asset library as a public origin (idempotent).
-Add-PnPTenantCdnOrigin -CdnType Public -OriginUrl "*/CLIENTSIDEASSETS"
-
-# Verify (propagation takes ≈ 15–30 min).
-Get-PnPTenantCdnOrigin -CdnType Public
-```
-
-Wait for `*/CLIENTSIDEASSETS` to appear with status `OK`. Once propagated,
-asset URLs are rewritten automatically — no `.sppkg` redeployment required.
-
-> **If you use Option A, skip Option B entirely.** Steps 2 and 3 still apply.
-
-#### Option B – App Catalog permissions (alternative)
-
-Use this only if the Public CDN cannot be enabled in your tenant.
-
-##### Step 1b-i – Enable the Everyone claim
-
-`ShowEveryoneClaim` controls the **"Everyone"** group in SharePoint's People
-Picker. It covers all authenticated users in the tenant's Entra ID, **including
-B2B guests who accepted their invitation**.
-
-On tenants provisioned after March 2018 this defaults to `$false`. Check and
-enable:
-
-```powershell
-Connect-PnPOnline -Url "https://<tenant>-admin.sharepoint.com" -Interactive
-(Get-PnPTenant).ShowEveryoneClaim   # should return: True
-
-# If False:
-Set-PnPTenant -ShowEveryoneClaim $true
-```
-
-> **Why not `ShowAllUsersClaim`?**
-> That setting controls the legacy *All Users (membership)* / *All Users
-> (windows)* groups — Windows/NTLM-era claims that do **not** include B2B
-> guests. `ShowEveryoneClaim` and the *Everyone* group are the modern
-> equivalent.
->
-> A third setting, `ShowEveryoneExceptExternalUsersClaim` (default `$true`),
-> controls *Everyone except external users* — it explicitly **excludes** B2B
-> guests.
-
-##### Step 1b-ii – Enable external sharing on the App Catalog site
-
-1. **SharePoint Admin Center → Sites → Active sites**.
-2. Open the App Catalog site (typically `appcatalog`).
-3. **Policies → External sharing** → set to at least **Existing guests**.
-
-##### Step 1b-iii – Grant Read permission
-
-1. Navigate to your App Catalog site.
-2. **Site Settings → People and Groups → App Catalog Visitors**.
-3. **New → Add Users** → add one of:
-   - **Everyone** — broadest, simplest. Requires
-     `ShowEveryoneClaim = $true`.
-   - A **specific security group** containing the guest accounts —
-     more targeted, no claim change needed.
-4. Permission level: **Read**.
-
-> **Pitfall — similar-sounding groups:**
->
-> - *Everyone* — includes B2B guests ✓
-> - *Everyone except external users* — **excludes** guests ✗
-> - *All Users (membership/windows)* — members only, **excludes** guests ✗
-
-### Step 2 – Verify external sharing on the landing page site
-
-External sharing must be enabled at both the tenant level and at each site:
-
-- **SharePoint Admin Center → Policies → Sharing** — at least
-  *Existing guests only*.
-- Confirm each site where the web part is placed has external sharing enabled.
-
-### Step 3 – Deploy the Guest Sponsor API
-
-The Microsoft Graph `/me/sponsors` API requires the calling user to hold a
-directory role — impractical for guest accounts at scale
-(see [architecture.md](architecture.md#guest-sponsor-api-recommended) for the full
-analysis). The recommended solution is the **Guest Sponsor API** — a custom
-Azure Function that calls Graph with application permissions on behalf of the user.
-
-See the [Guest Sponsor API section](#guest-sponsor-api) below for full
-deployment instructions.
 
 ---
 
@@ -504,28 +494,14 @@ az stack group delete \
 
 **Overall risk level: Low.** Recommended for production.
 
-### Public CDN (Option A)
+### Site Collection App Catalog
 
-The compiled JavaScript and CSS bundle at
-`publiccdn.sharepointonline.com` contains no credentials, user data, or
-secrets. Environment-specific values are public Microsoft URLs; tenant-specific
-IDs are obtained at runtime from `pageContext`.
-
-Enabling the Public CDN is a tenant-wide change affecting all SPFx solutions
-using `includeClientSideAssets: true`. Review other solutions before enabling.
-
-### ShowEveryoneClaim (Option B only)
-
-Enabling is a tenant-wide change: *Everyone* becomes selectable as a
-permission target. The setting itself does not grant access — it only makes
-the claim group available in the People Picker. Blast radius is purely
-administrative.
-
-### App Catalog Read for Everyone (Option B only)
-
-Authenticated guests can download the compiled bundle (the goal) and see
-the list of deployed SPFx solutions (low-sensitivity metadata). They cannot
-install, retract, or modify any apps.
+The web part bundle is served from the guest landing page site itself.
+Guests cannot list or modify apps in the Site Collection App Catalog — they
+can only download the compiled bundle via their normal site read access.
+The bundle contains no credentials, user data, or secrets; environment-specific
+values are public Microsoft URLs and tenant-specific IDs obtained at runtime
+from `pageContext`.
 
 ---
 

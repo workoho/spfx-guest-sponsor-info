@@ -56,10 +56,7 @@
     "hostingPlan": {
       "type": "string",
       "defaultValue": "Consumption",
-      "allowedValues": [
-        "Consumption",
-        "FlexConsumption"
-      ],
+      "allowedValues": ["Consumption", "FlexConsumption"],
       "metadata": {
         "category": "Hosting",
         "description": "Hosting plan for the Function App. \"Consumption\" = Y1/Dynamic (free tier included, cold starts after ~20 min idle, ZIP served directly from GitHub package URL). \"FlexConsumption\" = FC1/Linux-only (no free tier, cold starts greatly reduced — alwaysReadyInstances=1 eliminates them; ZIP is uploaded to blob storage by the provisioning script automatically during ARM deployment; \"Deploy to Azure\" button is supported). Not all Azure regions support Flex Consumption — check https://aka.ms/flex-region before choosing."
@@ -87,10 +84,7 @@
     "instanceMemoryMB": {
       "type": "int",
       "defaultValue": 2048,
-      "allowedValues": [
-        512,
-        2048
-      ],
+      "allowedValues": [512, 2048],
       "metadata": {
         "category": "Hosting",
         "description": "Memory allocated to each Flex Consumption instance in MB (Flex Consumption plan only). Valid values: 512 or 2048. Higher memory allows more concurrent requests per instance but costs more per GB-second. Default: 2048. Ignored when hostingPlan = \"Consumption\"."
@@ -139,14 +133,7 @@
     "azureMapsLocation": {
       "type": "string",
       "defaultValue": "westeurope",
-      "allowedValues": [
-        "westeurope",
-        "northeurope",
-        "westus2",
-        "eastus",
-        "westcentralus",
-        "global"
-      ],
+      "allowedValues": ["westeurope", "northeurope", "westus2", "eastus", "westcentralus", "global"],
       "metadata": {
         "category": "Azure Maps",
         "description": "Azure region for the Azure Maps account. Must be one of the regions supported by Microsoft.Maps/accounts (westeurope, northeurope, westus2, eastus, westcentralus, global). Defaults to westeurope. Required when the resource group location is not supported by Azure Maps (e.g. germanywestcentral)."
@@ -367,9 +354,7 @@
             "openIdIssuer": "[format('https://sts.windows.net/{0}/', parameters('tenantId'))]"
           },
           "validation": {
-            "allowedAudiences": [
-              "[parameters('functionClientId')]"
-            ]
+            "allowedAudiences": ["[parameters('functionClientId')]"]
           }
         }
       },
@@ -551,9 +536,7 @@
         "siteConfig": {
           "appSettings": "[concat(createArray(createObject('name', 'AzureWebJobsStorage__accountName', 'value', if(greater(length(variables('storageAccountName')), 24), substring(variables('storageAccountName'), 0, 24), variables('storageAccountName'))), createObject('name', 'AzureWebJobsStorage__credential', 'value', 'managedidentity'), createObject('name', 'TENANT_ID', 'value', parameters('tenantId')), createObject('name', 'ALLOWED_AUDIENCE', 'value', parameters('functionClientId')), createObject('name', 'CORS_ALLOWED_ORIGIN', 'value', format('https://{0}.sharepoint.com', parameters('tenantName'))), createObject('name', 'SPONSOR_LOOKUP_TIMEOUT_MS', 'value', '5000'), createObject('name', 'BATCH_TIMEOUT_MS', 'value', '4000'), createObject('name', 'PRESENCE_TIMEOUT_MS', 'value', '2500'), createObject('name', 'NODE_ENV', 'value', 'production'), createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', reference(resourceId('Microsoft.Resources/deployments', 'monitoring'), '2025-04-01').outputs.appInsightsConnectionString.value), createObject('name', 'APP_VERSION', 'value', parameters('appVersion'))), variables('consumptionOnlyAppSettings'))]",
           "cors": {
-            "allowedOrigins": [
-              "[format('https://{0}.sharepoint.com', parameters('tenantName'))]"
-            ],
+            "allowedOrigins": ["[format('https://{0}.sharepoint.com', parameters('tenantName'))]"],
             "supportCredentials": false
           }
         }
@@ -646,9 +629,7 @@
             }
           ],
           "cors": {
-            "allowedOrigins": [
-              "[format('https://{0}.sharepoint.com', parameters('tenantName'))]"
-            ],
+            "allowedOrigins": ["[format('https://{0}.sharepoint.com', parameters('tenantName'))]"],
             "supportCredentials": false
           }
         }
@@ -666,9 +647,7 @@
       "apiVersion": "2023-01-01",
       "name": "[format('{0}/{1}', parameters('functionAppName'), 'authsettingsV2')]",
       "properties": "[variables('easyAuthProperties')]",
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
-      ]
+      "dependsOn": ["[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"]
     },
     {
       "condition": "[variables('isFlexConsumption')]",
@@ -676,9 +655,7 @@
       "apiVersion": "2023-12-01",
       "name": "[format('{0}/{1}', parameters('functionAppName'), 'authsettingsV2')]",
       "properties": "[variables('easyAuthProperties')]",
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
-      ]
+      "dependsOn": ["[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"]
     },
     {
       "condition": "[not(variables('isFlexConsumption'))]",
@@ -1116,9 +1093,7 @@
               "properties": {
                 "description": "Operational email alert for probable service outage (5xx/504 spike or low success rate).",
                 "enabled": true,
-                "scopes": [
-                  "[resourceId('Microsoft.Insights/components', variables('appInsightsResourceName'))]"
-                ],
+                "scopes": ["[resourceId('Microsoft.Insights/components', variables('appInsightsResourceName'))]"],
                 "evaluationFrequency": "[format('PT{0}M', parameters('alertEvaluationFrequencyInMinutes'))]",
                 "windowSize": "[format('PT{0}M', parameters('alertWindowInMinutes'))]",
                 "severity": 2,
@@ -1152,9 +1127,7 @@
               "properties": {
                 "description": "Operational email alert for auth/config regressions (AUTH_CONFIG_* reason codes).",
                 "enabled": true,
-                "scopes": [
-                  "[resourceId('Microsoft.Insights/components', variables('appInsightsResourceName'))]"
-                ],
+                "scopes": ["[resourceId('Microsoft.Insights/components', variables('appInsightsResourceName'))]"],
                 "evaluationFrequency": "[format('PT{0}M', parameters('alertEvaluationFrequencyInMinutes'))]",
                 "windowSize": "[format('PT{0}M', parameters('alertWindowInMinutes'))]",
                 "severity": 2,
@@ -1188,9 +1161,7 @@
               "properties": {
                 "description": "Info-only alert for likely attack/noise spikes (high 401/403 from many IPs).",
                 "enabled": true,
-                "scopes": [
-                  "[resourceId('Microsoft.Insights/components', variables('appInsightsResourceName'))]"
-                ],
+                "scopes": ["[resourceId('Microsoft.Insights/components', variables('appInsightsResourceName'))]"],
                 "evaluationFrequency": "[format('PT{0}M', parameters('alertEvaluationFrequencyInMinutes'))]",
                 "windowSize": "[format('PT{0}M', parameters('alertWindowInMinutes'))]",
                 "severity": 4,
