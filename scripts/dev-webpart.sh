@@ -61,6 +61,14 @@ if [[ -z "${SPFX_SERVE_TENANT_DOMAIN}" ]]; then
   exit 1
 fi
 
+# --- Dependencies ---
+
+if [[ ! -d "node_modules" ]]; then
+  echo "Installing web part dependencies..."
+  npm install
+  echo ""
+fi
+
 echo "Tenant: ${SPFX_SERVE_TENANT_DOMAIN}"
 echo "Starting local development server..."
 echo "Hosted workbench: https://${SPFX_SERVE_TENANT_DOMAIN}/_layouts/15/workbench.aspx"
