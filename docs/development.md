@@ -25,6 +25,143 @@ SharePoint Online tenant. Accept the certificate warning at
 `https://localhost:4321` once per browser session, then open the hosted
 workbench URL printed on startup.
 
+## Development Environment
+
+A complete inventory of the toolchain — what is strictly required, what is
+convenient to install locally, and what the devcontainer adds on top.
+
+### Required (local setup without devcontainer)
+
+Install these manually when not using the devcontainer.
+
+| Tool | Purpose |
+|---|---|
+| **Node.js 22.x** | JavaScript runtime for the SPFx build, unit tests, and the Azure Function. Stay within the version range in `engines` in `package.json`. |
+| **npm** | Package manager — bundled with Node.js, no separate installation needed. |
+| **Git** | Version control. The pre-commit hooks (`husky`) enforce formatting and linting automatically before every commit. |
+
+### Recommended for local setup (optional)
+
+Only needed for specific workflows.
+
+| Tool | Install | Purpose |
+|---|---|---|
+| **Azure CLI** (`az`) | [docs.microsoft.com/cli/azure](https://learn.microsoft.com/cli/azure/install-azure-cli) | Authenticate against Azure for local Function development and infra deployments. |
+| **PowerShell** (`pwsh`) | [github.com/PowerShell](https://github.com/PowerShell/PowerShell#get-powershell) | Run the infra setup scripts (`setup-app-registration.ps1`, `setup-graph-permissions.ps1`) on macOS / Linux. |
+| **GitHub CLI** (`gh`) | [cli.github.com](https://cli.github.com) | Manage PRs, issues, and CI runs from the terminal; used by `./scripts/release-notes.sh`. |
+
+---
+
+### Devcontainer — CLI tools
+
+Everything below is pre-installed in the devcontainer and ready on the `PATH`
+after a container build. No manual step required.
+
+#### Search and navigation
+
+| Command | Tool | Purpose |
+|---|---|---|
+| `rg` | **ripgrep** | Fast full-text search — faster than `grep`, respects `.gitignore`. Great for finding all usages of a symbol across the codebase. |
+| `fd` | **fd-find** | Fast, readable alternative to `find` for locating files by name or pattern. |
+| `bat` | **bat** | `cat` with syntax highlighting and line numbers — handy for quick file inspection in the terminal. |
+| `fzf` | **fzf** | Interactive fuzzy finder for files, shell history, and any piped list. |
+
+#### Data processing
+
+| Command | Tool | Purpose |
+|---|---|---|
+| `jq` | **jq** | Parse and query JSON in the terminal — useful for inspecting Graph API responses or `package.json`. |
+| `yq` | **yq** | Same as `jq` but also understands YAML — useful for config files. |
+
+#### Shell script quality
+
+| Command | Tool | Purpose |
+|---|---|---|
+| `shellcheck` | **ShellCheck** | Static analyzer: catches bugs and portability issues in shell scripts before they run. |
+| `shfmt` | **shfmt** | Auto-formatter for shell scripts. Applied automatically at commit time via `lint-staged`. |
+
+#### Git workflow
+
+| Command | Tool | Purpose |
+|---|---|---|
+| `git diff` | **delta** | Renders `git diff` / `git show` with syntax highlighting and line numbers. Configured automatically as the default git pager. |
+
+#### Azure and cloud
+
+| Command | Tool | Purpose |
+|---|---|---|
+| `az` | **Azure CLI** | Manage Azure resources and authenticate for local Function development. |
+| `func` | **Azure Functions Core Tools** | Start the Azure Function locally for development and debugging. Used by `./scripts/dev-function.sh`. |
+| `gh` | **GitHub CLI** | Query PRs, issues, Actions runs, and releases; used by scripts and AI agents. |
+| `pwsh` | **PowerShell** | Run `.ps1` infra setup scripts without needing a Windows machine. |
+
+---
+
+### Devcontainer — VS Code extensions
+
+All extensions install automatically when the devcontainer starts.
+
+#### AI assistants
+
+| Extension | Purpose |
+|---|---|
+| **GitHub Copilot Chat** | Inline code completions and AI chat — integrated directly into the editor and terminal. |
+| **Claude** (Anthropic) | Alternative AI coding assistant. |
+| **ChatGPT** (OpenAI) | Alternative AI assistant. |
+
+#### Code quality — linting and formatting
+
+| Extension | Purpose |
+|---|---|
+| **ESLint** | Highlights TypeScript / JavaScript issues inline. Applies auto-fixes on save. |
+| **Stylelint** | Highlights SCSS issues inline. |
+| **Markdownlint** | Enforces Markdown style rules (heading levels, line length, blank lines). |
+| **Prettier — Code Formatter** | Auto-formats JSON and JSONC files on save. |
+| **shell-format** | Auto-formats shell scripts on save using `shfmt`. |
+| **Error Lens** | Renders ESLint and TypeScript diagnostics directly on the affected line — no need to hover over the red underline. |
+
+#### Git and GitHub
+
+| Extension | Purpose |
+|---|---|
+| **GitLens** | Inline git blame, per-line authorship, and full file history without leaving the editor. |
+| **GitHub Pull Requests** | Review, comment on, and merge PRs without switching to the browser. |
+| **GitHub Actions** | Monitor CI workflow runs and see job logs in the sidebar. |
+| **Conventional Commits** | GUI helper for composing commit messages that pass `commitlint` — avoids type / format errors. |
+
+#### Azure and infrastructure
+
+| Extension | Purpose |
+|---|---|
+| **Azure Developer CLI** | Deploy and manage the full app stack with `azd up` / `azd down`. |
+| **Azure Functions** | Browse, deploy, and live-debug Azure Functions from VS Code. |
+| **Azure Resources** | Browse subscriptions, resource groups, and resources in the sidebar. |
+| **Azure Storage** | Browse blob containers and table storage directly in the editor. |
+| **Bicep** | Syntax highlighting, validation (linting), and IntelliSense for `.bicep` infrastructure files. |
+| **Azure CLI Tools** | Syntax highlighting and basic IntelliSense for `.azcli` script files. |
+| **Docker** | Manage container images and Compose files from the sidebar. |
+| **PowerShell** | IntelliSense and integrated debugging for `.ps1` scripts. |
+
+#### SharePoint and general
+
+| Extension | Purpose |
+|---|---|
+| **Deploy to SharePoint Online** | Upload `.sppkg` to the SharePoint App Catalog directly from VS Code — no CLI needed. |
+| **EditorConfig** | Reads `.editorconfig` and enforces consistent line endings and indentation across every file type. |
+
+---
+
+### Devcontainer — GitHub MCP server
+
+The devcontainer ships a pre-configured
+[GitHub MCP server](https://github.com/modelcontextprotocol/servers/tree/main/src/github).
+It gives AI coding agents (Copilot, Claude, etc.) structured access to the
+GitHub API — issues, PRs, Actions runs, and releases — as first-class tools,
+without the agent having to parse `gh` CLI output. Requires `GITHUB_TOKEN` to
+be set (see `containerEnv` in `.devcontainer/devcontainer.json`).
+
+---
+
 ## Scripts
 
 | Script | Purpose |
