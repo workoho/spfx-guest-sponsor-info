@@ -116,6 +116,12 @@ export interface IGuestSponsorInfoProps {
    */
   onProxyStatusChange?: (status: 'checking' | 'ok' | 'error') => void;
   /**
+   * Called when a version mismatch between the web part and Azure Function is detected or
+   * cleared (edit mode only). Allows the web part class to surface the notice in the
+   * property pane near the version number without keeping this state in two places.
+   */
+  onVersionMismatch?: (detected: boolean) => void;
+  /**
    * Unique prefix derived from the SPFx web part instance ID.
    * Passed as `id` to every FluentProvider so multiple web part instances
    * on the same page do not produce conflicting Fluent UI style-tag IDs.

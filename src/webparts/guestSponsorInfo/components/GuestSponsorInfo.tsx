@@ -249,6 +249,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   useInformalAddress,
   clientVersion,
   onProxyStatusChange,
+  onVersionMismatch,
   fluentProviderId,
   theme,
 }) => {
@@ -309,9 +310,9 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
       .then((functionVersion) => {
         if (!cancelled) {
           onProxyStatusChange?.('ok');
-          setVersionMismatch(
-            !!(clientVersion && functionVersion && clientVersion !== functionVersion)
-          );
+          const detected = !!(clientVersion && functionVersion && clientVersion !== functionVersion);
+          setVersionMismatch(detected);
+          onVersionMismatch?.(detected);
         }
       })
       .catch(() => { if (!cancelled) { onProxyStatusChange?.('error'); } });
@@ -544,7 +545,6 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
     // Using an IIFE avoids TypeScript control-flow narrowing through the || chain.
     const hasEditContent = ((): boolean => {
       if (mockSimulatedHint !== 'noSponsors') return true;     // shows tiles or a banner
-      if (versionMismatch) return true;                        // real version-mismatch ping result
       return showNoSponsorsHint;                               // only the notice banner remains
     })();
     if (!hasEditContent) return null;
@@ -581,16 +581,6 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
             readOnly={mockSimulatedHint === 'sponsorUnavailable'}
             v9Theme={v9Theme}
           />
-          )}
-          {/* Real version mismatch detected via ping: always shown to the editor, independent
-              of the showVersionMismatchHint guest-facing toggle. */}
-          {versionMismatch && mockSimulatedHint !== 'versionMismatch' && (
-            <MessageBar intent="info" className={styles.teamsAccessBanner}>
-              <MessageBarBody>
-                <b>{strings.VersionMismatchTitle}</b><br />
-                {strings.VersionMismatchMessage}
-              </MessageBarBody>
-            </MessageBar>
           )}
           {mockSimulatedHint === 'teamsAccessPending' && (
             <MessageBar intent="warning" className={styles.teamsAccessBanner}>

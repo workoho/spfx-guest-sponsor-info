@@ -96,6 +96,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
   private _graphClient: MSGraphClientV3 | undefined;
   private _aadHttpClient: AadHttpClient | undefined;
   private _proxyStatus: 'checking' | 'ok' | 'error' = 'checking';
+  private _versionMismatch = false;
   private _themeProvider: ThemeProvider | undefined;
   private _theme: IReadonlyTheme | undefined;
 
@@ -153,6 +154,13 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
         fluentProviderId: `gsi-${this.context.instanceId}`,
         onProxyStatusChange: (status: 'checking' | 'ok' | 'error') => {
           this._proxyStatus = status;
+          if (this.context.propertyPane.isPropertyPaneOpen()) {
+            this.context.propertyPane.refresh();
+          }
+        },
+        onVersionMismatch: (detected: boolean) => {
+          if (this._versionMismatch === detected) return;
+          this._versionMismatch = detected;
           if (this.context.propertyPane.isPropertyPaneOpen()) {
             this.context.propertyPane.refresh();
           }
@@ -412,6 +420,25 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
     metaLine.appendChild(sourceLink);
     metaLine.appendChild(separator);
     metaLine.appendChild(versionLink);
+
+    if (this._versionMismatch) {
+      const updateSep = document.createElement('span');
+      updateSep.textContent = ' · ';
+      const updateBadge = document.createElement('span');
+      updateBadge.textContent = `\u2191\u00a0${strings.VersionMismatchTitle}`;
+      updateBadge.title = strings.VersionMismatchMessage;
+      updateBadge.style.display = 'inline-block';
+      updateBadge.style.padding = '1px 7px';
+      updateBadge.style.borderRadius = '4px';
+      updateBadge.style.backgroundColor = '#eff6fc';
+      updateBadge.style.color = '#005a9e';
+      updateBadge.style.border = '1px solid #c7e0f4';
+      updateBadge.style.fontWeight = '700';
+      updateBadge.style.fontSize = '11px';
+      updateBadge.style.cursor = 'help';
+      metaLine.appendChild(updateSep);
+      metaLine.appendChild(updateBadge);
+    }
 
     footer.appendChild(metaLine);
     footer.appendChild(document.createElement('br'));
