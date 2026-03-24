@@ -11,11 +11,14 @@ body = """
 {% else -%}
 ## Unreleased
 {% endif -%}
-{% for group, commits in commits | group_by(attribute="group") %}
-### {{ group }}
-{% for commit in commits -%}
+{% for g in ["Features", "Bug Fixes", "Performance Improvements", "Internal Improvements", "Dependency Updates"] -%}
+{% set section = commits | filter(attribute="group", value=g) -%}
+{% if section | length > 0 %}
+### {{ g }}
+{% for commit in section -%}
 - {% if commit.breaking %}💥 **Breaking:** {% endif %}{{ commit.message | upper_first }}
 {% endfor %}
+{% endif -%}
 {% endfor %}
 """
 footer = """
@@ -39,13 +42,22 @@ conventional_commits = true
 filter_unconventional = true
 split_commits = false
 commit_parsers = [
+  # Developer-tooling scopes: captured as internal improvements even when
+  # the type is feat/fix/perf, so they never surface as user-facing changes.
+  # Covers: release scripts, CI/CD, dev container, git hooks, linting config,
+  # locale files, infrastructure templates, build tooling.
+  { message = "^feat", scope = "scripts|ci|infra|tooling|i18n|loc|build|release|test|types|devcontainer|husky|github|gh|config|lint|docker|deps", group = "Internal Improvements" },
+  { message = "^fix",  scope = "scripts|ci|infra|tooling|i18n|loc|build|release|test|types|devcontainer|husky|github|gh|config|lint|docker|deps", group = "Internal Improvements" },
+  { message = "^perf", scope = "scripts|ci|infra|tooling|i18n|loc|build|release|test|types|devcontainer|husky|github|gh|config|lint|docker|deps", group = "Internal Improvements" },
+  # User-facing sections — shown first in the output above.
   { message = "^feat", group = "Features" },
-  { message = "^fix", group = "Bug Fixes" },
-  { message = "^perf", group = "Performance improvements" },
-  { message = "^refactor", group = "Refactoring" },
-  { message = "^chore\\(deps\\)", group = "Dependency updates" },
-  # All other types (docs, style, test, chore, ci, build) are internal
-  # and not shown in release notes.
+  { message = "^fix",  group = "Bug Fixes" },
+  { message = "^perf", group = "Performance Improvements" },
+  # Code-level refactoring is interesting for contributors but not end users.
+  { message = "^refactor", group = "Internal Improvements" },
+  # Dependency bumps get their own section at the bottom.
+  { message = "^chore\\(deps\\)", group = "Dependency Updates" },
+  # Everything else (docs, style, test, chore, ci, build) is skipped.
   { message = ".*", skip = true },
 ]
 filter_commits = false
