@@ -24,7 +24,8 @@
     // prompt, PSReadLine, and optional PSGallery resources. Replaces the fragile
     // packages-microsoft-prod.deb approach that fails on ARM64/Codespaces.
     "ghcr.io/jpawlowski/devcontainer-features/powershell-extended:2": {
-      "installOhMyPosh": false
+      "installOhMyPosh": false,
+      "resources": "Microsoft.Graph.Authentication;Microsoft.Graph.Applications"
     }
   },
   "build": {
