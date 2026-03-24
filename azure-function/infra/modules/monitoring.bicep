@@ -21,6 +21,9 @@ param enableAuthConfigRegressionAlert bool = true
 @description('Enable info-only alert for likely attack/noise spikes (high 401/403 from many IPs).')
 param enableLikelyAttackInfoAlert bool = true
 
+@description('Enable info-only alert when a newer GitHub release of the function is available.')
+param enableNewReleaseAlert bool = true
+
 // ── Alert timing ─────────────────────────────────────────────────────────────
 
 @description('KQL alert evaluation frequency in minutes.')
@@ -71,6 +74,16 @@ param likelyAttackDenyRatePercentThreshold int = 80
 @minValue(0)
 param likelyAttackMinSuccessThreshold int = 1
 
+// ── New-release check alert thresholds ───────────────────────────────────────
+
+@description('KQL evaluation frequency for the new-release alert in minutes.')
+@minValue(5)
+param newReleaseAlertEvaluationFrequencyInMinutes int = 60
+
+@description('KQL lookback window for the new-release alert in minutes. Must be at least twice the function timer interval (6 h) to tolerate one missed timer invocation.')
+@minValue(60)
+param newReleaseAlertWindowInMinutes int = 720
+
 // ── Action groups ────────────────────────────────────────────────────────────
 
 @description('Action group resource IDs for operational email alerts. Leave empty to create alert rules without notifications.')
@@ -98,6 +111,25 @@ var appInsightsResourceName = '${functionAppName}-insights'
 // ── KQL queries ──────────────────────────────────────────────────────────────
 // Triple-quoted raw strings (no interpolation); placeholders are substituted
 // with replace() so that the final query is a plain string in the ARM template.
+
+// Matches the structured WARNING logged by the checkGitHubRelease timer trigger.
+// The `latestVersion` column is used as an alert dimension so that each distinct
+// GitHub release version creates an independent alert instance.
+// autoMitigate: true — the instance resolves automatically once the function is
+// updated (no more [NEW_RELEASE_AVAILABLE] traces for that latestVersion value).
+// When the function is then updated but a subsequent newer release appears, the
+// same mechanism fires a fresh notification — one email per unique latestVersion.
+var newReleaseAlertQueryRaw = '''
+let window = __WINDOW__m;
+traces
+| where timestamp > ago(window)
+| where message has "[NEW_RELEASE_AVAILABLE]"
+| extend latestVersion = extract(@"latestVersion=(\\d+\\.\\d+\\.\\d+)", 1, message)
+| where isnotempty(latestVersion)
+| project latestVersion
+'''
+#disable-next-line prefer-interpolation
+var newReleaseAlertQuery = replace(newReleaseAlertQueryRaw, '__WINDOW__', string(newReleaseAlertWindowInMinutes))
 
 var serviceOutageAlertQueryRaw = '''
 let window = __WINDOW__m;
@@ -348,6 +380,51 @@ resource likelyAttackInfoAlert 'Microsoft.Insights/scheduledQueryRules@2021-08-0
           timeAggregation: 'Count'
           operator: 'GreaterThan'
           threshold: 0
+        }
+      ]
+    }
+    actions: {
+      actionGroups: effectiveInfoActionGroupIds
+    }
+    autoMitigate: true
+  }
+}
+
+resource newReleaseAlert 'Microsoft.Insights/scheduledQueryRules@2021-08-01' = if (enableNewReleaseAlert) {
+  name: '${functionAppName}-new-release-kql'
+  location: location
+  tags: tags
+  properties: {
+    description: 'Info-only alert when a newer GitHub release of the Guest Sponsor Info function is available. Fires once per unique version; auto-mitigates when the function is updated.'
+    enabled: true
+    scopes: [
+      appInsights.id
+    ]
+    evaluationFrequency: 'PT${newReleaseAlertEvaluationFrequencyInMinutes}M'
+    windowSize: 'PT${newReleaseAlertWindowInMinutes}M'
+    // Severity 4 = Verbose / informational — lowest possible severity.
+    severity: 4
+    criteria: {
+      allOf: [
+        {
+          query: newReleaseAlertQuery
+          timeAggregation: 'Count'
+          operator: 'GreaterThan'
+          threshold: 0
+          // Dimension split: one alert instance per unique latestVersion value.
+          // Azure Monitor fires a new notification whenever a previously unseen
+          // latestVersion appears and auto-mitigates each instance independently.
+          dimensions: [
+            {
+              name: 'latestVersion'
+              operator: 'Include'
+              values: [ '*' ]
+            }
+          ]
+          failingPeriods: {
+            numberOfEvaluationPeriods: 1
+            minFailingPeriodsToAlert: 1
+          }
         }
       ]
     }
