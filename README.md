@@ -29,6 +29,14 @@ details. The layout matches the built-in SharePoint People web part.
 
 ## Features
 
+Works out of the box with any standard Microsoft 365 environment — no
+third-party tools or paid add-ons required. Every feature below relies solely
+on Microsoft Graph, SharePoint Framework, and the included optional Azure
+Function. [EasyLife 365 Collaboration](https://easylife365.cloud/) pairs
+naturally as a companion: it automates sponsor assignments and the full guest
+lifecycle so the right information stays accurate over time — solid on its
+own, stronger together.
+
 - **"Who is my contact here?"** — guests see their sponsor's photo, name, and
   job title directly on the SharePoint landing page — no searching, no asking
   around
