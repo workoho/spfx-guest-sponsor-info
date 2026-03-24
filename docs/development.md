@@ -27,33 +27,34 @@ workbench URL printed on startup.
 
 ### First-session checklist (devcontainer)
 
-A few things only you can set up — the rest is automated by `post-create.sh`.
+`post-create.sh` runs automatically and handles `npm install`, git hooks,
+git identity, `git-cliff`, `delta`, and the Bicep CLI. Check the terminal
+output during container start for any warnings.
 
-**Before building the container — set on your host OS once:**
+The following steps require manual action after the container has started:
 
-```bash
-# ~/.bashrc or ~/.zshrc on the host machine
-export GITHUB_TOKEN=ghp_...                           # GitHub PAT — used by gh and the MCP server
-export SPFX_SERVE_TENANT_DOMAIN=contoso.sharepoint.com  # your SPO tenant domain
-git config --global user.name  "Your Name"            # needed for git commits
-git config --global user.email "you@example.com"
-```
+1. **`./scripts/bootstrap.sh`** — creates `.env` from `.env.example` and
+   sets `SPFX_SERVE_TENANT_DOMAIN`. Skip if the variable is already set
+   in your environment.
+2. **`az login`** — only needed for Azure Function development. Not required
+   for web part work.
+3. **GitHub token** — run `gh auth login` inside the container to enable
+   the `gh` CLI and the GitHub MCP server (gives AI agents access to issues,
+   PRs, and Actions runs). See the [GitHub MCP server](#devcontainer--github-mcp-server)
+   section for a persistent alternative via `GITHUB_TOKEN`.
+4. **Git identity** — if `post-create.sh` warned that `user.name` or
+   `user.email` was not found, set them inside the container:
 
-These are injected into the container at build time. If you change them
-afterwards, rebuild the container ("Dev Containers: Rebuild Container").
-In **GitHub Codespaces** all four are set automatically — skip this step.
+   ```bash
+   git config --global user.name  "Your Name"
+   git config --global user.email "you@example.com"
+   ```
 
-**After the container starts:**
+   Note: these live in the container filesystem and reset on rebuild. For a
+   persistent setup, configure them on the host OS — the container reads
+   them from `~/.gitconfig` automatically.
 
-1. Run `./scripts/bootstrap.sh` — creates `.env` from `.env.example`.
-   Skip if you already set `SPFX_SERVE_TENANT_DOMAIN` on the host (it is
-   picked up automatically via `containerEnv`).
-2. Run `az login` — only needed if you intend to work on the Azure Function.
-   Not required for web part development.
-
-`post-create.sh` handles everything else automatically: `npm install`,
-git hooks (husky), git identity, `git-cliff`, `delta`, and the Bicep CLI.
-Check the terminal output during container start for any warnings.
+In **GitHub Codespaces** steps 1–4 are handled automatically.
 
 ## Development Environment
 
