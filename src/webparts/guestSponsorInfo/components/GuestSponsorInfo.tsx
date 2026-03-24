@@ -536,14 +536,14 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
     // state no sponsors are assigned at all so no tiles would appear. For
     // "Sponsor not available" the tiles ARE shown (read-only) so the editor can
     // see how the layout looks when all sponsors are unavailable.
-    const showMockCards = !mockMode || mockSimulatedHint !== 'noSponsors';
+    const showMockCards = mockSimulatedHint !== 'noSponsors';
     // When simulating "no sponsors" and the notice toggle is off, nothing remains
     // beyond the title — hide the entire web part so the editor sees the same
-    // empty result the guest would see.
+    // empty result the guest would see. The simulation hint is always respected
+    // regardless of whether mockMode is active.
     // Using an IIFE avoids TypeScript control-flow narrowing through the || chain.
     const hasEditContent = ((): boolean => {
-      if (!mockMode) return true;                               // always shows mock cards
-      if (mockSimulatedHint !== 'noSponsors') return true;     // shows tiles or sponsor-unavailable banner
+      if (mockSimulatedHint !== 'noSponsors') return true;     // shows tiles or a banner
       if (versionMismatch) return true;                        // real version-mismatch ping result
       return showNoSponsorsHint;                               // only the notice banner remains
     })();
@@ -577,8 +577,8 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
             showManagerPhoto={showManagerPhoto}
             useInformalAddress={useInformalAddress}
             onActiveCardChange={() => undefined}
-            guestHasTeamsAccess={mockMode && mockSimulatedHint === 'teamsAccessPending' ? false : undefined}
-            readOnly={mockMode && mockSimulatedHint === 'sponsorUnavailable'}
+            guestHasTeamsAccess={mockSimulatedHint === 'teamsAccessPending' ? false : undefined}
+            readOnly={mockSimulatedHint === 'sponsorUnavailable'}
             v9Theme={v9Theme}
           />
           )}
@@ -592,7 +592,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
               </MessageBarBody>
             </MessageBar>
           )}
-          {mockMode && mockSimulatedHint === 'teamsAccessPending' && (
+          {mockSimulatedHint === 'teamsAccessPending' && (
             <MessageBar intent="warning" className={styles.teamsAccessBanner}>
               <MessageBarBody>
                 <b>{strings.TeamsAccessPendingTitle}</b><br />
@@ -600,7 +600,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
               </MessageBarBody>
             </MessageBar>
           )}
-          {mockMode && mockSimulatedHint === 'versionMismatch' && (
+          {mockSimulatedHint === 'versionMismatch' && (
             <MessageBar intent="warning" className={styles.teamsAccessBanner}>
               <MessageBarBody>
                 <b>{strings.VersionMismatchTitle}</b><br />
@@ -608,7 +608,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
               </MessageBarBody>
             </MessageBar>
           )}
-          {mockMode && mockSimulatedHint === 'sponsorUnavailable' && showSponsorUnavailableHint && (
+          {mockSimulatedHint === 'sponsorUnavailable' && showSponsorUnavailableHint && (
             <MessageBar intent="warning" className={styles.teamsAccessBanner}>
               <MessageBarBody>
                 <b>{strings.SponsorUnavailableTitle}</b><br />
@@ -616,7 +616,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
               </MessageBarBody>
             </MessageBar>
           )}
-          {mockMode && mockSimulatedHint === 'noSponsors' && showNoSponsorsHint && (
+          {mockSimulatedHint === 'noSponsors' && showNoSponsorsHint && (
             <MessageBar intent="info">
               <MessageBarBody>
                 <b>{strings.NoSponsorsTitle}</b><br />
