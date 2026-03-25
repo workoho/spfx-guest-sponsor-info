@@ -116,7 +116,7 @@ data URL to avoid `Blob` URL leaks. Failed photo requests fall back to initials 
 ## Presence Display
 
 Both `availability` and `activity` are read from Graph. Display labels follow
-[Microsoft's documented combination table](https://learn.microsoft.com/en-us/graph/cloud-communications-manage-presence-state):
+[Microsoft's documented combination table](https://learn.microsoft.com/graph/cloud-communications-manage-presence-state):
 `activity` takes priority when it differs from `availability` (e.g. `Busy`/`InAMeeting` → "In a meeting").
 All documented tokens are resolved via localised strings; undocumented tokens fall back to a
 PascalCase word-splitter (English only).

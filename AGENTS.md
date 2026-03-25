@@ -261,3 +261,47 @@ return <FluentProvider theme={v9Theme}>{children}</FluentProvider>;
 - **Locale strings** → `src/webparts/guestSponsorInfo/loc/*.js` (UTF-8 native characters, no `\uXXXX` escapes)
 - **Components** → `src/webparts/guestSponsorInfo/components/`
 - **Services** → `src/webparts/guestSponsorInfo/services/` (Graph API calls in `SponsorService.ts`)
+
+## Azure Infrastructure Scripts
+
+PowerShell scripts in `azure-function/infra/` assist with one-time setup and
+post-deployment verification. They require the
+`Az.Accounts` and `Az.Resources` PowerShell modules (pre-installed in the dev
+container) and an active `Connect-AzAccount` session.
+
+| Script | When to run |
+|---|---|
+| `setup-app-registration.ps1` | Once — creates the Entra app registration before first deployment |
+| `setup-graph-permissions.ps1` | Once after deployment — grants Graph permissions to the Function's managed identity |
+| `Verify-DeploymentGuid.ps1` | After every fresh `azuredeploy.json` deployment — confirms CUA attribution works |
+
+### Verify-DeploymentGuid.ps1
+
+Source: [bmoore-msft/Verify-DeploymentGuid.ps1](https://gist.github.com/bmoore-msft/ae6b8226311014d6e7177c5127c7eba1)
+(Microsoft Partner Center team)
+
+**Purpose:** After deploying the ARM template, this script follows the
+`correlationId` of the `pid-18fb4033-c9f3-41fa-a5db-e3a03b012939` deployment
+and lists every Azure resource deployed in the same correlation scope. A
+non-empty list confirms that Azure will correctly attribute consumption to the
+Workoho Partner Center GUID. An empty list requires investigation (likely the
+`pid-*` deployment was created outside a real ARM deployment).
+
+**When to run:**
+
+- After every fresh deployment from `azuredeploy.json` or the "Deploy to
+  Azure" button
+- Before a Partner Center reporting period to confirm attribution is live
+- Not needed for code changes, schema updates, or configuration-only changes
+
+**Usage:**
+
+```powershell
+.\azure-function\infra\Verify-DeploymentGuid.ps1 `
+  -deploymentName pid-18fb4033-c9f3-41fa-a5db-e3a03b012939 `
+  -resourceGroupName <your-resource-group>
+```
+
+Expected output: one or more Azure resource ID strings (Function App, Storage
+Account, App Service Plan, etc.). See the script header for the full
+prerequisites list.

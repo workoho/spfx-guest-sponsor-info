@@ -16,6 +16,7 @@ For a visual system overview (including a setup checklist diagram), see
 - [Updating the Web Part](#updating-the-web-part)
 - [Updating the Function](#updating-the-function)
 - [Security Assessment](#security-assessment)
+- [Data Collection and Telemetry](#data-collection-and-telemetry)
 - [Legacy Options (no Guest Sponsor API)](#legacy-options-no-guest-sponsor-api)
 
 ---
@@ -25,7 +26,7 @@ For a visual system overview (including a setup checklist diagram), see
 ### Enable the Site Collection App Catalog
 
 The web part's bundle is hosted in a
-[**Site Collection App Catalog**](https://learn.microsoft.com/en-us/sharepoint/dev/general-development/site-collection-app-catalog)
+[**Site Collection App Catalog**](https://learn.microsoft.com/sharepoint/dev/general-development/site-collection-app-catalog)
 directly on the guest landing page site. Because guest users already need read
 access to that site, no CDN configuration or additional permissions on the
 global App Catalog are required.
@@ -37,13 +38,13 @@ App Catalog will be mis-provisioned and deployments will silently fail.
 
 **Required conditions:**
 
-1. [**SharePoint Administrator**](https://learn.microsoft.com/en-us/sharepoint/sharepoint-admin-role)
+1. [**SharePoint Administrator**](https://learn.microsoft.com/sharepoint/sharepoint-admin-role)
    role in Microsoft 365. A Global Administrator satisfies this implicitly.
 2. **Site Collection Administrator on the tenant-level App Catalog** site
    (typically `https://<tenant>.sharepoint.com/sites/appcatalog`).
    The SharePoint Administrator role does *not* grant this automatically.
    If needed, add your account first using
-   [`Set-SPOUser`](https://learn.microsoft.com/en-us/powershell/module/sharepoint-online/set-spouser):
+   [`Set-SPOUser`](https://learn.microsoft.com/powershell/module/sharepoint-online/set-spouser):
 
    ```powershell
    # SharePoint Online Management Shell:
@@ -59,12 +60,12 @@ App Catalog will be mis-provisioned and deployments will silently fail.
 > 365 tenant. If it has not been created, open
 > **SharePoint Admin Center → More features → Apps → Open** — this triggers
 > automatic creation
-> ([Manage apps using the Apps site](https://learn.microsoft.com/en-us/sharepoint/use-app-catalog)).
+> ([Manage apps using the Apps site](https://learn.microsoft.com/sharepoint/use-app-catalog)).
 > Without it,
-> [`Add-SPOSiteCollectionAppCatalog`](https://learn.microsoft.com/en-us/powershell/module/sharepoint-online/add-spositecollectionappcatalog)
+> [`Add-SPOSiteCollectionAppCatalog`](https://learn.microsoft.com/powershell/module/sharepoint-online/add-spositecollectionappcatalog)
 > fails with a cryptic null-reference error.
 
-On Windows, the [**SharePoint Online Management Shell**](https://learn.microsoft.com/en-us/powershell/sharepoint/sharepoint-online/connect-sharepoint-online)
+On Windows, the [**SharePoint Online Management Shell**](https://learn.microsoft.com/powershell/sharepoint/sharepoint-online/connect-sharepoint-online)
 is the simplest option — it works with your existing credentials and requires
 no additional setup:
 
@@ -77,8 +78,8 @@ Add-SPOSiteCollectionAppCatalog -Site "https://<tenant>.sharepoint.com/sites/<la
 ```
 
 *Cmdlet references:
-[`Connect-SPOService`](https://learn.microsoft.com/en-us/powershell/module/sharepoint-online/connect-sposervice) ·
-[`Add-SPOSiteCollectionAppCatalog`](https://learn.microsoft.com/en-us/powershell/module/sharepoint-online/add-spositecollectionappcatalog)*
+[`Connect-SPOService`](https://learn.microsoft.com/powershell/module/sharepoint-online/connect-sposervice) ·
+[`Add-SPOSiteCollectionAppCatalog`](https://learn.microsoft.com/powershell/module/sharepoint-online/add-spositecollectionappcatalog)*
 
 On macOS or Linux (or if you prefer a cross-platform tool), use
 [PnP PowerShell](https://pnp.github.io/powershell/). Note that current
@@ -167,8 +168,8 @@ Set-PnPTenant -ShowEveryoneClaim $true
 ```
 
 *Cmdlet references:
-[`Get-SPOTenant`](https://learn.microsoft.com/en-us/powershell/module/sharepoint-online/get-spotenant) ·
-[`Set-SPOTenant`](https://learn.microsoft.com/en-us/powershell/module/sharepoint-online/set-spotenant) ·
+[`Get-SPOTenant`](https://learn.microsoft.com/powershell/module/sharepoint-online/get-spotenant) ·
+[`Set-SPOTenant`](https://learn.microsoft.com/powershell/module/sharepoint-online/set-spotenant) ·
 [`Get-PnPTenant`](https://pnp.github.io/powershell/cmdlets/Get-PnPTenant.html) ·
 [`Set-PnPTenant`](https://pnp.github.io/powershell/cmdlets/Set-PnPTenant.html)*
 
@@ -189,7 +190,7 @@ Add-PnPGroupMember -LoginName "c:0(.s|true" -Group "<SiteName> Visitors"
 ```
 
 *Cmdlet references:
-[`Add-SPOUser`](https://learn.microsoft.com/en-us/powershell/module/sharepoint-online/add-spouser) ·
+[`Add-SPOUser`](https://learn.microsoft.com/powershell/module/sharepoint-online/add-spouser) ·
 [`Add-PnPGroupMember`](https://pnp.github.io/powershell/cmdlets/Add-PnPGroupMember.html)*
 
 > **Pitfall — similar-sounding groups:**
@@ -238,7 +239,7 @@ restrictive. Raise it under **SharePoint Admin Center → Policies → Sharing**
 to at least *Existing guests only*, then configure the site.
 
 For background on how SharePoint sharing levels interact, see
-[External sharing overview](https://learn.microsoft.com/en-us/sharepoint/external-sharing-overview)
+[External sharing overview](https://learn.microsoft.com/sharepoint/external-sharing-overview)
 in the Microsoft documentation.
 
 ### Required Graph permissions
@@ -255,7 +256,7 @@ the queue will simply be empty.
 | `Presence.Read.All` | Microsoft Graph | **Optional.** Show online presence status of sponsors |
 
 For full details on each permission, see the
-[Microsoft Graph permissions reference](https://learn.microsoft.com/en-us/graph/permissions-reference).
+[Microsoft Graph permissions reference](https://learn.microsoft.com/graph/permissions-reference).
 
 > **Why not `User.Read.All`?**
 > `User.ReadBasic.All` is sufficient for sponsor profiles and does not expose
@@ -588,6 +589,84 @@ can only download the compiled bundle via their normal site read access.
 The bundle contains no credentials, user data, or secrets; environment-specific
 values are public Microsoft URLs and tenant-specific IDs obtained at runtime
 from `pageContext`.
+
+---
+
+## Data Collection and Telemetry
+
+> When you deploy this template, Microsoft can identify the installation of
+> Workoho software with the deployed Azure resources. Microsoft can correlate
+> these resources used to support the software. Microsoft collects this
+> information to provide the best experiences with their products and to
+> operate their business. The data is collected and governed by Microsoft's
+> privacy policies, located at
+> [https://www.microsoft.com/trustcenter](https://www.microsoft.com/trustcenter).
+
+The ARM template uses Microsoft's
+[Customer Usage Attribution (CUA)](https://aka.ms/partnercenter-attribution)
+mechanism. When the template is deployed, Azure creates an empty nested
+deployment in your resource group:
+
+```text
+pid-18fb4033-c9f3-41fa-a5db-e3a03b012939
+```
+
+Microsoft uses this GUID to forward **aggregated Azure consumption figures**
+(compute hours, storage transactions, etc.) for that resource group to
+[Workoho](https://workoho.com) via Partner Center. This helps Workoho
+understand how the solution is used and justify continued development.
+
+**What is NOT collected or shared:**
+
+- No personal data (no user names, email addresses, or tenant IDs)
+- No resource names, configurations, or secrets
+- No data leaves your Azure subscription — Microsoft only shares summary
+  consumption figures with Workoho using their existing billing data
+
+**What you will see in your Azure Portal:**
+
+In **Resource Group → Deployments** you will see the deployment named
+`pid-18fb4033-c9f3-41fa-a5db-e3a03b012939`. It is an empty, harmless nested
+deployment. Deleting it has no effect on the running resources but stops
+future attribution of that resource group.
+
+**Opt out:**
+
+Set `enableTelemetry=false` during deployment:
+
+```bash
+az deployment group create \
+  --resource-group <your-resource-group> \
+  --template-uri https://github.com/workoho/spfx-guest-sponsor-info/releases/latest/download/azuredeploy.json \
+  --parameters \
+      tenantId=<your-tenant-id> \
+      tenantName=<your-tenant-name> \
+      functionAppName=<globally-unique-name> \
+      functionClientId=<client-id-from-pre-step> \
+      enableTelemetry=false
+```
+
+Or via the [Deploy to Azure](../README.md#deploy-to-azure) button: expand
+**Telemetry** in the parameter form and uncheck **Enable Telemetry**.
+
+**Verify that attribution is working (Workoho developers only):**
+
+After a fresh deployment, run
+[`Verify-DeploymentGuid.ps1`](../azure-function/infra/Verify-DeploymentGuid.ps1)
+to confirm that Azure correlated the `pid-*` deployment with your real
+resources:
+
+```powershell
+.\azure-function\infra\Verify-DeploymentGuid.ps1 `
+  -deploymentName pid-18fb4033-c9f3-41fa-a5db-e3a03b012939 `
+  -resourceGroupName <your-resource-group>
+```
+
+A non-empty list of Azure resource IDs means attribution is working. An
+empty list means the `pid-*` deployment was not part of the same ARM
+correlation scope (e.g. it was added manually after the fact) and no
+attribution will be credited. See the script header for prerequisites
+(Az PowerShell module).
 
 ---
 

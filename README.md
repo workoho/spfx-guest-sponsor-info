@@ -115,7 +115,7 @@ Admin on the landing-page site**. The tenant App Catalog must also exist
 first. See the [full prerequisites](docs/deployment.md#enable-the-site-collection-app-catalog)
 before running any command.
 
-On Windows, use the [**SharePoint Online Management Shell**](https://learn.microsoft.com/en-us/powershell/sharepoint/sharepoint-online/connect-sharepoint-online)
+On Windows, use the [**SharePoint Online Management Shell**](https://learn.microsoft.com/powershell/sharepoint/sharepoint-online/connect-sharepoint-online)
 — no additional setup needed:
 
 ```powershell
