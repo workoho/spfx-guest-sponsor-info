@@ -304,7 +304,7 @@ Several links that almost no guest knows exist — but that matter:
   directly in your tenant — rather than being trusted from their home organization — the
   My Sign-Ins portal is where they manage their MFA methods, including the Authenticator
   app registration that gets created when MFA is set up in your tenant:
-  `https://mysignins.microsoft.com/?tenantId={yourTenantId}`
+  `https://mysignins.microsoft.com/security-info?tenantId={yourTenantId}`
   Most guests will never need this link. But for those who do, knowing it exists prevents a
   support call. And it is also a reminder of the one scenario the Entrance Area cannot help
   with at all: if a guest's MFA methods registered in your tenant stop working — a lost
