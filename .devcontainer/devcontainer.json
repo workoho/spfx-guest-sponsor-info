@@ -27,9 +27,11 @@
       "installOhMyPosh": true,
       // Pre-install Graph modules used by azure-function/infra/*.ps1
       // (setup-app-registration.ps1, setup-graph-permissions.ps1).
-      // Az.* is intentionally omitted — the Azure CLI covers all Azure resource
-      // operations; Az PowerShell would add ~500 MB without adding new capability.
-      "resources": "Microsoft.Graph.Authentication;Microsoft.Graph.Applications"
+      // Az.Accounts + Az.Resources are the minimal Az modules needed by
+      // Verify-DeploymentGuid.ps1 (Connect-AzAccount, Get-AzResourceGroupDeployment,
+      // Get-AzResourceGroupDeploymentOperation). The full Az meta-package is
+      // intentionally omitted — it would add ~500 MB without adding capability.
+      "resources": "Microsoft.Graph.Authentication;Microsoft.Graph.Applications;Az.Accounts;Az.Resources"
     },
     // PnP PowerShell — cross-platform module for SharePoint Online management:
     // .sppkg deployment to app catalog, site configuration, permission management.
