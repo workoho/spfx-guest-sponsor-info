@@ -2,11 +2,11 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Hosted workbench",
+      "name": "Web Part: Debug in SharePoint Workbench",
       "type": "msedge",
       "request": "launch",
-      "url": "https://{tenantDomain}/_layouts/workbench.aspx",
-      "webRoot": "${workspaceRoot}",
+      "url": "https://${env:SPFX_SERVE_TENANT_DOMAIN}/_layouts/15/workbench.aspx",
+      "webRoot": "${workspaceFolder}",
       "sourceMaps": true,
       "sourceMapPathOverrides": {
         "webpack:///.././src/*": "${webRoot}/src/*",
@@ -17,12 +17,12 @@
       "runtimeArgs": ["--remote-debugging-port=9222", "-incognito"]
     },
     {
-      "name": "Attach to Node Functions",
+      "name": "Azure Function: Attach Debugger",
       "type": "node",
       "request": "attach",
       "restart": true,
       "port": 9229,
-      "preLaunchTask": "func: host start",
+      "preLaunchTask": "Azure Function: Start Host (debug)",
       "sourceMaps": true,
       "outFiles": ["${workspaceFolder}/azure-function/dist/**/*.js"],
       "localRoot": "${workspaceFolder}/azure-function",
