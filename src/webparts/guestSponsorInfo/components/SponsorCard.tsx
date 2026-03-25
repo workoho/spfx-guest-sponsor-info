@@ -196,8 +196,8 @@ const useCardTileStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column' as const,
     alignItems: 'center' as const,
-    gap: '8px',
-    padding: '12px',
+    gap: tokens.spacingVerticalS,
+    padding: tokens.spacingVerticalM,
     borderRadius: tokens.borderRadiusMedium,
     cursor: 'pointer',
     outline: 'none',
@@ -214,8 +214,8 @@ const useCardTileStyles = makeStyles({
     display: 'inline-flex',
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    gap: '10px',
-    padding: '6px',
+    gap: tokens.spacingHorizontalMNudge,
+    padding: tokens.spacingVerticalSNudge,
     borderRadius: tokens.borderRadiusMedium,
     cursor: 'pointer',
     outline: 'none',
@@ -317,7 +317,7 @@ const useRichCardStyles = makeStyles({
     borderTop: 'none',
     borderRadius: `0 0 ${tokens.borderRadiusLarge} ${tokens.borderRadiusLarge}`,
     marginTop: '-8px',
-    paddingTop: '8px',
+    paddingTop: tokens.spacingVerticalS,
     transitionProperty: 'max-height, opacity',
     transitionDuration: `${tokens.durationSlower}, ${tokens.durationNormal}`,
     transitionTimingFunction: `${tokens.curveEasyEase}, ease-in-out`,
@@ -332,25 +332,25 @@ const useRichCardStyles = makeStyles({
   richCardBodyExpanded: {
     maxHeight: 'min(300px, 50vh)',
     opacity: 1,
-    paddingBottom: '24px',
+    paddingBottom: tokens.spacingVerticalXXL,
   },
   richCardBodyExpandedFlat: {
     maxHeight: 'none',
   },
   richHeader: {
-    padding: '24px 24px 0',
+    padding: `${tokens.spacingVerticalXXL} ${tokens.spacingHorizontalXXL} 0`,
   },
   richActions: {
     display: 'flex',
     justifyContent: 'flex-start',
-    gap: '12px',
-    padding: '0 24px 16px',
+    gap: tokens.spacingHorizontalM,
+    padding: `0 ${tokens.spacingHorizontalXXL} ${tokens.spacingVerticalL}`,
   },
   richSectionTitle: {
     fontSize: tokens.fontSizeBase300,
     fontWeight: tokens.fontWeightSemibold,
     letterSpacing: '0.01em',
-    padding: '24px 24px 2px',
+    padding: `${tokens.spacingVerticalXXL} ${tokens.spacingHorizontalXXL} ${tokens.spacingVerticalXXS}`,
     color: tokens.colorNeutralForeground1,
   },
   richSection: {
@@ -359,13 +359,13 @@ const useRichCardStyles = makeStyles({
   richSectionDivider: {
     height: '1px',
     backgroundColor: tokens.colorNeutralStroke2,
-    margin: '24px 24px 0',
+    margin: `${tokens.spacingVerticalXXL} ${tokens.spacingHorizontalXXL} 0`,
   },
   richInfoRow: {
     display: 'flex',
-    gap: '12px',
+    gap: tokens.spacingHorizontalM,
     minHeight: '32px',
-    padding: '0 24px',
+    padding: `0 ${tokens.spacingHorizontalXXL}`,
     alignItems: 'center',
     color: 'inherit',
     position: 'relative' as const,
@@ -431,10 +431,11 @@ const useRichCardStyles = makeStyles({
     color: tokens.colorStatusSuccessForeground1,
   },
   mapPreviewInline: {
-    padding: '4px 24px 8px 60px',
+    // 60px = row padding-left (24px) + icon width (24px) + gap (12px) — no spacing token available
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalXXL} ${tokens.spacingVerticalS} 60px`,
     display: 'flex',
     flexDirection: 'column' as const,
-    gap: '8px',
+    gap: tokens.spacingHorizontalS,
   },
   mapPreviewImage: {
     width: '100%',
@@ -448,7 +449,7 @@ const useRichCardStyles = makeStyles({
     color: tokens.colorNeutralForeground2,
   },
   managerRow: {
-    padding: '6px 24px 0',
+    padding: `${tokens.spacingVerticalSNudge} ${tokens.spacingHorizontalXXL} 0`,
   },
 });
 

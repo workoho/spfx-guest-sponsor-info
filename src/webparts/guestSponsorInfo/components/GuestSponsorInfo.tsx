@@ -23,7 +23,7 @@ const griffelRenderer = createDOMRenderer(document, {
 
 const useWebPartStyles = makeStyles({
   webPart: {
-    padding: '8px 0',
+    padding: `${tokens.spacingVerticalS} 0`,
     overflow: 'visible',
     maxWidth: '100%',
     boxSizing: 'border-box',
@@ -35,35 +35,35 @@ const useWebPartStyles = makeStyles({
   title: {
     fontSize: tokens.fontSizeBase500,
     fontWeight: tokens.fontWeightSemibold,
-    margin: '0 0 16px',
+    margin: `0 0 ${tokens.spacingVerticalL}`,
     color: tokens.colorNeutralForeground1,
     '@container (max-width: 319px)': {
       fontSize: tokens.fontSizeBase300,
-      marginBottom: '10px',
+      marginBottom: tokens.spacingVerticalMNudge,
     },
     '@container (min-width: 320px) and (max-width: 479px)': {
       fontSize: tokens.fontSizeBase400,
-      marginBottom: '12px',
+      marginBottom: tokens.spacingVerticalM,
     },
   },
   sponsorGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(136px, 1fr))',
-    gap: '16px',
+    gap: tokens.spacingHorizontalL,
     listStyle: 'none',
     margin: '0',
     padding: '0',
     '@container (max-width: 319px)': {
-      gap: '8px',
+      gap: tokens.spacingHorizontalS,
     },
     '@container (min-width: 320px) and (max-width: 479px)': {
-      gap: '12px',
+      gap: tokens.spacingHorizontalM,
     },
   },
   sponsorGridCompact: {
     display: 'grid',
     gridTemplateColumns: '1fr',
-    gap: '4px',
+    gap: tokens.spacingHorizontalXS,
     listStyle: 'none',
     margin: '0',
     padding: '0',
@@ -72,9 +72,9 @@ const useWebPartStyles = makeStyles({
     display: 'block',
   },
   teamsAccessBanner: {
-    marginTop: '16px',
+    marginTop: tokens.spacingVerticalL,
     '@container (max-width: 319px)': {
-      marginTop: '10px',
+      marginTop: tokens.spacingVerticalMNudge,
     },
   },
   // Skeleton reuses the card tile layout so loading shimmer matches the real
@@ -89,8 +89,8 @@ const useWebPartStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column' as const,
     alignItems: 'center' as const,
-    gap: '8px',
-    padding: '12px',
+    gap: tokens.spacingVerticalS,
+    padding: tokens.spacingVerticalM,
     borderRadius: tokens.borderRadiusMedium,
     backgroundColor: 'transparent',
   },
@@ -99,8 +99,8 @@ const useWebPartStyles = makeStyles({
     display: 'inline-flex',
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    gap: '10px',
-    padding: '6px',
+    gap: tokens.spacingHorizontalMNudge,
+    padding: tokens.spacingVerticalSNudge,
     borderRadius: tokens.borderRadiusMedium,
     backgroundColor: 'transparent',
     maxWidth: '100%',
