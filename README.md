@@ -108,11 +108,15 @@ on the guest landing page site itself. Because guest users already need read
 access to that site, no CDN configuration or extra permissions on the global
 App Catalog are required.
 
-**Enable the Site Collection App Catalog** (once, as **SharePoint
-Administrator**; no GUI available — PowerShell required).
+**Enable the Site Collection App Catalog** (once; no GUI — PowerShell
+required). Three conditions must all be met: **SharePoint Admin** role,
+**Site Collection Admin on the tenant App Catalog**, and **Site Collection
+Admin on the landing-page site**. The tenant App Catalog must also exist
+first. See the [full prerequisites](docs/deployment.md#enable-the-site-collection-app-catalog)
+before running any command.
 
-On Windows, use the **SharePoint Online Management Shell** — no additional
-setup needed:
+On Windows, use the [**SharePoint Online Management Shell**](https://learn.microsoft.com/en-us/powershell/sharepoint/sharepoint-online/connect-sharepoint-online)
+— no additional setup needed:
 
 ```powershell
 Connect-SPOService -Url "https://<tenant>-admin.sharepoint.com"
@@ -132,10 +136,11 @@ Add-PnPSiteCollectionAppCatalog -Site "https://<tenant>.sharepoint.com/sites/<la
 
 1. Download the latest `guest-sponsor-info.sppkg` from
    [Releases](../../releases).
-2. Navigate to the landing page site → **Site Contents** →
-   **Apps for SharePoint** and upload the `.sppkg` file.
-   *(The Site Collection App Catalog is also accessible directly at
-   `https://<tenant>.sharepoint.com/sites/<landing-site>/AppCatalog/`.)*
+2. Open the Site Collection App Catalog and upload the `.sppkg` file.
+   The easiest path is the direct URL:
+   `https://<tenant>.sharepoint.com/sites/<landing-site>/AppCatalog/`
+   (The gear menu's *Add an app* leads to the marketplace, not the catalog;
+   alternatively go via **Site Contents → Apps for SharePoint**.)
 3. The web part becomes available on all pages in this site collection
    immediately — no additional "Add App" step is required.
 4. The required Microsoft Graph permissions (`User.Read`, `User.ReadBasic.All`,

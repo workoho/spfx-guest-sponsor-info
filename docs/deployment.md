@@ -13,6 +13,7 @@ For a visual system overview (including a setup checklist diagram), see
 - [SharePoint Deployment](#sharepoint-deployment)
 - [Guest Sponsor API](#guest-sponsor-api)
 - [Inline Address Map (Azure Maps)](#inline-address-map-azure-maps)
+- [Updating the Web Part](#updating-the-web-part)
 - [Updating the Function](#updating-the-function)
 - [Security Assessment](#security-assessment)
 - [Legacy Options (no Guest Sponsor API)](#legacy-options-no-guest-sponsor-api)
@@ -23,16 +24,49 @@ For a visual system overview (including a setup checklist diagram), see
 
 ### Enable the Site Collection App Catalog
 
-The web part's bundle is hosted in a **Site Collection App Catalog** directly
-on the guest landing page site. Because guest users already need read access
-to that site, no CDN configuration or additional permissions on the global
-App Catalog are required.
+The web part's bundle is hosted in a
+[**Site Collection App Catalog**](https://learn.microsoft.com/en-us/sharepoint/dev/general-development/site-collection-app-catalog)
+directly on the guest landing page site. Because guest users already need read
+access to that site, no CDN configuration or additional permissions on the
+global App Catalog are required.
 
-Enable the Site Collection App Catalog once as a **SharePoint Administrator**.
-There is no GUI option for this step — PowerShell is required.
+Enable the Site Collection App Catalog once. There is no GUI option for this
+step — PowerShell is required. The executing account must satisfy **all three**
+conditions below; if any is missing the command may appear to succeed but the
+App Catalog will be mis-provisioned and deployments will silently fail.
 
-On Windows, the **SharePoint Online Management Shell** is the simplest option
-— it works with your existing credentials and requires no additional setup:
+**Required conditions:**
+
+1. [**SharePoint Administrator**](https://learn.microsoft.com/en-us/sharepoint/sharepoint-admin-role)
+   role in Microsoft 365. A Global Administrator satisfies this implicitly.
+2. **Site Collection Administrator on the tenant-level App Catalog** site
+   (typically `https://<tenant>.sharepoint.com/sites/appcatalog`).
+   The SharePoint Administrator role does *not* grant this automatically.
+   If needed, add your account first using
+   [`Set-SPOUser`](https://learn.microsoft.com/en-us/powershell/module/sharepoint-online/set-spouser):
+
+   ```powershell
+   # SharePoint Online Management Shell:
+   Set-SPOUser -Site "https://<tenant>.sharepoint.com/sites/appcatalog" `
+       -LoginName "<admin@tenant.onmicrosoft.com>" `
+       -IsSiteCollectionAdmin $true
+   ```
+
+3. **Site Collection Administrator on the landing-page site** itself.
+
+> **Prerequisite — tenant App Catalog must exist first:**\
+> A tenant App Catalog is *not* provisioned automatically on a fresh Microsoft
+> 365 tenant. If it has not been created, open
+> **SharePoint Admin Center → More features → Apps → Open** — this triggers
+> automatic creation
+> ([Manage apps using the Apps site](https://learn.microsoft.com/en-us/sharepoint/use-app-catalog)).
+> Without it,
+> [`Add-SPOSiteCollectionAppCatalog`](https://learn.microsoft.com/en-us/powershell/module/sharepoint-online/add-spositecollectionappcatalog)
+> fails with a cryptic null-reference error.
+
+On Windows, the [**SharePoint Online Management Shell**](https://learn.microsoft.com/en-us/powershell/sharepoint/sharepoint-online/connect-sharepoint-online)
+is the simplest option — it works with your existing credentials and requires
+no additional setup:
 
 ```powershell
 # Install once:
@@ -41,6 +75,10 @@ On Windows, the **SharePoint Online Management Shell** is the simplest option
 Connect-SPOService -Url "https://<tenant>-admin.sharepoint.com"
 Add-SPOSiteCollectionAppCatalog -Site "https://<tenant>.sharepoint.com/sites/<landing-site>"
 ```
+
+*Cmdlet references:
+[`Connect-SPOService`](https://learn.microsoft.com/en-us/powershell/module/sharepoint-online/connect-sposervice) ·
+[`Add-SPOSiteCollectionAppCatalog`](https://learn.microsoft.com/en-us/powershell/module/sharepoint-online/add-spositecollectionappcatalog)*
 
 On macOS or Linux (or if you prefer a cross-platform tool), use
 [PnP PowerShell](https://pnp.github.io/powershell/). Note that current
@@ -56,17 +94,48 @@ Connect-PnPOnline -Url "https://<tenant>-admin.sharepoint.com" `
 Add-PnPSiteCollectionAppCatalog -Site "https://<tenant>.sharepoint.com/sites/<landing-site>"
 ```
 
+*Cmdlet references:
+[`Connect-PnPOnline`](https://pnp.github.io/powershell/cmdlets/Connect-PnPOnline.html) ·
+[`Add-PnPSiteCollectionAppCatalog`](https://pnp.github.io/powershell/cmdlets/Add-PnPSiteCollectionAppCatalog.html) ·
+[register an Entra app](https://pnp.github.io/powershell/articles/registerapplication.html)*
+
 ### Upload and install
 
 1. Download the latest `guest-sponsor-info.sppkg` from
    [Releases](https://github.com/workoho/spfx-guest-sponsor-info/releases).
-2. Navigate to the landing page site → **Site Contents** →
-   **Apps for SharePoint** and upload the `.sppkg` file.
-   *(The Site Collection App Catalog library is also directly accessible at
-   `https://<tenant>.sharepoint.com/sites/<landing-site>/AppCatalog/`.)*
+2. Open the Site Collection App Catalog and upload the `.sppkg` file.
+
+   > **Navigation tip — use the direct URL:**\
+   > The Site Collection App Catalog is a document library called
+   > **Apps for SharePoint** inside the landing-page site, but there is no
+   > obvious link to it in the SharePoint UI. The gear menu's **Add an app**
+   > entry leads to the app marketplace, not the catalog library. The most
+   > reliable way to get there is the direct URL:
+   > `https://<tenant>.sharepoint.com/sites/<landing-site>/AppCatalog/`\
+   > Alternatively: **Site Contents** (gear icon → Site contents) → scroll
+   > down to find **Apps for SharePoint** → open it.
+
 3. The web part becomes available on all pages within this site collection
    immediately — no additional “Add App” step is required.
 
+### Updating the web part
+
+For subsequent version updates the three conditions from the initial setup
+**do not apply**. Only **Site Collection Administrator on the landing-page
+site** is required — no SharePoint Admin role and no access to the tenant App
+Catalog are needed.
+
+Simply upload the new `.sppkg` over the existing one at
+`https://<tenant>.sharepoint.com/sites/<landing-site>/AppCatalog/`
+(or via **Site Contents → Apps for SharePoint**). SharePoint replaces the
+previous version immediately; no page re-publish or cache flush is needed in
+normal circumstances.
+
+> **Tip:** Any user who has **Full Control** on the landing-page site (e.g. a
+> Site Owner) can perform the upload. Elevating to Site Collection
+> Administrator is only needed if the site's default permission inheritance
+> restricts access to the App Catalog library.
+>
 ### Verify guest access to the landing page site
 
 If your landing page site is already in use, Visitor access for guests is most
@@ -97,6 +166,12 @@ Set-SPOTenant -ShowEveryoneClaim $true
 Set-PnPTenant -ShowEveryoneClaim $true
 ```
 
+*Cmdlet references:
+[`Get-SPOTenant`](https://learn.microsoft.com/en-us/powershell/module/sharepoint-online/get-spotenant) ·
+[`Set-SPOTenant`](https://learn.microsoft.com/en-us/powershell/module/sharepoint-online/set-spotenant) ·
+[`Get-PnPTenant`](https://pnp.github.io/powershell/cmdlets/Get-PnPTenant.html) ·
+[`Set-PnPTenant`](https://pnp.github.io/powershell/cmdlets/Set-PnPTenant.html)*
+
 Then add *Everyone* to the site's Visitors group. The easiest path is the GUI:
 **Site Settings → People and Groups → [Site] Visitors → New → Add Users**
 → search for *Everyone* → **Share**. Alternatively via PowerShell:
@@ -112,6 +187,10 @@ Connect-PnPOnline -Url "https://<tenant>.sharepoint.com/sites/<landing-site>" `
     -ClientId "<your-pnp-app-client-id>" -Interactive
 Add-PnPGroupMember -LoginName "c:0(.s|true" -Group "<SiteName> Visitors"
 ```
+
+*Cmdlet references:
+[`Add-SPOUser`](https://learn.microsoft.com/en-us/powershell/module/sharepoint-online/add-spouser) ·
+[`Add-PnPGroupMember`](https://pnp.github.io/powershell/cmdlets/Add-PnPGroupMember.html)*
 
 > **Pitfall — similar-sounding groups:**
 >
@@ -158,6 +237,10 @@ If that option is greyed out or missing, the tenant-level ceiling is too
 restrictive. Raise it under **SharePoint Admin Center → Policies → Sharing**
 to at least *Existing guests only*, then configure the site.
 
+For background on how SharePoint sharing levels interact, see
+[External sharing overview](https://learn.microsoft.com/en-us/sharepoint/external-sharing-overview)
+in the Microsoft documentation.
+
 ### Required Graph permissions
 
 All three permissions below are **pre-authorized by Microsoft** for the
@@ -170,6 +253,9 @@ the queue will simply be empty.
 | `User.Read` | Microsoft Graph | Read the signed-in user's own profile and sponsor list |
 | `User.ReadBasic.All` | Microsoft Graph | Fetch sponsor name, mail, job title, department, phone |
 | `Presence.Read.All` | Microsoft Graph | **Optional.** Show online presence status of sponsors |
+
+For full details on each permission, see the
+[Microsoft Graph permissions reference](https://learn.microsoft.com/en-us/graph/permissions-reference).
 
 > **Why not `User.Read.All`?**
 > `User.ReadBasic.All` is sufficient for sponsor profiles and does not expose
