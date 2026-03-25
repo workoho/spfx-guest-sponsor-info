@@ -154,5 +154,10 @@ define([], function() {
     "ShowPresenceFieldLabel": "プレゼンスステータスを表示",
     "ShowSponsorPhotoFieldLabel": "スポンサーの写真を表示",
     "ShowManagerPhotoFieldLabel": "上司の写真を表示",
+    "TitlePlaceholder": "マイスポンサー",
+    "TitleSizeFieldLabel": "タイトルのサイズ",
+    "TitleSizeSmallOption": "小",
+    "TitleSizeMediumOption": "中（既定）",
+    "TitleSizeLargeOption": "大",
   }
 });

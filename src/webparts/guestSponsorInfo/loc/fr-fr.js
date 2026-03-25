@@ -158,5 +158,10 @@ define([], function() {
     "ShowPresenceFieldLabel": "Afficher le statut de présence",
     "ShowSponsorPhotoFieldLabel": "Afficher la photo du sponsor",
     "ShowManagerPhotoFieldLabel": "Afficher la photo du responsable",
+    "TitlePlaceholder": "Mes sponsors",
+    "TitleSizeFieldLabel": "Taille du titre",
+    "TitleSizeSmallOption": "Petit",
+    "TitleSizeMediumOption": "Moyen (défaut)",
+    "TitleSizeLargeOption": "Grand",
   }
 });

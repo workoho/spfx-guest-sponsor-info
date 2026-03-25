@@ -81,7 +81,7 @@ define([], function() {
     "TeamsNotReadyCallTooltip": "Połączenie niedostępne w tej organizacji — Twój dostęp gościa Teams nie został jeszcze skonfigurowany",
 
     "VersionMismatchTitle": "Dostępna aktualizacja",
-"VersionMismatchMessage": "Dostępna jest aktualizacja tego składnika Web Part. Propoś administratora, aby upewnił się, że składnik Web Part i Guest Sponsor API używają tej samej wersji."
+    "VersionMismatchMessage": "Dostępna jest aktualizacja tego składnika Web Part. Propoś administratora, aby upewnił się, że składnik Web Part i Guest Sponsor API używają tej samej wersji.",
     "InsufficientPermissionsTitle": "Brak uprawnień",
     "InsufficientPermissionsMessage": "Nie można załadować informacji o sponsorze — wymagane uprawnienie usługi nie zostało przyznane. Skontaktuj się z administratorem IT.",
 
@@ -154,5 +154,10 @@ define([], function() {
     "ShowPresenceFieldLabel": "Pokaż status obecności",
     "ShowSponsorPhotoFieldLabel": "Pokaż zdjęcie sponsora",
     "ShowManagerPhotoFieldLabel": "Pokaż zdjęcie przełożonego",
+    "TitlePlaceholder": "Moi sponsorzy",
+    "TitleSizeFieldLabel": "Rozmiar tytułu",
+    "TitleSizeSmallOption": "Mały",
+    "TitleSizeMediumOption": "Średni (domyślny)",
+    "TitleSizeLargeOption": "Duży",
   }
 });

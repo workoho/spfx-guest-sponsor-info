@@ -154,5 +154,10 @@ define([], function() {
     "ShowPresenceFieldLabel": "显示在线状态",
     "ShowSponsorPhotoFieldLabel": "显示担保人照片",
     "ShowManagerPhotoFieldLabel": "显示上级照片",
+    "TitlePlaceholder": "我的赞助商",
+    "TitleSizeFieldLabel": "标题大小",
+    "TitleSizeSmallOption": "小",
+    "TitleSizeMediumOption": "中（默认）",
+    "TitleSizeLargeOption": "大",
   }
 });

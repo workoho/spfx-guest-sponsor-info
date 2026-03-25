@@ -9,6 +9,7 @@ import {
   PropertyPaneLabel,
   PropertyPaneTextField,
   PropertyPaneCheckbox,
+  PropertyPaneChoiceGroup,
   PropertyPaneDropdown,
   PropertyPaneSlider,
 } from '@microsoft/sp-property-pane';
@@ -33,6 +34,8 @@ const griffelRenderer = createDOMRenderer(document, {
 
 export interface IGuestSponsorInfoWebPartProps {
   title: string;
+  /** Size of the web part title. Defaults to 'medium' (24 px). */
+  titleSize: 'small' | 'medium' | 'large';
   mockMode: boolean;
   /**
    * Notification to simulate in demo mode.
@@ -130,6 +133,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
         displayMode: this.displayMode,
         graphClient: this._graphClient, // undefined until onInit resolves
         title: this.properties.title,
+        titleSize: this.properties.titleSize ?? 'medium',
         mockMode: this.properties.mockMode ?? false,
         maxSponsorCount: this.properties.maxSponsorCount ?? 2,
         mockSponsorCount: this.properties.mockSponsorCount ?? 2,
@@ -671,6 +675,15 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
               groupName: strings.DisplayGroupName,
               isCollapsed: true,
               groupFields: [
+                PropertyPaneChoiceGroup('titleSize', {
+                  label: strings.TitleSizeFieldLabel,
+                  options: [
+                    { key: 'small', text: strings.TitleSizeSmallOption },
+                    { key: 'medium', text: strings.TitleSizeMediumOption },
+                    { key: 'large', text: strings.TitleSizeLargeOption },
+                  ],
+                }),
+                PropertyPaneHorizontalRule(),
                 PropertyPaneDropdown('cardLayout', {
                   label: strings.CardLayoutFieldLabel,
                   options: [

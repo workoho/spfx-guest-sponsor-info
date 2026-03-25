@@ -154,5 +154,10 @@ define([], function() {
     "ShowPresenceFieldLabel": "Exibir status de presença",
     "ShowSponsorPhotoFieldLabel": "Exibir foto do patrocinador",
     "ShowManagerPhotoFieldLabel": "Exibir foto do responsável",
+    "TitlePlaceholder": "Meus patrocinadores",
+    "TitleSizeFieldLabel": "Tamanho do título",
+    "TitleSizeSmallOption": "Pequeno",
+    "TitleSizeMediumOption": "Médio (padrão)",
+    "TitleSizeLargeOption": "Grande",
   }
 });

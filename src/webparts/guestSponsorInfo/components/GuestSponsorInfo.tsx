@@ -53,6 +53,9 @@ const useWebPartStyles = makeStyles({
     cursor: 'text',
     outline: 'none',
     borderRadius: tokens.borderRadiusSmall,
+    // minHeight ensures the empty title area remains visible when the
+    // ::before placeholder is not rendered (e.g. during first paint).
+    minHeight: '1.4em',
     '&:empty::before': {
       content: 'attr(data-placeholder)',
       color: tokens.colorNeutralForeground4,
@@ -63,6 +66,27 @@ const useWebPartStyles = makeStyles({
     '&:focus': {
       backgroundColor: tokens.colorNeutralBackground2,
       boxShadow: `inset 0 0 0 2px ${tokens.colorBrandStroke1}`,
+    },
+  },
+  // Optional font-size overrides — applied on top of the base `title` class.
+  // Only the overriding font-size atoms need to be listed; other atoms from
+  // `title` (weight, margin, color) are unchanged.
+  titleSmall: {
+    fontSize: tokens.fontSizeBase500,
+    '@container (max-width: 319px)': {
+      fontSize: tokens.fontSizeBase200,
+    },
+    '@container (min-width: 320px) and (max-width: 479px)': {
+      fontSize: tokens.fontSizeBase300,
+    },
+  },
+  titleLarge: {
+    fontSize: tokens.fontSizeHero700,
+    '@container (max-width: 319px)': {
+      fontSize: tokens.fontSizeBase500,
+    },
+    '@container (min-width: 320px) and (max-width: 479px)': {
+      fontSize: tokens.fontSizeBase600,
     },
   },
   sponsorGrid: {
@@ -336,6 +360,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   displayMode,
   graphClient,
   title,
+  titleSize,
   mockMode,
   mockSponsorCount,
   maxSponsorCount,
@@ -679,13 +704,19 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
         <section className={classes.webPart}>
           {title || isEditMode ? (
             <h2
-              className={mergeClasses(classes.title, isEditMode && classes.titleEditable)}
-              contentEditable={isEditMode || undefined}
+              className={mergeClasses(
+                classes.title,
+                titleSize === 'small' && classes.titleSmall,
+                titleSize === 'large' && classes.titleLarge,
+                isEditMode && classes.titleEditable,
+              )}
+              contentEditable={isEditMode ? 'true' : undefined}
               suppressContentEditableWarning={isEditMode || undefined}
-              data-placeholder={strings.TitleFieldLabel}
-              onBlur={isEditMode ? (e) => onTitleChange?.(e.currentTarget.textContent ?? '') : undefined}
+              data-placeholder={strings.TitlePlaceholder}
+              onBlur={isEditMode ? (e) => onTitleChange?.(e.currentTarget.textContent?.trim() ?? '') : undefined}
             >
-              {title}
+              {/* Render undefined (not empty string) when title is blank so :empty CSS matches */}
+              {title || undefined}
             </h2>
           ) : null}
           {showMockCards && (
@@ -789,7 +820,15 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
     <RendererProvider renderer={griffelRenderer}>
     <FluentProvider theme={v9Theme} id={`${fluentProviderId}-view`}>
       <section className={contentClassNames}>
-        {title && <h2 className={classes.title}>{title}</h2>}
+        {title && (
+          <h2 className={mergeClasses(
+            classes.title,
+            titleSize === 'small' && classes.titleSmall,
+            titleSize === 'large' && classes.titleLarge,
+          )}>
+            {title}
+          </h2>
+        )}
         {loading && <SponsorGridSkeleton compact={cardLayout === 'compact'} />}
         {!loading && error && !isPermissionError && (
           <MessageBar intent="error">

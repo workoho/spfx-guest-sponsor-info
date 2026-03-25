@@ -2,6 +2,13 @@ declare interface IGuestSponsorInfoWebPartStrings {
   PropertyPaneDescription: string;
   BasicGroupName: string;
   TitleFieldLabel: string;
+  /** Gray placeholder text shown in the title field when no title has been entered yet. */
+  TitlePlaceholder: string;
+  /** Property pane label for the title size choice group. */
+  TitleSizeFieldLabel: string;
+  TitleSizeSmallOption: string;
+  TitleSizeMediumOption: string;
+  TitleSizeLargeOption: string;
   LoadingMessage: string;
   NoSponsorsTitle: string;
   NoSponsorsMessage: string;

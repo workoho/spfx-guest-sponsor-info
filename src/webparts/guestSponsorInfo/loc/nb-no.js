@@ -154,5 +154,10 @@ define([], function() {
     "ShowPresenceFieldLabel": "Vis tilstedeværelsesstatus",
     "ShowSponsorPhotoFieldLabel": "Vis sponsor-bilde",
     "ShowManagerPhotoFieldLabel": "Vis overordnets bilde",
+    "TitlePlaceholder": "Mine sponsorer",
+    "TitleSizeFieldLabel": "Tittelstørrelse",
+    "TitleSizeSmallOption": "Liten",
+    "TitleSizeMediumOption": "Middels (standard)",
+    "TitleSizeLargeOption": "Stor",
   }
 });

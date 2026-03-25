@@ -17,6 +17,8 @@ export interface IGuestSponsorInfoProps {
   graphClient: MSGraphClientV3 | undefined;
   /** Optional heading shown above the sponsor cards. */
   title: string;
+  /** Size of the title. Defaults to 'medium' (24 px, Subtitle1). */
+  titleSize?: 'small' | 'medium' | 'large';
   /**
    * When true, the web part behaves as if the current user is a guest and
    * renders fictitious sponsor cards from MockSponsorService instead of

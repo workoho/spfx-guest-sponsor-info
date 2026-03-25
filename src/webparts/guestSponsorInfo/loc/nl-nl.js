@@ -160,5 +160,10 @@ define([], function() {
     "ShowPresenceFieldLabel": "Aanwezigheidsstatus weergeven",
     "ShowSponsorPhotoFieldLabel": "Foto van sponsor weergeven",
     "ShowManagerPhotoFieldLabel": "Foto van leidinggevende weergeven",
+    "TitlePlaceholder": "Mijn sponsors",
+    "TitleSizeFieldLabel": "Titelgrootte",
+    "TitleSizeSmallOption": "Klein",
+    "TitleSizeMediumOption": "Middel (standaard)",
+    "TitleSizeLargeOption": "Groot",
   }
 });

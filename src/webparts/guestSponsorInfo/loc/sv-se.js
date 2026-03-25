@@ -152,5 +152,10 @@ define([], function() {
     "ShowPresenceFieldLabel": "Visa närvarostatus",
     "ShowSponsorPhotoFieldLabel": "Visa sponsorns foto",
     "ShowManagerPhotoFieldLabel": "Visa chefens foto",
+    "TitlePlaceholder": "Mina sponsorer",
+    "TitleSizeFieldLabel": "Titelstorlek",
+    "TitleSizeSmallOption": "Liten",
+    "TitleSizeMediumOption": "Mellanstor (standard)",
+    "TitleSizeLargeOption": "Stor",
   }
 });

@@ -154,5 +154,10 @@ define([], function() {
     "ShowPresenceFieldLabel": "Näytä läsnäolotila",
     "ShowSponsorPhotoFieldLabel": "Näytä sponsorin kuva",
     "ShowManagerPhotoFieldLabel": "Näytä esihenkilön kuva",
+    "TitlePlaceholder": "Omat sponsorini",
+    "TitleSizeFieldLabel": "Otsikon koko",
+    "TitleSizeSmallOption": "Pieni",
+    "TitleSizeMediumOption": "Keskikokoinen (oletus)",
+    "TitleSizeLargeOption": "Suuri",
   }
 });

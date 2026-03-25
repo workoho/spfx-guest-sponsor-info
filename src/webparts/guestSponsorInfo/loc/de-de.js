@@ -155,5 +155,12 @@ define([], function() {
     "CopyCityAriaLabel": "Stadt kopieren",
     "CopyCountryAriaLabel": "Land kopieren",
     "ShowPresenceFieldLabel": "Anwesenheitsstatus anzeigen",
+    "ShowSponsorPhotoFieldLabel": "Foto des Sponsors anzeigen",
+    "ShowManagerPhotoFieldLabel": "Foto der Führungskraft anzeigen",
+    "TitlePlaceholder": "Meine Sponsoren",
+    "TitleSizeFieldLabel": "Titelgröße",
+    "TitleSizeSmallOption": "Klein",
+    "TitleSizeMediumOption": "Mittel (Standard)",
+    "TitleSizeLargeOption": "Groß",
   }
 });
