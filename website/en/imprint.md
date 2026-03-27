@@ -10,14 +10,14 @@ description: >-
 
 ## Company Information (§ 5 TMG)
 
-Workoho GmbH
-Marcel-Breuer-Straße 15
+Workoho GmbH<br>
+Marcel-Breuer-Straße 15<br>
 80807 München, Germany
 
-Commercial register: HRB 275088
+Commercial register: HRB 275088<br>
 Registry court: Amtsgericht München
 
-**Represented by:**
+**Represented by:**<br>
 Mathias Müller
 
 Workoho® is a registered trademark of Workoho GmbH at the
@@ -25,27 +25,27 @@ Workoho® is a registered trademark of Workoho GmbH at the
 
 ## Contact
 
-Phone: +49 (0) 89 2000 691 -0
-Fax: +49 (0) 89 2000 691 -12
+Phone: +49 (0) 89 2000 691 -0<br>
+Fax: +49 (0) 89 2000 691 -12<br>
 Email: <yourfriends@workoho.com>
 
 ## Postal Address
 
-Workoho GmbH
-Scanbox #09822
-Ehrenbergstraße 16 A
+Workoho GmbH<br>
+Scanbox #09822<br>
+Ehrenbergstraße 16 A<br>
 10245 Berlin, Germany
 
 ## VAT ID
 
-VAT identification number pursuant to § 27a of the German VAT Act
+VAT identification number pursuant to § 27a of the German VAT Act<br>
 (Umsatzsteuergesetz): DE352813333
 
 ## Editorially Responsible
 
-Mathias Müller
-c/o Workoho GmbH
-Marcel-Breuer-Straße 15
+Mathias Müller<br>
+c/o Workoho GmbH<br>
+Marcel-Breuer-Straße 15<br>
 80807 München, Germany
 
 ## Consumer Dispute Resolution

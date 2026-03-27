@@ -1,0 +1,112 @@
+---
+layout: default
+---
+{%- assign strings = site.data[page.lang].strings -%}
+{%- assign f = strings.features_page -%}
+
+<section class="fp-hero">
+    <div class="container">
+        <h1>{{ page.title }}</h1>
+        <p class="fp-hero-subtitle">{{ f.subtitle }}</p>
+    </div>
+</section>
+
+<div class="fp-features">
+    <div class="container">
+
+        <div class="fp-row">
+            <div class="fp-icon">
+                <img src="{{ '/assets/images/feature-cards.svg' | relative_url }}" alt="" width="80" height="80">
+            </div>
+            <div class="fp-text">
+                <h2>{{ f.cards.title }}</h2>
+                <p>{{ f.cards.description }}</p>
+                <ul class="fp-highlights">
+                    {%- for item in f.cards.highlights %}
+                    <li>{{ item }}</li>
+                    {%- endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <div class="fp-row fp-row--reverse">
+            <div class="fp-icon">
+                <img src="{{ '/assets/images/feature-onboarding.svg' | relative_url }}" alt="" width="80" height="80">
+            </div>
+            <div class="fp-text">
+                <h2>{{ f.onboarding.title }}</h2>
+                <p>{{ f.onboarding.description }}</p>
+            </div>
+        </div>
+
+        <div class="fp-row">
+            <div class="fp-icon">
+                <img src="{{ '/assets/images/feature-presence.svg' | relative_url }}" alt="" width="80" height="80">
+            </div>
+            <div class="fp-text">
+                <h2>{{ f.presence.title }}</h2>
+                <p>{{ f.presence.description }}</p>
+                <div class="fp-statuses">
+                    {%- for status in f.presence.statuses %}
+                    <span class="fp-status-pill">{{ status }}</span>
+                    {%- endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="fp-row fp-row--reverse">
+            <div class="fp-icon">
+                <img src="{{ '/assets/images/feature-teams.svg' | relative_url }}" alt="" width="80" height="80">
+            </div>
+            <div class="fp-text">
+                <h2>{{ f.teams.title }}</h2>
+                <p>{{ f.teams.description }}</p>
+            </div>
+        </div>
+
+        <div class="fp-row">
+            <div class="fp-icon">
+                <img src="{{ '/assets/images/feature-privacy.svg' | relative_url }}" alt="" width="80" height="80">
+            </div>
+            <div class="fp-text">
+                <h2>{{ f.privacy.title }}</h2>
+                <p>{{ f.privacy.description }}</p>
+                <a href="{{ '/' | append: page.lang | append: '/privacy/' | relative_url }}" class="fp-link">{{
+                    f.privacy.link }} &rarr;</a>
+            </div>
+        </div>
+
+        <div class="fp-row fp-row--reverse">
+            <div class="fp-icon">
+                <img src="{{ '/assets/images/feature-delegation.svg' | relative_url }}" alt="" width="80" height="80">
+            </div>
+            <div class="fp-text">
+                <h2>{{ f.delegation.title }}</h2>
+                <p>{{ f.delegation.description }}</p>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<section class="fp-extras">
+    <div class="container">
+        <h2 class="fp-extras-title">{{ f.more.title }}</h2>
+        <div class="fp-extras-grid">
+            <div class="fp-extra-card">
+                <h3>{{ f.more.languages.title }}</h3>
+                <p>{{ f.more.languages.description }}</p>
+            </div>
+            <div class="fp-extra-card">
+                <h3>{{ f.more.api.title }}</h3>
+                <p>{{ f.more.api.description }}</p>
+            </div>
+            <div class="fp-extra-card">
+                <h3>{{ f.more.editor.title }}</h3>
+                <p>{{ f.more.editor.description }}</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+{%- include cta-section.html -%}

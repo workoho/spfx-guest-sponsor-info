@@ -52,12 +52,13 @@ features:
     description: >-
       Alle Daten bleiben in Ihrem Microsoft 365 Tenant. Keine externen
       Dienste, kein Tracking, keine Daten verlassen Ihre Grenze. Punkt.
-  multilingual:
-    title: 14 Sprachen integriert
+  onboarding:
+    title: Teams-Onboarding-Status
     description: >-
-      Englisch, Deutsch, Französisch, Spanisch, Italienisch, Dänisch,
-      Finnisch, Japanisch, Norwegisch, Schwedisch, Chinesisch,
-      Portugiesisch, Polnisch und Niederländisch — inkl. Du/Sie-Modus.
+      Gäste nehmen die Einladung an, können Teams aber erst nutzen,
+      wenn sie einem Team hinzugefügt wurden. Das Web Part erkennt das
+      und zeigt eine klare Meldung mit Handlungsempfehlung — statt
+      funktionsloser Buttons.
   delegation:
     title: Automatische Sponsor-Delegation
     description: >-
@@ -65,13 +66,105 @@ features:
       automatisch der nächste in der Prioritätsreihenfolge.
       Deaktivierte Konten und geteilte Postfächer werden ausgefiltert.
 
+features_page:
+  subtitle: >-
+    Entwickelt für den Moment, in dem ein B2B-Gastbenutzer in Ihrem
+    Tenant landet und wissen muss, wer sein Ansprechpartner ist.
+  cards:
+    title: Live-Sponsor-Karten
+    description: >-
+      Kontaktkarten zeigen die zugewiesenen Sponsoren mit Live-Profilfotos,
+      Anzeigenamen, Jobtitel, E-Mail, Telefonnummer und Büroadresse —
+      alles direkt aus Microsoft Graph geladen. Keine veralteten Daten,
+      keine manuelle Pflege.
+    highlights:
+      - "Drei Layout-Modi: Vollständig, Kompakt und Auto"
+      - Live-Profilfotos aus Microsoft Graph
+      - Büroadresse mit optionaler Kartenintegration
+  onboarding:
+    title: Teams-Onboarding-Status
+    description: >-
+      Ein Gastkonto kann in Entra existieren, bevor es einem Team
+      hinzugefügt wurde. In diesem Zustand sehen Gäste funktional
+      aussehende Buttons, die nichts tun. Das Web Part erkennt das und
+      zeigt eine klare Meldung mit Handlungsempfehlung — Chat- und
+      Anruf-Buttons werden deaktiviert, bis der Teams-Zugang bestätigt ist.
+  presence:
+    title: Echtzeit-Teams-Präsenz
+    description: >-
+      Farbige Präsenz-Indikatoren zeigen, ob ein Sponsor gerade
+      erreichbar ist. Automatische Aktualisierung mit intelligenten
+      Abfrageintervallen.
+    statuses:
+      - Verfügbar
+      - Beschäftigt
+      - In einer Besprechung
+      - Abwesend
+      - Nicht im Büro
+      - Nicht stören
+      - Fokussiert
+      - Offline
+  teams:
+    title: Teams-Chat & -Anruf-Integration
+    description: >-
+      Ein-Klick-Deeplinks ermöglichen es Gästen, direkt aus der
+      Sponsor-Karte einen Teams-Chat oder -Anruf zu starten. Das Web Part
+      erkennt, wenn Teams für einen Gast noch nicht bereitgestellt wurde,
+      und zeigt stattdessen eine hilfreiche Erklärung an.
+  privacy:
+    title: Privacy-First-Architektur
+    description: >-
+      Alle Daten bleiben innerhalb Ihres Microsoft 365 und Azure Tenants.
+      Keine externen Aufrufe, keine Telemetrie an Dritte, keine Speicherung
+      außerhalb der Browser-Sitzung. Der Azure Function Proxy stellt sicher,
+      dass Gäste nie Verzeichnis-Berechtigungen benötigen.
+    link: Zur Datenschutzrichtlinie
+  delegation:
+    title: Automatische Sponsor-Delegation
+    description: >-
+      Wenn mehrere Sponsoren in Prioritätsreihenfolge zugewiesen sind,
+      überspringt das Web Part nicht verfügbare automatisch. Deaktivierte
+      Konten, geteilte Postfächer und gelöschte Benutzer werden
+      ausgefiltert — Gäste sehen immer aktive, erreichbare Kontakte.
+  more:
+    title: Und es gibt noch mehr
+    languages:
+      title: 14 Sprachen
+      description: >-
+        Englisch, Deutsch, Französisch, Spanisch, Italienisch, Dänisch,
+        Finnisch, Japanisch, Norwegisch, Schwedisch, Chinesisch,
+        Portugiesisch, Polnisch und Niederländisch — inkl. Du/Sie-Modus.
+    api:
+      title: Guest Sponsor API
+      description: >-
+        Die mitgelieferte Azure Function dient als sicherer Proxy zwischen
+        Browser und Microsoft Graph. EasyAuth + Managed Identity,
+        Rate-Limiting und exponentielles Backoff sind integriert.
+    editor:
+      title: Vorschaumodus für Editoren
+      description: >-
+        Seitenbearbeiter sehen realistische Demo-Karten mit Beispieldaten
+        — keine Graph-Aufrufe, kein Gastkonto erforderlich. Gestalten Sie
+        das Layout bevor Gäste eingeladen wurden.
+
 made_by:
   label: Erstellt & gepflegt von
+  intro: >-
+    Microsoft 365 Governance, Identität und Gastzugriff – unser Thema.
   description: >-
-    Workoho entwickelt Tools für Microsoft 365 Collaboration und Identity
-    Management. Guest Sponsor Info wird kostenfrei bereitgestellt — ohne
-    Haken.
+    Dieses Web Part haben wir gebaut, weil genau das unser tägliches
+    Thema ist. Als Beratungsunternehmen für Microsoft 365 Collaboration,
+    Security und Identity Management helfen wir Unternehmen, sichere und
+    skalierbare Lösungen zu entwerfen und umzusetzen — von der Architektur
+    bis zum Rollout. Dieses Web Part ist unser Beitrag an die Community,
+    kostenfrei bereitgestellt.
+  cta: Kontakt aufnehmen
   partner_tier: Platinum Partner
+  partner_tagline: >-
+    EasyLife 365 automatisiert das Lifecycle-Management für Teams,
+    SharePoint-Websites, Viva Engage und weitere Microsoft 365
+    Arbeitsumgebungen — einschließlich Gäste-Onboarding und
+    Sponsor-Verwaltung.
 
 cta:
   title: Bereit, die Gast-Erfahrung zu verbessern?

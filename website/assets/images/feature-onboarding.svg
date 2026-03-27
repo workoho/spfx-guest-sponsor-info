@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80" fill="none">
+  <!-- Teams onboarding status illustration -->
+
+  <!-- Info banner / message bar background -->
+  <rect x="6" y="16" width="48" height="28" rx="6" fill="#12B2CD" fill-opacity="0.12"/>
+
+  <!-- Info circle icon -->
+  <circle cx="18" cy="30" r="7" fill="#12B2CD" fill-opacity="0.25"/>
+  <rect x="17" y="27" width="2" height="5" rx="1" fill="#12B2CD"/>
+  <circle cx="18" cy="25" r="1.2" fill="#12B2CD"/>
+
+  <!-- Message lines -->
+  <rect x="29" y="24" width="20" height="2.5" rx="1.25" fill="#12B2CD" opacity="0.6"/>
+  <rect x="29" y="30" width="16" height="2.5" rx="1.25" fill="#12B2CD" opacity="0.4"/>
+  <rect x="29" y="36" width="12" height="2.5" rx="1.25" fill="#12B2CD" opacity="0.3"/>
+
+  <!-- Teams logo silhouette (top-right) -->
+  <g transform="translate(56,10)">
+    <rect width="20" height="20" rx="4" fill="#0A3D4F" fill-opacity="0.1"/>
+    <text x="10" y="14.5" font-family="Arial,sans-serif" font-size="10" font-weight="700"
+          fill="#0A3D4F" fill-opacity="0.3" text-anchor="middle">T</text>
+  </g>
+
+  <!-- Status transition arrow -->
+  <g transform="translate(58,38)">
+    <!-- Clock / waiting icon -->
+    <circle cx="8" cy="8" r="7" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b"
+            stroke-width="1" stroke-opacity="0.4"/>
+    <path d="M8 5 L8 8 L10.5 10" stroke="#f59e0b" stroke-width="1.2" stroke-linecap="round"
+          fill="none" opacity="0.6"/>
+  </g>
+
+  <!-- Arrow pointing to checkmark -->
+  <path d="M62 52 L62 56" stroke="#0A3D4F" stroke-width="1" stroke-dasharray="2 2" opacity="0.3"/>
+
+  <!-- Checkmark circle (resolved state) -->
+  <g transform="translate(54,58)">
+    <circle cx="8" cy="8" r="7" fill="#10b981" fill-opacity="0.15" stroke="#10b981"
+            stroke-width="1" stroke-opacity="0.4"/>
+    <path d="M5 8 L7 10.5 L11.5 5.5" stroke="#10b981" stroke-width="1.5" stroke-linecap="round"
+          stroke-linejoin="round" fill="none"/>
+  </g>
+
+  <!-- Guest user silhouette (bottom-left) -->
+  <g transform="translate(10,50)">
+    <circle cx="12" cy="8" r="5" fill="#0A3D4F" fill-opacity="0.1"/>
+    <path d="M4 22 Q4 14 12 14 Q20 14 20 22" fill="#0A3D4F" fill-opacity="0.1"/>
+    <!-- External guest badge -->
+    <circle cx="19" cy="6" r="3.5" fill="#12B2CD" fill-opacity="0.2"/>
+    <text x="19" y="8" font-family="Arial,sans-serif" font-size="5" font-weight="700"
+          fill="#12B2CD" text-anchor="middle">G</text>
+  </g>
+
+  <!-- Connection line from banner to guest -->
+  <path d="M30 44 L22 50" stroke="#0A3D4F" stroke-width="1" stroke-dasharray="2 2" opacity="0.3"/>
+</svg>
