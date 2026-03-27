@@ -50,11 +50,18 @@ if ! command -v git-cliff &>/dev/null; then
   TARBALL="git-cliff-${GIT_CLIFF_VERSION}-${TRIPLE}.tar.gz"
   echo "git-cliff not found — installing v${GIT_CLIFF_VERSION} into ${INSTALL_DIR}..." >&2
   mkdir -p "${INSTALL_DIR}"
+  TARBALL_TMP="$(mktemp)"
+  # SC2064: expand $TARBALL_TMP now so the trap captures the exact path.
+  # shellcheck disable=SC2064
+  trap "rm -f '${TARBALL_TMP}'" EXIT
   curl -fsSL \
-    "https://github.com/orhun/git-cliff/releases/download/v${GIT_CLIFF_VERSION}/${TARBALL}" |
-    tar -xz -C "${INSTALL_DIR}" \
-      --strip-components=1 \
-      "git-cliff-${GIT_CLIFF_VERSION}/git-cliff"
+    "https://github.com/orhun/git-cliff/releases/download/v${GIT_CLIFF_VERSION}/${TARBALL}" \
+    -o "${TARBALL_TMP}"
+  tar -xz -C "${INSTALL_DIR}" \
+    --strip-components=1 \
+    "git-cliff-${GIT_CLIFF_VERSION}/git-cliff" <"${TARBALL_TMP}"
+  rm -f "${TARBALL_TMP}"
+  trap - EXIT
   chmod +x "${INSTALL_DIR}/git-cliff"
   export PATH="${INSTALL_DIR}:${PATH}"
   echo "git-cliff ${GIT_CLIFF_VERSION} installed." >&2

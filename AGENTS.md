@@ -180,6 +180,31 @@ Bash is not self-documenting. Comment non-obvious constructs, especially:
 - Conditional flags: explain what a `git` or `npm` flag does if it is not obvious
 - Decision points: why a fallback exists, what the edge case is
 
+### Idempotency
+
+Every script must be **idempotent** — safe to run multiple times with identical results.
+
+- Guard file/config creation with existence checks:
+  `[[ ! -f ... ]]`, `[[ ! -d ... ]]`, `command -v`, `git config --get`
+- Use CLI flags that make operations idempotent: `--allow-same-version`,
+  `az bicep install` (always fetches latest), `npm install` (lockfile-driven)
+- Never overwrite files unconditionally — always check first or use `cp -n`
+
+### Network downloads
+
+Never let a failed network download abort a setup script silently or leave
+corrupt state. Two patterns to follow:
+
+**In setup scripts (e.g. post-create.sh):** Use the `try_net <host> <cmd>`
+helper defined in `.devcontainer/post-create.sh`. It probes `host` with a
+3-second HEAD request before attempting the download — if the network is down,
+it returns immediately instead of waiting for timeouts. For transient failures
+it retries with short backoff (2 s → 4 s).
+
+**In all scripts:** Never pipe `curl` directly into `tar`. Download to a temp
+file, clean it up in both success and failure paths. See `scripts/release-notes.sh`
+for the reference implementation using `mktemp` and `trap`.
+
 ### Validation
 
 After **every** shell script change:

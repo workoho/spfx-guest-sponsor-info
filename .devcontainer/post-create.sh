@@ -1,6 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# shellcheck source=scripts/colors.sh
+source scripts/colors.sh
+
+# Collect non-fatal warnings so they can be repeated at the end of output,
+# where they are easier to spot than inline among scrolling install logs.
+WARNINGS=()
+warn() {
+  local msg="$1"
+  local hint="${2:-}" # optional second line with recovery instructions
+  WARNINGS+=("${msg}")
+  echo "${C_YLW}⚠${C_RST} ${msg}" >&2
+  [[ -n "${hint}" ]] && echo "  ${C_DIM}${hint}${C_RST}" >&2
+}
+
 workspace_dir="${containerWorkspaceFolder:-$(pwd)}"
 
 git config --global --add safe.directory "${workspace_dir}"
@@ -15,6 +29,34 @@ fi
 # Configure git identity from host gitconfig.
 bash .devcontainer/setup-git.sh
 
+# Run a network-dependent command with a fast connectivity guard and retry.
+#
+# First probes <host> with a 3-second curl HEAD request.  If the host is
+# completely unreachable (no DNS, no TCP), returns 1 immediately — no further
+# waiting.  When the host is reachable but the command fails (transient error),
+# retries up to 3 times with short backoff (2 s → 4 s) — fast enough for
+# container builds without hanging indefinitely.
+#
+# Usage: try_net <host> <command> [args…]
+try_net() {
+  local host="$1"
+  shift
+  # 3-second timeout — treat DNS failure or TCP refusal as "no network".
+  if ! curl -fsS --max-time 3 --head "https://${host}" >/dev/null 2>&1; then
+    return 1
+  fi
+  local max=3 attempt=1 delay=2
+  until "$@"; do
+    if [[ "${attempt}" -ge "${max}" ]]; then
+      return 1
+    fi
+    echo "${C_YLW}⚠${C_RST} Attempt ${attempt}/${max} failed — retrying in ${delay}s…" >&2
+    sleep "${delay}"
+    attempt=$((attempt + 1))
+    delay=$((delay * 2)) # exponential backoff: 2 s → 4 s
+  done
+}
+
 # Pre-install git-cliff so ./scripts/release-notes.sh works without a download delay.
 # The pinned version is read from the script itself (single source of truth).
 GIT_CLIFF_VERSION="$(grep '^GIT_CLIFF_VERSION=' scripts/release-notes.sh | sed 's/.*"\(.*\)".*/\1/')"
@@ -23,12 +65,22 @@ mkdir -p "${INSTALL_DIR}"
 if [[ ! -x "${INSTALL_DIR}/git-cliff" ]]; then
   TRIPLE="x86_64-unknown-linux-musl"
   TARBALL="git-cliff-${GIT_CLIFF_VERSION}-${TRIPLE}.tar.gz"
-  curl -fsSL \
-    "https://github.com/orhun/git-cliff/releases/download/v${GIT_CLIFF_VERSION}/${TARBALL}" |
+  # Download to a temp file so the network step can be retried independently
+  # from the tar extraction, and the temp file is always cleaned up.
+  TARBALL_TMP="$(mktemp)"
+  if try_net github.com curl -fsSL \
+    "https://github.com/orhun/git-cliff/releases/download/v${GIT_CLIFF_VERSION}/${TARBALL}" \
+    -o "${TARBALL_TMP}"; then
     tar -xz -C "${INSTALL_DIR}" \
       --strip-components=1 \
-      "git-cliff-${GIT_CLIFF_VERSION}/git-cliff"
-  chmod +x "${INSTALL_DIR}/git-cliff"
+      "git-cliff-${GIT_CLIFF_VERSION}/git-cliff" <"${TARBALL_TMP}"
+    rm -f "${TARBALL_TMP}"
+    chmod +x "${INSTALL_DIR}/git-cliff"
+  else
+    rm -f "${TARBALL_TMP}"
+    warn "git-cliff installation skipped — network unavailable?" \
+      "Run 'bash .devcontainer/post-create.sh' once the network is available."
+  fi
 fi
 # Ensure ~/.local/bin is on PATH for interactive shells.
 if ! grep -q '\.local/bin' "${HOME}/.bashrc" 2>/dev/null; then
@@ -62,10 +114,31 @@ fi
 # so the version is up to date on every container rebuild — no stale binary
 # baked into the image. Azure CLI is installed as a devcontainer feature and
 # therefore not available during the Dockerfile build; this is the right hook.
-az bicep install
+# az bicep resolves downloads through aka.ms
+if ! try_net aka.ms az bicep install; then
+  warn "Bicep CLI installation skipped — network unavailable?" \
+    "Run 'az bicep install' once the network is available."
+fi
 
-echo "Node version: $(node --version)"
-echo "npm version: $(npm --version)"
-echo "Yeoman version: $(yo --version)"
-echo "SPFx generator version: $(npm view @microsoft/generator-sharepoint version)"
-echo "Bicep version: $(az bicep version)"
+echo ""
+echo "${C_BLD}━━━ Dev Container Ready ━━━${C_RST}"
+echo ""
+echo "  Node     $(node --version)"
+echo "  npm      $(npm --version)"
+echo "  Yeoman   $(yo --version)"
+echo "  SPFx     $(npm view @microsoft/generator-sharepoint version)"
+echo "  Bicep    $(az bicep version 2>/dev/null || echo "(not installed)")"
+
+# Repeat collected warnings so they are visible after the version summary.
+if [[ ${#WARNINGS[@]} -gt 0 ]]; then
+  echo ""
+  echo "${C_YLW}${C_BLD}── Warnings (${#WARNINGS[@]}) ──${C_RST}"
+  for w in "${WARNINGS[@]}"; do
+    echo "  ${C_YLW}⚠${C_RST} ${w}"
+  done
+  echo ""
+  echo "${C_DIM}Re-run 'bash .devcontainer/post-create.sh' to retry.${C_RST}"
+else
+  echo ""
+  echo "${C_GRN}✓${C_RST} All setup steps completed successfully."
+fi

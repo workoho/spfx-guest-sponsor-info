@@ -37,6 +37,7 @@ RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
   *) echo "Unsupported architecture: ${arch}" >&2; exit 1 ;; \
   esac \
   && curl -fsSLo /usr/local/bin/yq \
+  --retry 3 --retry-delay 2 --retry-all-errors \
   "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${yq_arch}" \
   && chmod +x /usr/local/bin/yq
 
@@ -46,8 +47,10 @@ RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
   arm64|aarch64) node_arch="arm64" ;; \
   *) echo "Unsupported architecture: ${arch}" >&2; exit 1 ;; \
   esac \
-  && curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${node_arch}.tar.xz" \
-  && curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt" \
+  && curl -fsSLO --retry 3 --retry-delay 2 --retry-all-errors \
+  "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${node_arch}.tar.xz" \
+  && curl -fsSLO --retry 3 --retry-delay 2 --retry-all-errors \
+  "https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt" \
   && grep " node-v${NODE_VERSION}-linux-${node_arch}.tar.xz$" SHASUMS256.txt | sha256sum -c - \
   && tar -xJf "node-v${NODE_VERSION}-linux-${node_arch}.tar.xz" -C /usr/local --strip-components=1 --no-same-owner \
   && rm "node-v${NODE_VERSION}-linux-${node_arch}.tar.xz" SHASUMS256.txt \
@@ -62,18 +65,20 @@ RUN npm install --global azure-functions-core-tools@4 \
 # delta — syntax-highlighting git diff pager (https://github.com/dandavison/delta).
 # Installed as a static binary; makes `git diff` and `git show` output readable
 # with colour and line numbers in the terminal — useful for both developers and agents.
-ARG DELTA_VERSION=0.18.2
+ARG DELTA_VERSION=0.19.1
 RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
   && case "${arch}" in \
-  amd64|x86_64) delta_arch="x86_64" ;; \
-  arm64|aarch64) delta_arch="aarch64" ;; \
+  # x86_64 has a musl (fully static) build; arm64 ships gnu only
+  amd64|x86_64) delta_arch="x86_64" ; delta_libc="musl" ;; \
+  arm64|aarch64) delta_arch="aarch64" ; delta_libc="gnu" ;; \
   *) echo "Unsupported architecture: ${arch}" >&2; exit 1 ;; \
   esac \
   && curl -fsSLo /tmp/delta.tar.gz \
-  "https://github.com/dandavison/delta/releases/download/${DELTA_VERSION}/delta-${DELTA_VERSION}-${delta_arch}-unknown-linux-musl.tar.gz" \
+  --retry 3 --retry-delay 2 --retry-all-errors \
+  "https://github.com/dandavison/delta/releases/download/${DELTA_VERSION}/delta-${DELTA_VERSION}-${delta_arch}-unknown-linux-${delta_libc}.tar.gz" \
   && tar -xzf /tmp/delta.tar.gz -C /usr/local/bin \
   --strip-components=1 \
-  "delta-${DELTA_VERSION}-${delta_arch}-unknown-linux-musl/delta" \
+  "delta-${DELTA_VERSION}-${delta_arch}-unknown-linux-${delta_libc}/delta" \
   && rm /tmp/delta.tar.gz
 
 # shfmt — shell script formatter (https://github.com/mvdan/sh).
@@ -86,6 +91,7 @@ RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
   *) echo "Unsupported architecture: ${arch}" >&2; exit 1 ;; \
   esac \
   && curl -fsSLo /usr/local/bin/shfmt \
+  --retry 3 --retry-delay 2 --retry-all-errors \
   "https://github.com/mvdan/sh/releases/download/${SHFMT_VERSION}/shfmt_${SHFMT_VERSION}_linux_${shfmt_arch}" \
   && chmod +x /usr/local/bin/shfmt
 
