@@ -376,6 +376,95 @@ ul {
 }
 
 /* ============================================================
+   Made By / Branding Section
+   ============================================================ */
+.made-by {
+  padding: 3.5rem 0;
+  background: var(--color-bg);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.made-by-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3rem;
+}
+
+.made-by-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.made-by-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.made-by-logo-link {
+  display: inline-block;
+  margin-bottom: 0.75rem;
+}
+
+.made-by-workoho-logo {
+  height: 42px;
+  width: auto;
+}
+
+.made-by-description {
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+  max-width: 480px;
+}
+
+.made-by-partner {
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.partner-badge-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.25rem 1.75rem;
+  background: var(--color-white);
+  border-radius: var(--radius);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  transition: box-shadow var(--transition), transform var(--transition);
+}
+
+.partner-badge-link:hover {
+  box-shadow: var(--shadow);
+  transform: translateY(-2px);
+}
+
+.partner-logo {
+  height: 24px;
+  width: auto;
+}
+
+.partner-tier {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-teal-dark);
+  background: var(--color-teal-light);
+  padding: 0.25rem 0.75rem;
+  border-radius: 100px;
+}
+
+/* ============================================================
    CTA Section
    ============================================================ */
 .cta-section {
@@ -616,6 +705,16 @@ ul {
   .cta-inner {
     flex-direction: column;
     text-align: center;
+  }
+
+  .made-by-inner {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .made-by-description {
+    margin-left: auto;
+    margin-right: auto;
   }
 }
 

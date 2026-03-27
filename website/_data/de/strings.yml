@@ -65,6 +65,14 @@ features:
       automatisch der nächste in der Prioritätsreihenfolge.
       Deaktivierte Konten und geteilte Postfächer werden ausgefiltert.
 
+made_by:
+  label: Erstellt & gepflegt von
+  description: >-
+    Workoho entwickelt Tools für Microsoft 365 Collaboration und Identity
+    Management. Guest Sponsor Info wird kostenfrei bereitgestellt — ohne
+    Haken.
+  partner_tier: Platinum Partner
+
 cta:
   title: Bereit, die Gast-Erfahrung zu verbessern?
   description: >-

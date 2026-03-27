@@ -63,6 +63,14 @@ features:
       order steps in automatically. Disabled accounts and shared mailboxes
       are filtered out.
 
+made_by:
+  label: Created & maintained by
+  description: >-
+    Workoho builds tools for Microsoft 365 collaboration and identity
+    management. Guest Sponsor Info is provided free of charge — no strings
+    attached.
+  partner_tier: Platinum Partner
+
 cta:
   title: Ready to improve your guest experience?
   description: >-
