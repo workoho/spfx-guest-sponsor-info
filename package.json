@@ -50,9 +50,9 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@fluentui/react-components": "9.73.4",
-    "@fluentui/react-icons": "2.0.322",
-    "@fluentui/react-migration-v8-v9": "9.10.6",
+    "@fluentui/react-components": "9.73.5",
+    "@fluentui/react-icons": "2.0.323",
+    "@fluentui/react-migration-v8-v9": "9.10.7",
     "@microsoft/sp-component-base": "1.22.2",
     "@microsoft/sp-core-library": "1.22.2",
     "@microsoft/sp-http": "1.22.2",
