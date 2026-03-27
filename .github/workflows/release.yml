@@ -126,3 +126,6 @@ jobs:
             azure-function/guest-sponsor-info-function.zip
             azure-function/infra/azuredeploy.json
             azure-function/infra/main.bicep
+            azure-function/infra/setup-app-registration.ps1
+            azure-function/infra/setup-graph-permissions.ps1
+            azure-function/infra/Write-Callout.ps1
