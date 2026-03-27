@@ -43,5 +43,10 @@ else
 fi
 
 echo "${C_GRN}✓ Bootstrap complete.${C_RST}"
-next_steps "${C_BLD}./scripts/dev-webpart.sh${C_RST}    # start the SPFx dev server" \
-  "${C_BLD}./scripts/dev-function.sh${C_RST}   # start the Azure Function locally"
+
+# When called from a parent script (e.g. post-create.sh) the parent owns the
+# final summary.  _CALLOUT_SUPPRESS tells us to skip the next_steps box here.
+if [[ -z "${_CALLOUT_SUPPRESS:-}" ]]; then
+  next_steps "${C_BLD}./scripts/dev-webpart.sh${C_RST}    # start the SPFx dev server" \
+    "${C_BLD}./scripts/dev-function.sh${C_RST}   # start the Azure Function locally"
+fi

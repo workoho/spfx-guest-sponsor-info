@@ -14,7 +14,16 @@
 
 $ErrorActionPreference = 'Stop'
 
-$APP_DISPLAY_NAME = 'Guest Sponsor Info Proxy'
+$APP_DISPLAY_NAME = 'Guest Sponsor Info – SharePoint Web Part Auth'
+$APP_DESCRIPTION = @(
+  'EasyAuth identity provider for the "Guest Sponsor Info"',
+  'SharePoint Online web part (SPFx). Authenticates requests from the',
+  'web part to the Azure Function proxy, which calls Microsoft Graph on',
+  'behalf of signed-in guest users to retrieve their Entra sponsor',
+  'information. Tokens are acquired silently via pre-authorized',
+  'SharePoint Online Web Client Extensibility.',
+  'Source: https://github.com/workoho/spfx-guest-sponsor-info'
+) -join ' '
 $envValues = azd env get-values
 
 # ── 1. Derive a default Function App name ────────────────────────────────────
@@ -64,6 +73,7 @@ else {
   $clientId = az ad app create `
     --display-name $APP_DISPLAY_NAME `
     --sign-in-audience 'AzureADMyOrg' `
+    --description $APP_DESCRIPTION `
     --query 'appId' `
     -o tsv
 

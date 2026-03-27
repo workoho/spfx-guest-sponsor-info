@@ -91,7 +91,9 @@ fi
 
 # Install project dependencies and create .env from .env.example if absent.
 # bootstrap.sh is the single source of truth for both steps.
-bash scripts/bootstrap.sh
+# _CALLOUT_SUPPRESS tells bootstrap.sh to skip its own next_steps box — we
+# print a combined summary at the very end of this script instead.
+_CALLOUT_SUPPRESS=1 bash scripts/bootstrap.sh
 
 # Ensure Husky git hooks are properly initialized in dev-container.
 # set in the environment, which would leave core.hooksPath pointing to whatever
@@ -115,7 +117,9 @@ fi
 # baked into the image. Azure CLI is installed as a devcontainer feature and
 # therefore not available during the Dockerfile build; this is the right hook.
 # az bicep resolves downloads through aka.ms
-if ! try_net aka.ms az bicep install; then
+# Redirect stdout so the noisy "already installed" line does not interleave
+# with the final summary block that follows.
+if ! try_net aka.ms az bicep install >/dev/null; then
   warn "Bicep CLI installation skipped — network unavailable?" \
     "Run 'az bicep install' once the network is available."
 fi
@@ -131,14 +135,18 @@ echo "  Bicep    $(az bicep version 2>/dev/null || echo "(not installed)")"
 
 # Repeat collected warnings so they are visible after the version summary.
 if [[ ${#WARNINGS[@]} -gt 0 ]]; then
-  echo ""
-  echo "${C_YLW}${C_BLD}── Warnings (${#WARNINGS[@]}) ──${C_RST}"
+  # Build warning lines array for the important() box.
+  WARN_LINES=()
   for w in "${WARNINGS[@]}"; do
-    echo "  ${C_YLW}⚠${C_RST} ${w}"
+    WARN_LINES+=("${C_YLW}⚠${C_RST} ${w}")
   done
-  echo ""
-  echo "${C_DIM}Re-run 'bash .devcontainer/post-create.sh' to retry.${C_RST}"
+  WARN_LINES+=("")
+  WARN_LINES+=("Re-run ${C_BLD}bash .devcontainer/post-create.sh${C_RST} to retry.")
+  important "${WARN_LINES[@]}"
 else
   echo ""
   echo "${C_GRN}✓${C_RST} All setup steps completed successfully."
 fi
+
+next_steps "${C_BLD}./scripts/dev-webpart.sh${C_RST}    # start the SPFx dev server" \
+  "${C_BLD}./scripts/dev-function.sh${C_RST}   # start the Azure Function locally"

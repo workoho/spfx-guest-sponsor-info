@@ -81,15 +81,13 @@ foreach ($role in $roles) {
 }
 
 # ── Print web part configuration values ──────────────────────────────────────
-Write-Host ""
-Write-Host ("━" * 67)
-Write-Host "Deployment complete. Paste these values into the SPFx web part"
-Write-Host "property pane (Edit web part → Sponsor API configuration):"
-Write-Host ""
-Write-Host "  Sponsor API URL   : $($env:SPONSOR_API_URL)"
-Write-Host "  Function Client ID: $($env:AZURE_FUNCTION_CLIENT_ID)"
-Write-Host ("━" * 67)
-Write-Host ""
-Write-Host "Note: storage role assignment propagation can take 1–2 minutes."
-Write-Host "If the function returns errors immediately after deployment, wait"
-Write-Host "a moment and retry — no redeployment is needed."
+Write-Host ''
+Write-Host 'Paste these values into the SPFx web part property pane'
+Write-Host '(Edit web part → Guest Sponsor API):'
+Write-Host ''
+Write-Host "  Guest Sponsor API Base URL              : $($env:SPONSOR_API_URL)"
+Write-Host "  Guest Sponsor API Client ID (App Reg.)  : $($env:AZURE_FUNCTION_CLIENT_ID)"
+Write-Host ''
+Write-Host 'Note: Storage role assignment propagation can take 1-2 minutes.'
+Write-Host 'If the function returns errors immediately after deployment,'
+Write-Host 'wait a moment and retry - no redeployment is needed.'
