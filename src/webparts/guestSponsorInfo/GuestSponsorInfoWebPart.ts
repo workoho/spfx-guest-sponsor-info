@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Workoho GmbH <https://workoho.com>
 // SPDX-FileCopyrightText: 2026 Julian Pawlowski <https://github.com/jpawlowski>
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 
 import * as React from 'react';
 import * as ReactDom from 'react-dom';
@@ -10,9 +10,9 @@ import {
   type IPropertyPaneDropdownOption,
   type IPropertyPaneField,
   PropertyPaneHorizontalRule,
-  PropertyPaneLabel,
   PropertyPaneTextField,
   PropertyPaneCheckbox,
+  PropertyPaneToggle,
   PropertyPaneDropdown,
   PropertyPaneSlider,
 } from '@microsoft/sp-property-pane';
@@ -20,13 +20,16 @@ import { PropertyPaneCustomField } from '@microsoft/sp-property-pane/lib/propert
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
 import { AadHttpClient } from '@microsoft/sp-http';
 import { ThemeProvider, IReadonlyTheme, ThemeChangedEventArgs } from '@microsoft/sp-component-base';
-import { FluentProvider, MessageBar, MessageBarBody, webLightTheme, webDarkTheme } from '@fluentui/react-components';
+import { FluentProvider, MessageBar, MessageBarBody, Tooltip, webLightTheme, webDarkTheme } from '@fluentui/react-components';
 import { createV9Theme } from '@fluentui/react-migration-v8-v9';
 import { createDOMRenderer, RendererProvider } from '@griffel/react';
+import { InfoRegular } from '@fluentui/react-icons';
 
 import * as strings from 'GuestSponsorInfoWebPartStrings';
 import GuestSponsorInfo from './components/GuestSponsorInfo';
 import { IGuestSponsorInfoProps } from './components/IGuestSponsorInfoProps';
+import { isValidFunctionUrl, isValidGuid } from './utils/fieldValidation';
+import { MapProvider, MapProviderConfig, getEffectiveMapProvider } from './utils/mapProviderUtils';
 import workohoDefaultLogo from './assets/workoho-default-logo.svg';
 
 // Scoped Griffel renderer — must use the same salt as GuestSponsorInfo.tsx so
@@ -35,10 +38,68 @@ const griffelRenderer = createDOMRenderer(document, {
   classNameHashSalt: '16be4020-0cfb-4b1b-9d50-d3d4af2e90e6',
 });
 
+/**
+ * Migrate old externalMapProvider property to new mapProviderConfig.
+ * For backward compatibility with existing web parts that used the old single-value property.
+ * Also converts flat property-pane properties (mapProviderConfigMode, etc) to MapProviderConfig.
+ */
+function migrateMapProviderConfig(props: IGuestSponsorInfoWebPartProps): MapProviderConfig {
+  const asMapProvider = (value: string | undefined, fallback: MapProvider): MapProvider => {
+    switch (value) {
+      case 'bing':
+      case 'google':
+      case 'apple':
+      case 'openstreetmap':
+      case 'none':
+        return value;
+      default:
+        return fallback;
+    }
+  };
+
+  // If we have new flat properties from PropertyPane, use them
+  if (props.mapProviderConfigMode) {
+    return {
+      mode: props.mapProviderConfigMode,
+      manualProvider: asMapProvider(props.mapProviderConfigManualProvider, 'bing'),
+      iosProvider: asMapProvider(props.mapProviderConfigIosProvider, 'apple'),
+      androidProvider: asMapProvider(props.mapProviderConfigAndroidProvider, 'google'),
+      windowsProvider: asMapProvider(props.mapProviderConfigWindowsProvider, 'bing'),
+      macosProvider: asMapProvider(props.mapProviderConfigMacosProvider, 'apple'),
+      linuxProvider: asMapProvider(props.mapProviderConfigLinuxProvider, 'openstreetmap'),
+    };
+  }
+
+  // If we have the old mapProviderConfig object (unlikely, but for completeness)
+  if (props.mapProviderConfig) {
+    return props.mapProviderConfig;
+  }
+
+  // Backward compatibility: existing instances that already set the legacy
+  // property keep manual mode semantics.
+  if (props.externalMapProvider) {
+    const legacyProvider = props.externalMapProvider;
+    return {
+      mode: 'manual',
+      manualProvider: legacyProvider,
+    };
+  }
+
+  // Default for new instances: auto mode with OS-specific defaults.
+  return {
+    mode: 'auto',
+    windowsProvider: 'bing',
+    macosProvider: 'apple',
+    linuxProvider: 'openstreetmap',
+  };
+}
+
 export interface IGuestSponsorInfoWebPartProps {
   title: string;
-  /** Size of the web part title. Defaults to 'medium' (24 px). */
-  titleSize: 'small' | 'medium' | 'large';
+  /** Show the title above the sponsor cards. Default: true. */
+  showTitle?: boolean;
+  /** Size of the web part title. Defaults to 'h3' (24 px). */
+  titleSize: 'h2' | 'h3' | 'h4' | 'normal';
   mockMode: boolean;
   /**
    * Notification to simulate in demo mode.
@@ -47,8 +108,6 @@ export interface IGuestSponsorInfoWebPartProps {
    */
   /** Maximum number of sponsors shown to visitors on the live page (1–5). Default: 2. */
   maxSponsorCount: number;
-  /** Number of mock sponsor cards to show in demo mode (1–5). Default: 2. */
-  mockSponsorCount: number;
   mockSimulatedHint: 'none' | 'teamsAccessPending' | 'versionMismatch' | 'sponsorUnavailable' | 'noSponsors';
   /** Show the "Teams not set up yet" notice to guest users. Default: true. */
   showTeamsAccessPendingHint: boolean;
@@ -80,10 +139,39 @@ export interface IGuestSponsorInfoWebPartProps {
   showPostalCode: boolean;
   /** Show the sponsor's state or province. Default: false. */
   showState: boolean;
+  /**
+   * Sponsor license eligibility filter sent to the Azure Function.
+   *   'any'      — at least one active license
+   *   'exchange' — active Exchange Online plan
+   *   'teams'    — active Teams plan (default)
+   */
+  sponsorFilter: 'any' | 'exchange' | 'teams';
+  /**
+   * When true (default), require the sponsor to have a user-type mailbox
+   * (mailboxSettings.userPurpose ∈ {'user','linked'}).
+   * When false, an active Exchange Online license serves as the mailbox proxy.
+   */
+  requireUserMailbox: boolean;
   /** Azure Maps subscription key used for inline map preview. */
   azureMapsSubscriptionKey: string;
-  /** External map provider used for fallback links. */
-  externalMapProvider: 'bing' | 'google' | 'apple' | 'openstreetmap' | 'here' | 'none';
+  /** Map provider mode: 'auto' for OS-specific, 'manual' for unified. Default: 'auto'. */
+  mapProviderConfigMode?: 'auto' | 'manual' | 'none';
+  /** iOS map provider (auto mode). Default: 'apple'. */
+  mapProviderConfigIosProvider?: string;
+  /** Android map provider (auto mode). Default: 'google'. */
+  mapProviderConfigAndroidProvider?: string;
+  /** Windows map provider (auto mode). Default: 'bing'. */
+  mapProviderConfigWindowsProvider?: string;
+  /** macOS map provider (auto mode). Default: 'apple'. */
+  mapProviderConfigMacosProvider?: string;
+  /** Linux map provider (auto mode). Default: 'openstreetmap'. */
+  mapProviderConfigLinuxProvider?: string;
+  /** Manual map provider (manual mode) */
+  mapProviderConfigManualProvider?: string;
+  /** Map provider configuration (new system). See mapProviderUtils. */
+  mapProviderConfig?: MapProviderConfig;
+  /** External map provider used for fallback links. DEPRECATED: Use mapProviderConfig* properties instead. */
+  externalMapProvider?: 'bing' | 'google' | 'apple' | 'openstreetmap' | 'none';
   /** Show the manager section in the contact card. Default: true. */
   showManager: boolean;
   /** Show the presence status indicator and label. Default: true. */
@@ -141,10 +229,11 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
         isExternalGuestUser: this.context.pageContext.user.isExternalGuestUser,
         displayMode: this.displayMode,
         title: this.properties.title,
-        titleSize: this.properties.titleSize ?? 'medium',
+        showTitle: this.properties.showTitle ?? true,
+        titleSize: this.properties.titleSize ?? 'h2',
         mockMode: this.properties.mockMode ?? false,
         maxSponsorCount: this.properties.maxSponsorCount ?? 2,
-        mockSponsorCount: this.properties.mockSponsorCount ?? 2,
+        mockSponsorCount: 5,
         mockSimulatedHint: this.properties.mockSimulatedHint ?? 'none',
         showTeamsAccessPendingHint: this.properties.showTeamsAccessPendingHint ?? true,
         showVersionMismatchHint: this.properties.showVersionMismatchHint ?? false,
@@ -175,8 +264,13 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
         showStreetAddress: this.properties.showStreetAddress ?? false,
         showPostalCode: this.properties.showPostalCode ?? false,
         showState: this.properties.showState ?? false,
+        sponsorFilter: this.properties.sponsorFilter ?? 'teams',
+        requireUserMailbox: this.properties.requireUserMailbox ?? true,
         azureMapsSubscriptionKey: this.properties.azureMapsSubscriptionKey || undefined,
-        externalMapProvider: this.properties.externalMapProvider ?? 'bing',
+        externalMapProvider: getEffectiveMapProvider(
+          navigator.userAgent,
+          migrateMapProviderConfig(this.properties)
+        ),
         showManager: this.properties.showManager ?? true,
         showPresence: this.properties.showPresence ?? true,
         showSponsorPhoto: this.properties.showSponsorPhoto ?? true,
@@ -189,26 +283,33 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
         clientVersion: this.manifest.version,
         welcomeSeen: this.properties.welcomeSeen ?? false,
         onWelcomeComplete: ({ chosenPath, apiUrl, clientId }) => {
-          this.properties.welcomeSeen = true;
           if (chosenPath === 'api') {
+            this.properties.welcomeSeen = true;
             // Strip protocol and trailing slash to match the stored URL format.
             this.properties.functionUrl = (apiUrl ?? '').replace(/^https?:\/\//i, '').replace(/\/$/, '');
             this.properties.functionClientId = clientId ?? '';
             this.properties.mockMode = false;
           } else if (chosenPath === 'demo') {
+            this.properties.welcomeSeen = true;
             this.properties.mockMode = true;
           }
-          // 'skip': only sets welcomeSeen = true; other properties stay as-is.
+          // 'skip': welcomeSeen stays false → wizard reappears on next edit session.
           this.render();
-          // After finishing the wizard, open the property pane so the admin can
-          // review and fine-tune all settings. Deferred by one tick to let React
-          // finish its synchronous render cycle first.
-          // 'skip' is omitted intentionally — the admin chose not to engage.
-          if (chosenPath !== 'skip') {
-            setTimeout(() => this.context.propertyPane.open(), 0);
-          }
+          // Property pane is opened by onWelcomeFinish once the admin dismisses
+          // the Done step, so the pane only appears after the wizard is gone.
+        },
+        onWelcomeFinish: () => {
+          // "Let's go" clicked on the Done step — wizard is closing. Now open
+          // the property pane so the admin can review and fine-tune all settings.
+          // Deferred by one tick to let React finish unmounting the wizard first.
+          setTimeout(() => this.context.propertyPane.open(), 0);
         },
         fluentProviderId: `gsi-${this.context.instanceId}`,
+        onWelcomeSkip: () => {
+          // Admin skipped via X or "Not now" — open the property pane so they
+          // have a direct path to configure the web part manually.
+          setTimeout(() => this.context.propertyPane.open(), 0);
+        },
         onProxyStatusChange: (status: 'checking' | 'ok' | 'error') => {
           this._proxyStatus = status;
           if (this.context.propertyPane.isPropertyPaneOpen()) {
@@ -400,7 +501,12 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
       propertyPath === 'showCity' ||
       propertyPath === 'showCountry' ||
       propertyPath === 'showWorkLocation' ||
-      propertyPath === 'showManager'
+      propertyPath === 'showStreetAddress' ||
+      propertyPath === 'showPostalCode' ||
+      propertyPath === 'showState' ||
+      propertyPath === 'showManager' ||
+      propertyPath === 'showTitle' ||
+      propertyPath === 'mapProviderConfigMode'
     ) {
       this.context.propertyPane.refresh();
     }
@@ -408,20 +514,225 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
 
   private _getLocationDisplayHint(): string {
     if (!(strings as unknown as object | undefined)) return '';
-    const showCity = this.properties.showCity ?? false;
-    const showCountry = this.properties.showCountry ?? false;
-    const showWorkLocation = this.properties.showWorkLocation ?? true;
-    const showStreet = this.properties.showStreetAddress ?? false;
-    const showPostal = this.properties.showPostalCode ?? false;
-    const showState = this.properties.showState ?? false;
-    if (showCity || showCountry || showWorkLocation || showStreet || showPostal || showState) return strings.LocationDisplayHintSeparateRows;
-    return strings.LocationDisplayHintHidden;
+    // Always return the location display hint, regardless of which address fields
+    // are enabled. Admins need to understand how address fields work in general.
+    return strings.LocationDisplayHintSeparateRows;
+  }
+
+  /**
+   * Renders a Fluent UI MessageBar info/warning box into a property pane custom
+   * field container. Re-uses the same shared Griffel renderer and FluentProvider
+   * setup as the proxy status field so styles are deduplicated correctly.
+   */
+  private _renderInfoBox(
+    element: HTMLElement | undefined,
+    key: string,
+    text: string,
+    intent: 'info' | 'warning' | 'success' | 'error' = 'info'
+  ): void {
+    if (!element) return;
+    ReactDom.render(
+      React.createElement(RendererProvider, { renderer: griffelRenderer } as React.ComponentProps<typeof RendererProvider>,
+        React.createElement(FluentProvider,
+          {
+            theme: this._theme
+              ? createV9Theme(this._theme as unknown as Parameters<typeof createV9Theme>[0], this._theme.isInverted ? webDarkTheme : webLightTheme)
+              : undefined,
+            id: `gsi-pp-info-${key}-${this.context.instanceId}`,
+          },
+          React.createElement(MessageBar,
+            { intent, style: { marginBottom: 8 } },
+            React.createElement(MessageBarBody, null, text)
+          )
+        )
+      ),
+      element
+    );
+  }
+
+  /**
+   * Renders a small styled sub-section divider (uppercase label + horizontal
+   * rule) using SPFx theme colours for consistent appearance. DOM-based to
+   * avoid the overhead of a full React tree for a purely presentational element.
+   */
+  private _renderSectionHeader(element: HTMLElement | undefined, label: string): void {
+    if (!element) return;
+    element.innerHTML = '';
+    const sc = this._theme?.semanticColors;
+    const divider = sc?.bodyDivider ?? '#e1e1e1';
+    const subtext = sc?.bodySubtext ?? '#616161';
+
+    const wrapper = document.createElement('div');
+    wrapper.style.display = 'flex';
+    wrapper.style.alignItems = 'center';
+    wrapper.style.gap = '8px';
+    wrapper.style.marginTop = '12px';
+    wrapper.style.marginBottom = '4px';
+
+    const labelEl = document.createElement('span');
+    labelEl.textContent = label;
+    labelEl.style.fontSize = '11px';
+    labelEl.style.fontWeight = '600';
+    labelEl.style.textTransform = 'uppercase';
+    labelEl.style.letterSpacing = '0.05em';
+    labelEl.style.color = subtext;
+    labelEl.style.whiteSpace = 'nowrap';
+    labelEl.style.flexShrink = '0';
+
+    const line = document.createElement('div');
+    line.style.flex = '1';
+    line.style.height = '1px';
+    line.style.backgroundColor = divider;
+
+    wrapper.appendChild(labelEl);
+    wrapper.appendChild(line);
+    element.appendChild(wrapper);
+  }
+
+  /**
+   * Renders a subtle helper description text (no MessageBar chrome) for
+   * non-urgent explanatory copy in the property pane.
+   */
+  private _renderDescriptionText(element: HTMLElement | undefined, text: string): void {
+    if (!element) return;
+    element.innerHTML = '';
+
+    const sc = this._theme?.semanticColors;
+    const bodySubtext = sc?.bodySubtext ?? '#616161';
+
+    const description = document.createElement('div');
+    description.textContent = text;
+    description.style.fontSize = '12px';
+    description.style.lineHeight = '1.45';
+    description.style.color = bodySubtext;
+    description.style.margin = '2px 0 8px 0';
+
+    element.appendChild(description);
+  }
+
+  /** Factory: property pane custom field that renders a MessageBar info/warning box. */
+  private _infoBoxField(
+    key: string,
+    text: string,
+    intent: 'info' | 'warning' | 'success' | 'error' = 'info'
+  ): IPropertyPaneField<unknown> {
+    return PropertyPaneCustomField({
+      key,
+      onRender: (el: HTMLElement | undefined) => this._renderInfoBox(el, key, text, intent),
+      onDispose: (el: HTMLElement | undefined) => { if (el) ReactDom.unmountComponentAtNode(el); },
+    }) as unknown as IPropertyPaneField<unknown>;
+  }
+
+  /** Factory: property pane custom field that renders subtle description text. */
+  private _descriptionField(key: string, text: string): IPropertyPaneField<unknown> {
+    return PropertyPaneCustomField({
+      key,
+      onRender: (el: HTMLElement | undefined) => this._renderDescriptionText(el, text),
+      onDispose: (el: HTMLElement | undefined) => { if (el) el.innerHTML = ''; },
+    }) as unknown as IPropertyPaneField<unknown>;
+  }
+
+  /** Factory: property pane custom field that renders a styled sub-section header. */
+  private _sectionHeaderField(key: string, label: string): IPropertyPaneField<unknown> {
+    return PropertyPaneCustomField({
+      key,
+      onRender: (el: HTMLElement | undefined) => this._renderSectionHeader(el, label),
+      onDispose: (el: HTMLElement | undefined) => { if (el) el.innerHTML = ''; },
+    }) as unknown as IPropertyPaneField<unknown>;
+  }
+
+  /** Factory: property pane custom field that renders a stable label + info icon row. */
+  private _labelWithInlineInfoField(key: string, label: string, tooltipText: string): IPropertyPaneField<unknown> {
+    return PropertyPaneCustomField({
+      key,
+      onRender: (el: HTMLElement | undefined) => this._renderLabelWithInlineInfo(el, key, label, tooltipText),
+      onDispose: (el: HTMLElement | undefined) => { if (el) ReactDom.unmountComponentAtNode(el); },
+    }) as unknown as IPropertyPaneField<unknown>;
+  }
+
+  /** Renders a property-pane style label row with an inline info icon. */
+  private _renderLabelWithInlineInfo(
+    element: HTMLElement | undefined,
+    key: string,
+    label: string,
+    tooltipText: string
+  ): void {
+    if (!element) return;
+    element.innerHTML = '';
+
+    const sc = this._theme?.semanticColors;
+    const bodyText = sc?.bodyText ?? '#323130';
+    const bodySubtext = sc?.bodySubtext ?? '#616161';
+
+    const row = document.createElement('div');
+    row.style.display = 'inline-flex';
+    row.style.alignItems = 'center';
+    row.style.gap = '6px';
+    row.style.margin = '0 0 4px 0';
+
+    const labelEl = document.createElement('span');
+    labelEl.textContent = label;
+    labelEl.style.fontSize = '14px';
+    labelEl.style.fontWeight = '400';
+    labelEl.style.color = bodyText;
+
+    const iconHost = document.createElement('span');
+    row.appendChild(labelEl);
+    row.appendChild(iconHost);
+    element.appendChild(row);
+
+    ReactDom.render(
+      React.createElement(RendererProvider, { renderer: griffelRenderer } as React.ComponentProps<typeof RendererProvider>,
+        React.createElement(FluentProvider,
+          {
+            theme: this._theme
+              ? createV9Theme(this._theme as unknown as Parameters<typeof createV9Theme>[0], this._theme.isInverted ? webDarkTheme : webLightTheme)
+              : undefined,
+            id: `gsi-pp-label-inline-icon-${key}-${this.context.instanceId}`,
+          },
+          React.createElement(Tooltip,
+            {
+              content: tooltipText,
+              relationship: 'label' as const,
+            },
+            React.createElement(InfoRegular, {
+              style: {
+                fontSize: '14px',
+                color: bodySubtext,
+                cursor: 'help',
+              },
+            })
+          )
+        )
+      ),
+      iconHost
+    );
   }
 
   private _renderAuthorSection(element?: HTMLElement): void {
     if (!element) return;
 
     element.innerHTML = '';
+
+    // Extract semantic colour tokens from the SPFx theme. Every value has a
+    // fallback that matches the SharePoint default blue theme, so the section
+    // renders correctly even when no site theme has been applied yet.
+    const p  = this._theme?.palette;
+    const sc = this._theme?.semanticColors;
+    // Link / button foreground (e.g. SharePoint blue #0078d4)
+    const linkColor          = sc?.link              ?? '#0078d4';
+    // Subdued body text (footer meta line)
+    const bodySubtextColor   = sc?.bodySubtext        ?? '#616161';
+    // Very-light neutral surface (EasyLife partner box background)
+    const neutralLighterBg   = p?.neutralLighter      ?? '#f5f5f5';
+    // Light neutral border (EasyLife partner box border)
+    const neutralQuatBorder  = p?.neutralQuaternary   ?? '#e1e1e1';
+    // Very-light primary accent (Munich badge + mismatch badge background)
+    const themeLighterBg     = p?.themeLighter        ?? '#eef6ff';
+    // Light primary accent (mismatch badge border)
+    const themeLightBorder   = p?.themeLight          ?? '#c7e0f4';
+    // Dark primary accent (Munich badge + mismatch badge foreground text)
+    const themeDarkColor     = p?.themeDark           ?? '#24527a';
 
     const createParagraph = (
       text: string,
@@ -445,7 +756,8 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
       ctaLink.style.display = 'inline-block';
       ctaLink.style.margin = '0 0 12px 0';
       ctaLink.style.padding = '3px 10px';
-      ctaLink.style.border = '1px solid currentColor';
+      ctaLink.style.color = linkColor;
+      ctaLink.style.border = `1px solid ${linkColor}`;
       ctaLink.style.borderRadius = '4px';
       ctaLink.style.fontWeight = '600';
       ctaLink.style.fontSize = '12px';
@@ -482,7 +794,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
     };
 
     const logoLink = document.createElement('a');
-    logoLink.href = 'https://workoho.com/';
+    logoLink.href = 'https://workoho.com/?utm_source=guest-sponsor-info-webpart&utm_medium=sharepoint-webpart&utm_campaign=property-pane&utm_content=author-logo';
     logoLink.target = '_blank';
     logoLink.rel = 'noopener noreferrer';
     logoLink.style.display = 'block';
@@ -504,7 +816,10 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
 
     element.appendChild(createParagraph(strings.AuthorSectionIntro, '8px', '700'));
     element.appendChild(createParagraph(strings.AuthorSectionConsultingText));
-    element.appendChild(createCtaLink(strings.AuthorSectionWebsiteLinkLabel, 'https://workoho.com/'));
+    element.appendChild(createCtaLink(strings.AuthorSectionWebsiteLinkLabel, 'https://workoho.com/?utm_source=guest-sponsor-info-webpart&utm_medium=sharepoint-webpart&utm_campaign=property-pane&utm_content=author-cta'));
+
+    // semver is used below for the version link in the footer.
+    const semver = this.manifest.version.split('.').slice(0, 3).join('.');
 
     const partnerLine = document.createElement('p');
     partnerLine.style.margin = '0 0 8px 0';
@@ -514,9 +829,10 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
 
     const easyLifeLink = document.createElement('a');
     easyLifeLink.textContent = strings.AuthorSectionPartnerLinkLabel;
-    easyLifeLink.href = 'https://easylife365.cloud/';
+    easyLifeLink.href = 'https://easylife365.cloud/products/collaboration/';
     easyLifeLink.target = '_blank';
     easyLifeLink.rel = 'noopener noreferrer';
+    easyLifeLink.style.color = linkColor;
     easyLifeLink.style.fontWeight = '500';
     easyLifeLink.style.textDecoration = 'none';
 
@@ -524,8 +840,8 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
     partnerLine.append(` ${strings.AuthorSectionPartnerSuffix}`);
 
     const easyLifeBox = document.createElement('div');
-    easyLifeBox.style.backgroundColor = '#f5f5f5';
-    easyLifeBox.style.border = '1px solid #e1e1e1';
+    easyLifeBox.style.backgroundColor = neutralLighterBg;
+    easyLifeBox.style.border = `1px solid ${neutralQuatBorder}`;
     easyLifeBox.style.borderRadius = '6px';
     easyLifeBox.style.padding = '10px 12px';
     easyLifeBox.style.margin = '0';
@@ -537,7 +853,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
     const footer = document.createElement('div');
     footer.style.marginTop = '10px';
     footer.style.fontSize = '12px';
-    footer.style.color = '#616161';
+    footer.style.color = bodySubtextColor;
 
     const metaLine = document.createElement('div');
 
@@ -548,17 +864,18 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
     sourceLink.target = '_blank';
     sourceLink.rel = 'noopener noreferrer';
     sourceLink.style.display = 'inline';
+    sourceLink.style.color = linkColor;
     sourceLink.style.textDecoration = 'none';
 
     const separator = document.createElement('span');
     separator.textContent = ' · ';
 
-    const semver = this.manifest.version.split('.').slice(0, 3).join('.');
     const versionLink = document.createElement('a');
-    versionLink.textContent = `${strings.AuthorSectionVersionLabel}: ${this.manifest.version}`;
+    versionLink.textContent = `${strings.AuthorSectionVersionLabel} ${this.manifest.version}`;
     versionLink.href = `https://github.com/workoho/spfx-guest-sponsor-info/releases/tag/v${semver}`;
     versionLink.target = '_blank';
     versionLink.rel = 'noopener noreferrer';
+    versionLink.style.color = linkColor;
     versionLink.style.textDecoration = 'none';
 
     const munichLine = document.createElement('span');
@@ -567,8 +884,8 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
     munichLine.style.marginTop = '8px';
     munichLine.style.padding = '2px 8px';
     munichLine.style.borderRadius = '999px';
-    munichLine.style.backgroundColor = '#eef6ff';
-    munichLine.style.color = '#24527a';
+    munichLine.style.backgroundColor = themeLighterBg;
+    munichLine.style.color = themeDarkColor;
     munichLine.style.fontWeight = '600';
     munichLine.style.fontSize = '11px';
 
@@ -585,9 +902,9 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
       updateBadge.style.display = 'inline-block';
       updateBadge.style.padding = '1px 7px';
       updateBadge.style.borderRadius = '4px';
-      updateBadge.style.backgroundColor = '#eff6fc';
-      updateBadge.style.color = '#005a9e';
-      updateBadge.style.border = '1px solid #c7e0f4';
+      updateBadge.style.backgroundColor = themeLighterBg;
+      updateBadge.style.color = themeDarkColor;
+      updateBadge.style.border = `1px solid ${themeLightBorder}`;
       updateBadge.style.fontWeight = '700';
       updateBadge.style.fontSize = '11px';
       updateBadge.style.cursor = 'help';
@@ -601,7 +918,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
       const semverLatest = this._newVersionAvailable.version.split('.').slice(0, 3).join('.');
       const newRelBadge = document.createElement('a');
       newRelBadge.textContent = `\u2191\u00a0v${semverLatest}`;
-      newRelBadge.href = this._newVersionAvailable.url;
+      newRelBadge.href = this._newVersionAvailable.url + (this._newVersionAvailable.url.includes('?') ? '&' : '?') + 'utm_source=guest-sponsor-info-webpart&utm_medium=sharepoint-webpart&utm_campaign=property-pane&utm_content=update-badge';
       newRelBadge.target = '_blank';
       newRelBadge.rel = 'noopener noreferrer';
       newRelBadge.title = strings.NewReleaseAvailableLabel;
@@ -631,48 +948,71 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
     if (!(strings as unknown as object | undefined)) return { pages: [] };
 
     const showManager = this.properties.showManager ?? true;
-    const externalMapProvider = this.properties.externalMapProvider ?? 'bing';
-    const mapProviderOptions: IPropertyPaneDropdownOption[] = [
+    const mapProviderConfig = migrateMapProviderConfig(this.properties);
+    const mapProviderMode = mapProviderConfig.mode;
+    const locationDisplayHint = this._getLocationDisplayHint();
+    const hasAddressFieldsEnabled =
+      (this.properties.showStreetAddress ?? false) ||
+      (this.properties.showPostalCode ?? false) ||
+      (this.properties.showCity ?? false) ||
+      (this.properties.showState ?? false) ||
+      (this.properties.showCountry ?? false);
+
+    // Provider options for each section
+    const windowsOptions: IPropertyPaneDropdownOption[] = [
       { key: 'none', text: strings.MapProviderNoneOption },
       { key: 'bing', text: strings.MapProviderBingOption },
       { key: 'google', text: strings.MapProviderGoogleOption },
       { key: 'apple', text: strings.MapProviderAppleOption },
       { key: 'openstreetmap', text: strings.MapProviderOpenStreetMapOption },
-      { key: 'here', text: strings.MapProviderHereOption },
+    ];
+    const macosOptions: IPropertyPaneDropdownOption[] = [
+      { key: 'none', text: strings.MapProviderNoneOption },
+      { key: 'bing', text: strings.MapProviderBingOption },
+      { key: 'google', text: strings.MapProviderGoogleOption },
+      { key: 'apple', text: strings.MapProviderAppleOption },
+      { key: 'openstreetmap', text: strings.MapProviderOpenStreetMapOption },
+    ];
+
+    const linuxOptions: IPropertyPaneDropdownOption[] = [
+      { key: 'none', text: strings.MapProviderNoneOption },
+      { key: 'bing', text: strings.MapProviderBingOption },
+      { key: 'google', text: strings.MapProviderGoogleOption },
+      { key: 'apple', text: strings.MapProviderAppleOption },
+      { key: 'openstreetmap', text: strings.MapProviderOpenStreetMapOption },
+    ];
+
+    const allProviderOptions: IPropertyPaneDropdownOption[] = [
+      { key: 'none', text: strings.MapProviderNoneOption },
+      { key: 'bing', text: strings.MapProviderBingOption },
+      { key: 'google', text: strings.MapProviderGoogleOption },
+      { key: 'apple', text: strings.MapProviderAppleOption },
+      { key: 'openstreetmap', text: strings.MapProviderOpenStreetMapOption },
     ];
 
     return {
       pages: [
         {
           displayGroupsAsAccordion: true,
-          header: {
-            description: strings.PropertyPaneDescription
-          },
           groups: [
             {
               groupName: strings.BasicGroupName,
               isCollapsed: false,
               groupFields: [
-                PropertyPaneHorizontalRule(),
+                this._sectionHeaderField('settingsLivePage', strings.PpSectionLivePage),
+                this._labelWithInlineInfoField('maxSponsorCountLabelWithInfo', strings.MaxSponsorCountFieldLabel, strings.MaxSponsorCountFieldTooltip),
                 PropertyPaneSlider('maxSponsorCount', {
-                  label: strings.MaxSponsorCountFieldLabel,
+                  label: '',
                   min: 1,
                   max: 5,
                   step: 1,
                   value: this.properties.maxSponsorCount ?? 2,
                 }),
-                PropertyPaneHorizontalRule(),
-                PropertyPaneSlider('mockSponsorCount', {
-                  label: strings.MockSponsorCountFieldLabel,
-                  min: 1,
-                  max: 5,
-                  step: 1,
-                  value: this.properties.mockSponsorCount ?? 2,
+                this._sectionHeaderField('settingsDemoMode', strings.PpSectionDemoMode),
+                this._labelWithInlineInfoField('mockModeLabelWithInfo', strings.MockModeFieldLabel, strings.MockModeFieldTooltip),
+                PropertyPaneToggle('mockMode', {
+                  label: ''
                 }),
-                PropertyPaneCheckbox('mockMode', {
-                  text: strings.MockModeFieldLabel
-                }),
-                PropertyPaneHorizontalRule(),
                 PropertyPaneDropdown('mockSimulatedHint', {
                   label: strings.MockSimulatedHintFieldLabel,
                   options: [
@@ -683,17 +1023,34 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                     { key: 'noSponsors', text: strings.MockSimulatedHintNoSponsorsOption },
                   ],
                   selectedKey: this.properties.mockSimulatedHint ?? 'none',
-                })
+                }),
+              ]
+            },
+            {
+              groupName: strings.SponsorEligibilityGroupName,
+              isCollapsed: true,
+              groupFields: [
+                this._descriptionField('sponsorEligibilityGroupHint', strings.SponsorEligibilityGroupHint),
+                PropertyPaneDropdown('sponsorFilter', {
+                  label: strings.SponsorFilterFieldLabel,
+                  options: [
+                    { key: 'teams',    text: strings.SponsorFilterTeamsOption },
+                    { key: 'exchange', text: strings.SponsorFilterExchangeOption },
+                    { key: 'any',      text: strings.SponsorFilterAnyOption },
+                  ],
+                  selectedKey: this.properties.sponsorFilter ?? 'teams',
+                }),
+                PropertyPaneCheckbox('requireUserMailbox', {
+                  text: strings.RequireUserMailboxFieldLabel,
+                  checked: this.properties.requireUserMailbox ?? true,
+                }),
               ]
             },
             {
               groupName: strings.GuestNotificationsGroupName,
               isCollapsed: true,
               groupFields: [
-                PropertyPaneLabel('guestNotificationsGroupHint', {
-                  text: strings.GuestNotificationsGroupHint,
-                }),
-                PropertyPaneHorizontalRule(),
+                this._descriptionField('guestNotificationsGroupHint', strings.GuestNotificationsGroupHint),
                 PropertyPaneCheckbox('showTeamsAccessPendingHint', {
                   text: strings.ShowTeamsAccessPendingHintLabel,
                   checked: this.properties.showTeamsAccessPendingHint ?? true,
@@ -721,16 +1078,23 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
               groupName: strings.DisplayGroupName,
               isCollapsed: true,
               groupFields: [
-                PropertyPaneDropdown('titleSize', {
-                  label: strings.TitleSizeFieldLabel,
-                  options: [
-                    { key: 'small', text: strings.TitleSizeSmallOption },
-                    { key: 'medium', text: strings.TitleSizeMediumOption },
-                    { key: 'large', text: strings.TitleSizeLargeOption },
-                  ],
-                  selectedKey: this.properties.titleSize ?? 'medium',
+                PropertyPaneToggle('showTitle', {
+                  label: strings.ShowTitleFieldLabel,
+                  checked: this.properties.showTitle ?? true,
                 }),
-                PropertyPaneHorizontalRule(),
+                ...((this.properties.showTitle ?? true) ? [
+                  PropertyPaneDropdown('titleSize', {
+                    label: strings.TitleSizeFieldLabel,
+                    options: [
+                      { key: 'h2', text: strings.TitleSizeH2Option },
+                      { key: 'h3', text: strings.TitleSizeH3Option },
+                      { key: 'h4', text: strings.TitleSizeH4Option },
+                      { key: 'normal', text: strings.TitleSizeNormalOption },
+                    ],
+                    selectedKey: this.properties.titleSize ?? 'h2',
+                  }),
+                ] : []),
+                this._sectionHeaderField('displayCardLayout', strings.PpSectionCardLayout),
                 PropertyPaneDropdown('cardLayout', {
                   label: strings.CardLayoutFieldLabel,
                   options: [
@@ -749,13 +1113,13 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                     value: this.properties.cardLayoutAutoThreshold ?? 3,
                   }),
                 ] : []),
-                PropertyPaneHorizontalRule(),
-                PropertyPaneCheckbox('showPresence', {
-                  text: strings.ShowPresenceFieldLabel,
+                this._sectionHeaderField('displayProfileFields', strings.PpSectionProfileFields),
+                PropertyPaneToggle('showPresence', {
+                  label: strings.ShowPresenceFieldLabel,
                   checked: this.properties.showPresence ?? true,
                 }),
-                PropertyPaneCheckbox('showSponsorPhoto', {
-                  text: strings.ShowSponsorPhotoFieldLabel,
+                PropertyPaneToggle('showSponsorPhoto', {
+                  label: strings.ShowSponsorPhotoFieldLabel,
                   checked: this.properties.showSponsorPhoto ?? true,
                 }),
                 PropertyPaneCheckbox('showSponsorJobTitle', {
@@ -772,22 +1136,26 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
               isCollapsed: true,
               groupFields: [
                 // Phone numbers
-                PropertyPaneCheckbox('showBusinessPhones', {
-                  text: strings.ShowBusinessPhonesFieldLabel,
+                this._sectionHeaderField('contactPhone', strings.PpSectionPhone),
+                PropertyPaneToggle('showBusinessPhones', {
+                  label: strings.ShowBusinessPhonesFieldLabel,
                   checked: this.properties.showBusinessPhones ?? true,
                 }),
-                PropertyPaneCheckbox('showMobilePhone', {
-                  text: strings.ShowMobilePhoneFieldLabel,
+                PropertyPaneToggle('showMobilePhone', {
+                  label: strings.ShowMobilePhoneFieldLabel,
                   checked: this.properties.showMobilePhone ?? true,
                 }),
-                PropertyPaneHorizontalRule(),
                 // Work location (officeLocation)
-                PropertyPaneCheckbox('showWorkLocation', {
-                  text: strings.ShowWorkLocationFieldLabel,
+                this._sectionHeaderField('contactWorkLocation', strings.PpSectionWorkLocation),
+                PropertyPaneToggle('showWorkLocation', {
+                  label: strings.ShowWorkLocationFieldLabel,
                   checked: this.properties.showWorkLocation ?? true,
                 }),
-                PropertyPaneHorizontalRule(),
                 // Address fields (combined into a single clickable address row)
+                this._sectionHeaderField('contactAddress', strings.PpSectionAddress),
+                ...(locationDisplayHint
+                  ? [this._descriptionField('locationDisplayHint', locationDisplayHint)]
+                  : []),
                 PropertyPaneCheckbox('showStreetAddress', {
                   text: strings.ShowStreetAddressFieldLabel,
                 }),
@@ -803,30 +1171,74 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                 PropertyPaneCheckbox('showCountry', {
                   text: strings.ShowCountryFieldLabel,
                 }),
-                PropertyPaneLabel('locationDisplayHint', {
-                  text: this._getLocationDisplayHint(),
-                }),
-                PropertyPaneHorizontalRule(),
-                // Map settings
-                PropertyPaneDropdown('externalMapProvider', {
-                  label: strings.ExternalMapProviderFieldLabel,
-                  options: mapProviderOptions,
-                  selectedKey: externalMapProvider,
-                }),
-                PropertyPaneLabel('addressMapProviderHint', {
-                  text: strings.AddressMapProviderHint,
-                }),
-                PropertyPaneTextField('azureMapsSubscriptionKey', {
-                  label: strings.AzureMapsSubscriptionKeyFieldLabel,
-                }),
+                ...(hasAddressFieldsEnabled ? [
+                  // Map settings are only relevant when at least one postal
+                  // address field is shown in the contact section.
+                  this._sectionHeaderField('contactMapLink', strings.PpSectionMapLink),
+                  this._descriptionField('mapProviderModeHint', strings.MapProviderModeHint),
+                  this._descriptionField('addressMapProviderHint', strings.AddressMapProviderHint),
+                  PropertyPaneDropdown('mapProviderConfigMode', {
+                    label: strings.ExternalMapProviderFieldLabel,
+                    options: [
+                      { key: 'auto', text: strings.MapProviderModeAutoLabel },
+                      { key: 'manual', text: strings.MapProviderModeManualLabel },
+                      { key: 'none', text: strings.MapProviderNoneOption },
+                    ],
+                    selectedKey: mapProviderMode,
+                  }),
+                  ...(mapProviderMode === 'auto' ? [
+                    // Auto mode: show OS-specific selectors
+                    PropertyPaneDropdown('mapProviderConfigIosProvider', {
+                      label: strings.MapProviderIosLabel,
+                      options: allProviderOptions,
+                      selectedKey: mapProviderConfig.iosProvider ?? 'apple',
+                    }),
+                    PropertyPaneDropdown('mapProviderConfigAndroidProvider', {
+                      label: strings.MapProviderAndroidLabel,
+                      options: allProviderOptions,
+                      selectedKey: mapProviderConfig.androidProvider ?? 'google',
+                    }),
+                    PropertyPaneDropdown('mapProviderConfigWindowsProvider', {
+                      label: strings.MapProviderWindowsLabel,
+                      options: windowsOptions,
+                      selectedKey: mapProviderConfig.windowsProvider ?? 'bing',
+                    }),
+                    PropertyPaneDropdown('mapProviderConfigMacosProvider', {
+                      label: strings.MapProviderMacOSLabel,
+                      options: macosOptions,
+                      selectedKey: mapProviderConfig.macosProvider ?? 'apple',
+                    }),
+                    PropertyPaneDropdown('mapProviderConfigLinuxProvider', {
+                      label: strings.MapProviderLinuxLabel,
+                      options: linuxOptions,
+                      selectedKey: mapProviderConfig.linuxProvider ?? 'openstreetmap',
+                    }),
+                  ] : mapProviderMode === 'manual' ? [
+                    // Manual mode: single provider for all
+                    PropertyPaneDropdown('mapProviderConfigManualProvider', {
+                      label: strings.ExternalMapProviderFieldLabel,
+                      options: allProviderOptions,
+                      selectedKey: mapProviderConfig.manualProvider ?? 'bing',
+                    }),
+                  ] : [
+                    // None mode: all map links disabled — no sub-dropdowns needed
+                  ]),
+                  PropertyPaneHorizontalRule(),
+                  // Azure Maps key: optional inline preview image
+                  this._sectionHeaderField('contactMapPreview', strings.PpSectionMapPreview),
+                  this._descriptionField('azureMapsPreviewHint', strings.AzureMapsPreviewHint),
+                  PropertyPaneTextField('azureMapsSubscriptionKey', {
+                    label: strings.AzureMapsSubscriptionKeyFieldLabel,
+                  }),
+                ] : []),
               ]
             },
             {
               groupName: strings.OrganizationSection,
               isCollapsed: true,
               groupFields: [
-                PropertyPaneCheckbox('showManager', {
-                  text: strings.ShowManagerFieldLabel,
+                PropertyPaneToggle('showManager', {
+                  label: strings.ShowManagerFieldLabel,
                   checked: showManager,
                 }),
                 ...(showManager ? [
@@ -841,11 +1253,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                     text: strings.ShowManagerPhotoFieldLabel,
                     checked: this.properties.showManagerPhoto ?? true,
                   }),
-                ] : [
-                  PropertyPaneLabel('managerOptionsDisabledHint', {
-                    text: strings.ManagerOptionsDisabledHint,
-                  }),
-                ]),
+                ] : []),
               ]
             },
             {
@@ -855,9 +1263,79 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                 PropertyPaneTextField('functionUrl', {
                   label: strings.FunctionUrlFieldLabel
                 }),
+                // Validation error — shown immediately below the URL field when
+                // the stored value fails the format check.
+                ...(this.properties.functionUrl && !isValidFunctionUrl(this.properties.functionUrl)
+                  ? [this._infoBoxField('functionUrlValidationError', strings.InvalidUrlFormat, 'error')]
+                  : []),
                 PropertyPaneTextField('functionClientId', {
                   label: strings.FunctionClientIdFieldLabel
                 }),
+                // Validation error — shown immediately below the Client ID field
+                // when the stored value is not a valid GUID.
+                ...(this.properties.functionClientId && !isValidGuid(this.properties.functionClientId)
+                  ? [this._infoBoxField('functionClientIdValidationError', strings.InvalidGuidFormat, 'error')]
+                  : []),
+                PropertyPaneCustomField({
+                  key: 'functionSetupLinksField',
+                  onRender: (element: HTMLElement | undefined) => {
+                    if (!element) return;
+                    element.innerHTML = '';
+
+                    const sc = this._theme?.semanticColors;
+                    const deployLinkColor = sc?.link ?? '#0078d4';
+
+                    // Build a versioned "Deploy to Azure" portal URL.
+                    // Use raw.githubusercontent.com so the Azure Portal can fetch
+                    // the template without CORS issues (releases/download redirects
+                    // do not expose the required CORS headers).
+                    const deploySemver = this.manifest.version.split('.').slice(0, 3).join('.');
+                    const deployTemplatePath =
+                      `https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/v${deploySemver}/azure-function/infra/azuredeploy.json`;
+                    const deployToAzureHref =
+                      'https://portal.azure.com/#create/Microsoft.Template/uri/' +
+                      encodeURIComponent(deployTemplatePath);
+                    const setupGuideHref =
+                      'https://github.com/workoho/spfx-guest-sponsor-info/blob/main/docs/deployment.md';
+
+                    const wrapper = document.createElement('div');
+                    wrapper.style.marginTop = '8px';
+                    wrapper.style.display = 'flex';
+                    wrapper.style.flexDirection = 'column';
+                    wrapper.style.alignItems = 'flex-start';
+                    wrapper.style.gap = '6px';
+
+                    // "Deploy to Azure" — official Microsoft badge image
+                    const deployBtn = document.createElement('a');
+                    deployBtn.href = deployToAzureHref;
+                    deployBtn.target = '_blank';
+                    deployBtn.rel = 'noopener noreferrer';
+                    deployBtn.style.display = 'inline-block';
+                    const deployImg = document.createElement('img');
+                    deployImg.src = 'https://aka.ms/deploytoazurebutton';
+                    deployImg.alt = strings.AuthorSectionDeployToAzureLabel;
+                    deployImg.style.display = 'block';
+                    deployImg.style.maxWidth = '100%';
+                    deployBtn.appendChild(deployImg);
+                    wrapper.appendChild(deployBtn);
+
+                    // "View setup guide" link
+                    const setupGuideLink = document.createElement('a');
+                    setupGuideLink.textContent = strings.WelcomeDialogOptionApiDocsLabel;
+                    setupGuideLink.href = setupGuideHref;
+                    setupGuideLink.target = '_blank';
+                    setupGuideLink.rel = 'noopener noreferrer';
+                    setupGuideLink.style.fontSize = '12px';
+                    setupGuideLink.style.color = deployLinkColor;
+                    setupGuideLink.style.textDecoration = 'none';
+                    wrapper.appendChild(setupGuideLink);
+
+                    element.appendChild(wrapper);
+                  },
+                  onDispose: (element: HTMLElement | undefined) => {
+                    if (element) element.innerHTML = '';
+                  },
+                }) as unknown as IPropertyPaneField<unknown>,
                 ...(this.properties.functionUrl && this.properties.functionClientId ? [
                   PropertyPaneCustomField({
                     key: 'proxyStatusField',

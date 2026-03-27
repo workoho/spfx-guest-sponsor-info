@@ -1,14 +1,15 @@
 declare interface IGuestSponsorInfoWebPartStrings {
-  PropertyPaneDescription: string;
   BasicGroupName: string;
   TitleFieldLabel: string;
+  ShowTitleFieldLabel: string;
   /** Gray placeholder text shown in the title field when no title has been entered yet. */
   TitlePlaceholder: string;
   /** Property pane label for the title size choice group. */
   TitleSizeFieldLabel: string;
-  TitleSizeSmallOption: string;
-  TitleSizeMediumOption: string;
-  TitleSizeLargeOption: string;
+  TitleSizeH2Option: string;
+  TitleSizeH3Option: string;
+  TitleSizeH4Option: string;
+  TitleSizeNormalOption: string;
   LoadingMessage: string;
   NoSponsorsTitle: string;
   NoSponsorsMessage: string;
@@ -19,6 +20,9 @@ declare interface IGuestSponsorInfoWebPartStrings {
   EditModePlaceholder: string;
   GuestOnlyPlaceholder: string;
   MockModeFieldLabel: string;
+  /** Tooltip text explaining the public demo mode functionality. */
+  MockModeFieldTooltip: string;
+  MockModeFieldDescription: string;
   MockModePlaceholder: string;
   MockSimulatedHintFieldLabel: string;
   MockSimulatedHintNoneOption: string;
@@ -26,9 +30,10 @@ declare interface IGuestSponsorInfoWebPartStrings {
   MockSimulatedHintVersionMismatchOption: string;
   MockSimulatedHintSponsorUnavailableOption: string;
   MockSimulatedHintNoSponsorsOption: string;
-  /** Slider label for the demo sponsor count. */
+  /** Slider label for the visible sponsor count. */
   MaxSponsorCountFieldLabel: string;
-  MockSponsorCountFieldLabel: string;
+  /** Tooltip text explaining the sponsor fallback/rotation logic. */
+  MaxSponsorCountFieldTooltip: string;
 
   // Display toggles
   GuestNotificationsGroupName: string;
@@ -52,23 +57,49 @@ declare interface IGuestSponsorInfoWebPartStrings {
   ShowPostalCodeFieldLabel: string;
   ShowStateFieldLabel: string;
   AzureMapsSubscriptionKeyFieldLabel: string;
+  MapProviderModeAutoLabel: string;
+  MapProviderModeManualLabel: string;
+  MapProviderModeHint: string;
+  MapProviderIosLabel: string;
+  MapProviderAndroidLabel: string;
+  MapProviderWindowsLabel: string;
+  MapProviderMacOSLabel: string;
+  MapProviderLinuxLabel: string;
   ExternalMapProviderFieldLabel: string;
   MapProviderBingOption: string;
   MapProviderGoogleOption: string;
   MapProviderAppleOption: string;
   MapProviderOpenStreetMapOption: string;
-  MapProviderHereOption: string;
   MapProviderNoneOption: string;
   AddressMapProviderHint: string;
+  AzureMapsPreviewHint: string;
   LocationDisplayHintSeparateRows: string;
-  LocationDisplayHintHidden: string;
   AdvancedDisplayGroupName: string;
-  ManagerOptionsDisabledHint: string;
   ShowManagerFieldLabel: string;
   ShowPresenceFieldLabel: string;
   ShowSponsorPhotoFieldLabel: string;
   ShowManagerPhotoFieldLabel: string;
   UseInformalAddressFieldLabel: string;
+
+  // Sponsor eligibility filter
+  SponsorEligibilityGroupName: string;
+  SponsorEligibilityGroupHint: string;
+  SponsorFilterFieldLabel: string;
+  SponsorFilterTeamsOption: string;
+  SponsorFilterExchangeOption: string;
+  SponsorFilterAnyOption: string;
+  RequireUserMailboxFieldLabel: string;
+
+  // Property pane sub-section header labels
+  PpSectionLivePage: string;
+  PpSectionDemoMode: string;
+  PpSectionCardLayout: string;
+  PpSectionProfileFields: string;
+  PpSectionPhone: string;
+  PpSectionWorkLocation: string;
+  PpSectionAddress: string;
+  PpSectionMapLink: string;
+  PpSectionMapPreview: string;
 
   // Job title and department toggles
   ShowSponsorJobTitleFieldLabel: string;
@@ -96,6 +127,8 @@ declare interface IGuestSponsorInfoWebPartStrings {
   AuthorSectionPartnerTagline: string;
   AuthorSectionSourceCodeLabel: string;
   AuthorSectionVersionLabel: string;
+  AuthorSectionDeployToAzureLabel: string;
+  AuthorSectionDeploymentGuideLabel: string;
   NewReleaseAvailableLabel: string;
 
   // Presence labels
@@ -183,18 +216,31 @@ declare interface IGuestSponsorInfoWebPartStrings {
   WelcomeDialogNextButton: string;
   WelcomeDialogBackButton: string;
   WelcomeDialogSkipButton: string;
+  /** Commits the chosen setup path and advances to the Done step. */
+  WelcomeDialogSaveButton: string;
+  /** Skips the API connect step when both credential fields are empty. */
+  WelcomeDialogSkipApiButton: string;
+  // Field validation errors (shared between wizard and property pane)
+  InvalidUrlFormat: string;
+  InvalidGuidFormat: string;
   // Step 2 — setup choice
   WelcomeDialogSetupTitle: string;
   WelcomeDialogSetupIntro: string;
   WelcomeDialogOptionApiTitle: string;
   WelcomeDialogOptionApiBody: string;
   WelcomeDialogOptionApiDocsLabel: string;
+  WelcomeDialogDeployToAzureLabel: string;
+  WelcomeDialogDeployNote: string;
+  WelcomeDialogConnectApiTitle: string;
+  WelcomeDialogConnectApiIntro: string;
   WelcomeDialogOptionDemoTitle: string;
   WelcomeDialogOptionDemoBody: string;
   WelcomeDialogFunctionUrlRequired: string;
   // Step 3 — confirmation
   WelcomeDialogDoneApiTitle: string;
   WelcomeDialogDoneApiBody: string;
+  WelcomeDialogDoneApiSkippedTitle: string;
+  WelcomeDialogDoneApiSkippedBody: string;
   WelcomeDialogDoneDemoTitle: string;
   WelcomeDialogDoneDemoBody: string;
 

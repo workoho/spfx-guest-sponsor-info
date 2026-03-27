@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Workoho GmbH <https://workoho.com>
 // SPDX-FileCopyrightText: 2026 Julian Pawlowski <https://github.com/jpawlowski>
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 
 import * as React from 'react';
 import {
@@ -46,6 +46,7 @@ const CopyIcon = bundleIcon(CopyFilled, CopyRegular);
 const CheckmarkIcon = bundleIcon(CheckmarkFilled, CheckmarkRegular);
 import * as strings from 'GuestSponsorInfoWebPartStrings';
 import { ISponsor } from '../services/ISponsor';
+import { buildExternalMapLink } from '../utils/mapProviderUtils';
 
 /** Fluent UI persona colours used as avatar backgrounds when no photo is available. */
 /**
@@ -61,26 +62,6 @@ function resolvePersonName(
   const last = surname?.trim() ?? '';
   if (first || last) return [first, last].filter(Boolean).join(' ');
   return displayName?.trim() ?? '';
-}
-
-function buildExternalMapLink(
-  provider: 'bing' | 'google' | 'apple' | 'openstreetmap' | 'here',
-  address: string
-): string {
-  const query = encodeURIComponent(address);
-  switch (provider) {
-    case 'google':
-      return `https://www.google.com/maps/search/?api=1&query=${query}`;
-    case 'apple':
-      return `https://maps.apple.com/?q=${query}`;
-    case 'openstreetmap':
-      return `https://www.openstreetmap.org/search?query=${query}`;
-    case 'here':
-      return `https://wego.here.com/search/${query}`;
-    case 'bing':
-    default:
-      return `https://www.bing.com/maps?q=${query}`;
-  }
 }
 
 
@@ -639,8 +620,18 @@ interface ISponsorCardProps {
   isActive: boolean;
   /** Called when this card wants to show its popup. Parent cancels any pending hide timer. */
   onActivate: () => void;
+  /**
+   * Called on click or focus — activates the card immediately without any
+   * hover delay, and pins it so a subsequent mouse-leave does not auto-close.
+   */
+  onActivateNow: () => void;
   /** Called when the mouse/focus leaves this card or its popup. Parent starts the hide timer. */
   onScheduleDeactivate: () => void;
+  /**
+   * Called when the card is explicitly dismissed (outside-click, Escape,
+   * or the mobile drawer’s close button). Always closes regardless of pin state.
+   */
+  onForceDeactivate: () => void;
   /** Show business phone numbers in the contact details section. */
   showBusinessPhones: boolean;
   /** Show the mobile phone number in the contact details section. */
@@ -660,7 +651,7 @@ interface ISponsorCardProps {
   /** Optional Azure Maps subscription key used for inline preview. */
   azureMapsSubscriptionKey: string | undefined;
   /** External map provider used for fallback links. 'none' disables the link. */
-  externalMapProvider: 'bing' | 'google' | 'apple' | 'openstreetmap' | 'here' | 'none';
+  externalMapProvider: 'bing' | 'google' | 'apple' | 'openstreetmap' | 'none';
   /** Show the manager section below the contact details. */
   showManager: boolean;
   /** Show the presence status indicator (dot) and label. */
@@ -705,7 +696,9 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
   compact,
   isActive,
   onActivate,
+  onActivateNow,
   onScheduleDeactivate,
+  onForceDeactivate,
   showBusinessPhones,
   showMobilePhone,
   showWorkLocation,
@@ -878,6 +871,31 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
     return () => clearTimeout(timer);
   }, [isActive]);
 
+  // Pre-calculate whether the popover should open above or below the card tile.
+  // This is done once when isActive becomes true — before the Popover is mounted —
+  // so the position is stable throughout the expand animation and never flips.
+  // pinned: true on the Popover then locks that decision in for the lifetime of
+  // the popup (Fluent v9 PositioningProps).
+  //
+  // Estimated full height of the expanded contact card (header + actions +
+  // details + optional map + optional manager section). Conservative upper
+  // bound so the card doesn't clip at the bottom on typical screen heights.
+  const ESTIMATED_CARD_HEIGHT_PX = 560;
+  const [popoverSide, setPopoverSide] = React.useState<'above' | 'below'>('below');
+  React.useEffect(() => {
+    if (!isActive || !cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    // Prefer 'below'. Fall back to 'above' only when there is clearly more
+    // room above than below for the fully expanded card.
+    setPopoverSide(
+      spaceBelow >= ESTIMATED_CARD_HEIGHT_PX || spaceBelow >= spaceAbove
+        ? 'below'
+        : 'above'
+    );
+  }, [isActive]);
+
   // The rich card body is defined here so it can be placed inside either
   // a Popover (desktop) or an OverlayDrawer (mobile) without duplicating the JSX.
 
@@ -945,7 +963,7 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
             >
               <Button
                 as={guestHasTeamsAccess === false ? 'button' : 'a'}
-                href={guestHasTeamsAccess === false ? undefined : `https://teams.microsoft.com/l/chat/0/0?tenantId=${encodeURIComponent(hostTenantId)}&users=${encodeURIComponent(sponsor.mail)}`}
+                href={guestHasTeamsAccess === false ? undefined : `https://teams.cloud.microsoft/l/chat/0/0?tenantId=${encodeURIComponent(hostTenantId)}&users=${encodeURIComponent(sponsor.mail)}`}
                 disabledFocusable={guestHasTeamsAccess === false}
                 appearance="subtle"
                 icon={<ChatIcon />}
@@ -973,7 +991,7 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
             >
               <Button
                 as={guestHasTeamsAccess === false ? 'button' : 'a'}
-                href={guestHasTeamsAccess === false ? undefined : `https://teams.microsoft.com/l/call/0/0?tenantId=${encodeURIComponent(hostTenantId)}&users=${encodeURIComponent(sponsor.mail)}&withVideo=false`}
+                href={guestHasTeamsAccess === false ? undefined : `https://teams.cloud.microsoft/l/call/0/0?tenantId=${encodeURIComponent(hostTenantId)}&users=${encodeURIComponent(sponsor.mail)}&withVideo=false`}
                 disabledFocusable={guestHasTeamsAccess === false}
                 appearance="subtle"
                 icon={<CallIcon />}
@@ -1052,20 +1070,29 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
               </div>
               <CopyButton value={combinedAddress} ariaLabel={strings.CopyAddressAriaLabel} />
             </div>
-            {addressMapLink && azureMapsSubscriptionKey && (mapLoading || mapPreviewUrl) && (
+            {azureMapsSubscriptionKey && (mapLoading || mapPreviewUrl) && (
               <div className={richClasses.mapPreviewInline}>
                 {mapLoading && !mapPreviewUrl && (
                   <div className={richClasses.mapPreviewStatus}>{strings.AddressMapLoadingLabel}</div>
                 )}
                 {mapPreviewUrl && (
-                  <Link href={addressMapLink} target="_blank" rel="noreferrer noopener">
+                  addressMapLink ? (
+                    <Link href={addressMapLink} target="_blank" rel="noreferrer noopener">
+                      <img
+                        src={mapPreviewUrl}
+                        alt={strings.AddressMapSectionLabel}
+                        className={richClasses.mapPreviewImage}
+                        referrerPolicy="no-referrer"
+                      />
+                    </Link>
+                  ) : (
                     <img
                       src={mapPreviewUrl}
                       alt={strings.AddressMapSectionLabel}
                       className={richClasses.mapPreviewImage}
                       referrerPolicy="no-referrer"
                     />
-                  </Link>
+                  )
                 )}
               </div>
             )}
@@ -1120,9 +1147,9 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
         className={mergeClasses(compact ? cardClasses.cardCompact : cardClasses.card, readOnly ? cardClasses.cardReadOnly : '')}
         onMouseEnter={readOnly ? undefined : onActivate}
         onMouseLeave={readOnly ? undefined : onScheduleDeactivate}
-        onFocus={readOnly ? undefined : onActivate}
+        onFocus={readOnly ? undefined : onActivateNow}
         onBlur={readOnly ? undefined : onScheduleDeactivate}
-        onClick={readOnly ? undefined : onActivate}
+        onClick={readOnly ? undefined : onActivateNow}
         tabIndex={readOnly ? undefined : 0}
         role={readOnly ? undefined : 'button'}
         aria-label={resolvedName}
@@ -1147,7 +1174,7 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
         <OverlayDrawer
           open={isActive}
           position="bottom"
-          onOpenChange={(_, data) => { if (!data.open) onScheduleDeactivate(); }}
+          onOpenChange={(_, data) => { if (!data.open) onForceDeactivate(); }}
         >
           <FluentProvider theme={v9Theme}>
             <DrawerHeader>
@@ -1156,7 +1183,7 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
                   <Button
                     appearance="subtle"
                     icon={<DismissRegular />}
-                    onClick={onScheduleDeactivate}
+                    onClick={onForceDeactivate}
                     aria-label={strings.CloseLabel}
                   />
                 }
@@ -1175,12 +1202,15 @@ const SponsorCard: React.FC<ISponsorCardProps> = ({
           open
           positioning={{
             target: cardRef.current,
-            position: 'below',
+            position: popoverSide,
             align: 'start',
             offset: { mainAxis: 8 },
-            fallbackPositions: ['above'],
+            // pinned prevents Fluent's positioning engine from re-evaluating the
+            // flip axis while the card expands — the side chosen above is locked
+            // in for the entire lifetime of the popup.
+            pinned: true,
           }}
-          onOpenChange={(_, data) => { if (!data.open) onScheduleDeactivate(); }}
+          onOpenChange={(_, data) => { if (!data.open) onForceDeactivate(); }}
         >
           <PopoverSurface
             role="dialog"

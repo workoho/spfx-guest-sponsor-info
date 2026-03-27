@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026 Workoho GmbH <https://workoho.com>
 // SPDX-FileCopyrightText: 2026 Julian Pawlowski <https://github.com/jpawlowski>
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 
 import * as React from 'react';
 import { DisplayMode } from '@microsoft/sp-core-library';
-import { FluentProvider, MessageBar, MessageBarBody, Skeleton, SkeletonItem, makeStyles, mergeClasses, tokens, webLightTheme, webDarkTheme } from '@fluentui/react-components';
+import { FluentProvider, MessageBar, MessageBarBody, Skeleton, SkeletonItem, makeStyles, mergeClasses, tokens, typographyStyles, webLightTheme, webDarkTheme } from '@fluentui/react-components';
 import type { Theme } from '@fluentui/react-components';
 import { createV9Theme } from '@fluentui/react-migration-v8-v9';
 import { createDOMRenderer, RendererProvider } from '@griffel/react';
@@ -38,61 +38,66 @@ const useWebPartStyles = makeStyles({
     minHeight: '200px',
   },
   title: {
-    fontSize: tokens.fontSizeBase600,
-    fontWeight: tokens.fontWeightSemibold,
+    // Font size and weight are NOT set here — each size variant (titleH2, titleH3,
+    // titleH4, titleNormal) spreads the appropriate Fluent v9 typographyStyles entry
+    // so that font size, weight, and line-height all come from the design system.
+    // spacingVerticalL (16px) — half of the 35px Quick Links spacing, visually
+    // balanced between the title and the sponsor card grid.
     margin: `0 0 ${tokens.spacingVerticalL}`,
     color: tokens.colorNeutralForeground1,
-    '@container (max-width: 319px)': {
-      fontSize: tokens.fontSizeBase400,
-      marginBottom: tokens.spacingVerticalMNudge,
-    },
-    '@container (min-width: 320px) and (max-width: 479px)': {
-      fontSize: tokens.fontSizeBase500,
-      marginBottom: tokens.spacingVerticalM,
-    },
   },
   // Extra styles applied to the title only in edit mode: signals editability
-  // via a subtle dashed underline and a text cursor, matching the pattern used
-  // by modern Microsoft first-party web parts (e.g. Text, Quick Links).
+  // matching the pattern used by Microsoft first-party web parts (Quick Links).
   titleEditable: {
     cursor: 'text',
     outline: 'none',
-    borderRadius: tokens.borderRadiusSmall,
-    // minHeight ensures the empty title area remains visible when the
-    // ::before placeholder is not rendered (e.g. during first paint).
-    minHeight: '1.4em',
+    borderRadius: tokens.borderRadiusMedium,
+    // A transparent 1px border is always present so the layout does not shift
+    // when the border becomes visible on focus (border takes up the same space
+    // whether visible or not).
+    border: `1px solid transparent`,
+    // No padding — the text sits flush against the border, matching the
+    // behaviour of Microsoft Quick Links in edit mode.
+    // Only the top border needs compensation so the heading does not jump
+    // down by 1px when edit mode activates.
+    marginTop: '-1px',
+    // minHeight keeps the area visible and clickable when no title text exists.
+    minHeight: '1.2em',
+    // Placeholder via :empty — works reliably because the onInput handler
+    // clears innerHTML (removing any browser-inserted <br>) whenever the text
+    // content is empty, ensuring this selector always matches.
     '&:empty::before': {
       content: 'attr(data-placeholder)',
-      color: tokens.colorNeutralForeground4,
-    },
-    '&:hover': {
-      backgroundColor: tokens.colorNeutralBackground2,
+      // colorNeutralForeground3 maps to the SharePoint theme's neutralTertiary
+      // (~#B1AFAD in the default Office theme) — matching Microsoft's own
+      // placeholder style in first-party web parts like Quick Links.
+      color: tokens.colorNeutralForeground3,
     },
     '&:focus': {
-      backgroundColor: tokens.colorNeutralBackground2,
-      boxShadow: `inset 0 0 0 2px ${tokens.colorBrandStroke1}`,
+      border: `1px solid ${tokens.colorBrandStroke1}`,
     },
   },
-  // Optional font-size overrides — applied on top of the base `title` class.
-  // Only the overriding font-size atoms need to be listed; other atoms from
-  // `title` (weight, margin, color) are unchanged.
-  titleSmall: {
-    fontSize: tokens.fontSizeBase500,
-    '@container (max-width: 319px)': {
-      fontSize: tokens.fontSizeBase200,
-    },
-    '@container (min-width: 320px) and (max-width: 479px)': {
-      fontSize: tokens.fontSizeBase300,
-    },
+  // Typography variant classes applied on top of the base `title` class.
+  // Each class spreads the matching Fluent v9 typographyStyles entry so that
+  // font-size, font-weight, and line-height all come from the design system.
+  // Responsive font-size overrides shrink the text on narrow containers.
+  titleH2: {
+    // title2: fontSizeHero700 = 28px, semibold — matches Quick Links "Heading 2"
+    ...typographyStyles.title2,
   },
-  titleLarge: {
-    fontSize: tokens.fontSizeHero700,
-    '@container (max-width: 319px)': {
-      fontSize: tokens.fontSizeBase500,
-    },
-    '@container (min-width: 320px) and (max-width: 479px)': {
-      fontSize: tokens.fontSizeBase600,
-    },
+  titleH3: {
+    // title3: fontSizeBase600 = 24px, semibold — matches Quick Links "Heading 3"
+    ...typographyStyles.title3,
+  },
+  titleH4: {
+    // subtitle1: fontSizeBase500 = 20px, semibold — matches Quick Links "Heading 4"
+    ...typographyStyles.subtitle1,
+  },
+  titleNormal: {
+    // 18 px regular — between subtitle1 (20 px) and subtitle2 (16 px), matches
+    // the Quick Links "Normal" size which is not a standard Fluent token.
+    fontSize: '18px',
+    fontWeight: tokens.fontWeightRegular,
   },
   sponsorGrid: {
     display: 'grid',
@@ -179,7 +184,7 @@ interface ISponsorListProps {
   showPostalCode: boolean;
   showState: boolean;
   azureMapsSubscriptionKey: string | undefined;
-  externalMapProvider: 'bing' | 'google' | 'apple' | 'openstreetmap' | 'here' | 'none';
+  externalMapProvider: 'bing' | 'google' | 'apple' | 'openstreetmap' | 'none';
   showManager: boolean;
   showPresence: boolean;
   showSponsorJobTitle: boolean;
@@ -205,29 +210,74 @@ const SponsorList: React.FC<ISponsorListProps> = ({ sponsors, hostTenantId, comp
   const [activeId, setActiveId] = React.useState<string | null>(null);
   const showTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Synchronous mirror of activeId — readable inside callbacks without stale closure.
+  const activeIdRef = React.useRef<string | null>(null);
+  // True while the currently active card was opened by an explicit click or focus.
+  // When pinned, mouse-leave and blur do NOT schedule a deactivation, so the user
+  // can move the cursor freely without accidentally closing the card.
+  const isPinned = React.useRef(false);
   const classes = useWebPartStyles();
 
+  // Delayed activation — hover path (500 ms delay).
+  // Bails out early when the same card is already showing, so a re-enter after a
+  // brief mouse-leave on the Popover surface does not restart the animation.
   const activate = (id: string): void => {
     if (hideTimeout.current) { clearTimeout(hideTimeout.current); hideTimeout.current = null; }
-    if (showTimeout.current) return; // already pending for this or another card
+    if (activeIdRef.current === id) return; // already showing — nothing to do
+    if (showTimeout.current) return;         // timer already running
     showTimeout.current = setTimeout(() => {
       showTimeout.current = null;
+      isPinned.current = false;
+      activeIdRef.current = id;
       setActiveId(id);
       onActiveCardChange?.(true);
     }, 500);
   };
+
+  // Immediate activation — click / focus path.
+  // Cancels any pending hover timer and shows the card synchronously.
+  // Clicking the same card twice is a no-op (no toggling).
+  const activateNow = (id: string): void => {
+    if (hideTimeout.current) { clearTimeout(hideTimeout.current); hideTimeout.current = null; }
+    if (showTimeout.current) { clearTimeout(showTimeout.current); showTimeout.current = null; }
+    if (activeIdRef.current === id) return; // same card — don't toggle
+    isPinned.current = true;
+    activeIdRef.current = id;
+    setActiveId(id);
+    onActiveCardChange?.(true);
+  };
+
+  // Schedule deactivation — mouse-leave / blur path.
+  // Ignored while a card is pinned (click-activated), so mouse movement over
+  // other elements after a click does not accidentally close the card.
   const scheduleDeactivate = (): void => {
     if (showTimeout.current) { clearTimeout(showTimeout.current); showTimeout.current = null; }
+    if (isPinned.current) return; // card was pinned by click — don't auto-close
     hideTimeout.current = setTimeout(() => {
+      isPinned.current = false;
+      activeIdRef.current = null;
       setActiveId(null);
       onActiveCardChange?.(false);
     }, 150);
+  };
+
+  // Forceful deactivation — explicit dismiss path (outside-click, Escape key,
+  // mobile drawer close button). Always closes regardless of pin state.
+  const forceDeactivate = (): void => {
+    if (showTimeout.current) { clearTimeout(showTimeout.current); showTimeout.current = null; }
+    if (hideTimeout.current) { clearTimeout(hideTimeout.current); hideTimeout.current = null; }
+    isPinned.current = false;
+    activeIdRef.current = null;
+    setActiveId(null);
+    onActiveCardChange?.(false);
   };
 
   React.useEffect(() => {
     return () => {
       if (showTimeout.current) clearTimeout(showTimeout.current);
       if (hideTimeout.current) clearTimeout(hideTimeout.current);
+      isPinned.current = false;
+      activeIdRef.current = null;
       onActiveCardChange?.(false);
     };
   }, [onActiveCardChange]);
@@ -242,7 +292,9 @@ const SponsorList: React.FC<ISponsorListProps> = ({ sponsors, hostTenantId, comp
             compact={compact}
             isActive={!readOnly && activeId === sponsor.id}
             onActivate={readOnly ? () => undefined : () => activate(sponsor.id)}
+            onActivateNow={readOnly ? () => undefined : () => activateNow(sponsor.id)}
             onScheduleDeactivate={readOnly ? () => undefined : scheduleDeactivate}
+            onForceDeactivate={readOnly ? () => undefined : forceDeactivate}
             readOnly={readOnly}
             showBusinessPhones={showBusinessPhones}
             showMobilePhone={showMobilePhone}
@@ -364,6 +416,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   isExternalGuestUser,
   displayMode,
   title,
+  showTitle,
   titleSize,
   mockMode,
   mockSponsorCount,
@@ -400,12 +453,16 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   showSponsorPhoto,
   showManagerPhoto,
   useInformalAddress,
+  sponsorFilter,
+  requireUserMailbox,
   clientVersion,
   onProxyStatusChange,
   onVersionMismatch,
   onTitleChange,
   welcomeSeen,
   onWelcomeComplete,
+  onWelcomeSkip,
+  onWelcomeFinish,
   fluentProviderId,
   theme,
 }) => {
@@ -445,15 +502,30 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   const [guestHasTeamsAccess, setGuestHasTeamsAccess] = React.useState<boolean | undefined>(undefined);
   const [versionMismatch, setVersionMismatch] = React.useState(false);
 
-  // First-run welcome wizard: shown in edit mode until the admin completes or skips it.
-  // The flag is stored in the web part property bag (SharePoint) so it is shared across
-  // all users and devices — once any editor dismisses the wizard, it stays gone.
+  // First-run welcome wizard: shown in edit mode until the admin completes it.
+  // Skipping does NOT set the flag — the wizard reappears each edit session until
+  // the admin actually chooses API or Demo mode. The flag is stored in the web part
+  // property bag (SharePoint) so it is shared across all users and devices.
   const [showWelcomeDialog, setShowWelcomeDialog] = React.useState<boolean>(
     isEditMode && !welcomeSeen
   );
-  const handleWelcomeComplete = (config: import('./IGuestSponsorInfoProps').IWelcomeSetupConfig): void => {
+  // handleWelcomeCommit: saves the wizard result to web part properties but does NOT
+  // close the dialog — the wizard advances to the Done step first so the admin sees
+  // a genuine post-save confirmation before the pane opens.
+  const handleWelcomeCommit = (config: import('./IGuestSponsorInfoProps').IWelcomeSetupConfig): void => {
     onWelcomeComplete(config);
+  };
+  const handleWelcomeDismiss = (): void => {
     setShowWelcomeDialog(false);
+    // Open the property pane now that the wizard is gone so the admin can
+    // review and fine-tune all settings.
+    onWelcomeFinish();
+  };
+  // handleWelcomeSkip: X button or "Not now" — closes the dialog without
+  // committing and delegates to the host to open the property pane.
+  const handleWelcomeSkip = (): void => {
+    setShowWelcomeDialog(false);
+    onWelcomeSkip();
   };
   // Signed token issued by getGuestSponsors; passed to getPresence so the function
   // can validate sponsor IDs without server-side state or extra Graph calls.
@@ -525,7 +597,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
     setVersionMismatch(false);
     setGuestHasTeamsAccess(undefined);
 
-    getSponsorsViaProxy(functionUrl, aadHttpClient, clientVersion)
+    getSponsorsViaProxy(functionUrl, aadHttpClient, clientVersion, sponsorFilter, requireUserMailbox)
       .then(result => {
         if (!cancelled) {
           // Sponsor photos are bundled in the proxy response; keep them as-is.
@@ -595,7 +667,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
       });
 
     return () => { cancelled = true; };
-  }, [isGuest, isEditMode, mockMode, mockSponsorCount, functionUrl, aadHttpClient, clientVersion, retryCount]);
+  }, [isGuest, isEditMode, mockMode, mockSponsorCount, functionUrl, aadHttpClient, clientVersion, sponsorFilter, requireUserMailbox, retryCount]);
 
   // Presence refresh: poll faster while a card is actively open and the tab is visible,
   // but back off when the tab is hidden to reduce Graph traffic.
@@ -696,7 +768,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
       return (
         <RendererProvider renderer={griffelRenderer}>
         <FluentProvider theme={v9Theme} id={`${fluentProviderId}-edit`}>
-          <WelcomeDialog open onComplete={handleWelcomeComplete} />
+          <WelcomeDialog open onCommit={handleWelcomeCommit} onSkip={handleWelcomeSkip} onDismiss={handleWelcomeDismiss} semver={clientVersion?.split('.').slice(0, 3).join('.')} />
         </FluentProvider>
         </RendererProvider>
       );
@@ -723,17 +795,27 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
       <RendererProvider renderer={griffelRenderer}>
       <FluentProvider theme={v9Theme} id={`${fluentProviderId}-edit`}>
         <section className={classes.webPart}>
-          {title || isEditMode ? (
+          {(showTitle ?? true) && (title || isEditMode) ? (
             <h2
               className={mergeClasses(
                 classes.title,
-                titleSize === 'small' && classes.titleSmall,
-                titleSize === 'large' && classes.titleLarge,
+                titleSize === 'h2' && classes.titleH2,
+                titleSize === 'h3' && classes.titleH3,
+                titleSize === 'h4' && classes.titleH4,
+                titleSize === 'normal' && classes.titleNormal,
                 isEditMode && classes.titleEditable,
               )}
               contentEditable={isEditMode ? 'true' : undefined}
               suppressContentEditableWarning={isEditMode || undefined}
               data-placeholder={strings.TitlePlaceholder}
+              onInput={isEditMode ? (e) => {
+                // Browsers insert a <br> when the last character is deleted,
+                // which prevents :empty from matching and hides the placeholder.
+                // Clearing innerHTML when the visible text is gone fixes this.
+                if ((e.currentTarget.textContent ?? '').trim() === '') {
+                  e.currentTarget.innerHTML = '';
+                }
+              } : undefined}
               onBlur={isEditMode ? (e) => onTitleChange?.(e.currentTarget.textContent?.trim() ?? '') : undefined}
             >
               {/* Render undefined (not empty string) when title is blank so :empty CSS matches */}
@@ -841,11 +923,13 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
     <RendererProvider renderer={griffelRenderer}>
     <FluentProvider theme={v9Theme} id={`${fluentProviderId}-view`}>
       <section className={contentClassNames}>
-        {title && (
+        {(showTitle ?? true) && title && (
           <h2 className={mergeClasses(
             classes.title,
-            titleSize === 'small' && classes.titleSmall,
-            titleSize === 'large' && classes.titleLarge,
+            titleSize === 'h2' && classes.titleH2,
+            titleSize === 'h3' && classes.titleH3,
+            titleSize === 'h4' && classes.titleH4,
+            titleSize === 'normal' && classes.titleNormal,
           )}>
             {title}
           </h2>

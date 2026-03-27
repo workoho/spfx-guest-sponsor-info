@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Workoho GmbH <https://workoho.com>
 // SPDX-FileCopyrightText: 2026 Julian Pawlowski <https://github.com/jpawlowski>
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 
 import { AadHttpClient } from '@microsoft/sp-http';
 import { ISponsor } from './ISponsor';
@@ -84,12 +84,20 @@ export async function pingProxy(
 export async function getSponsorsViaProxy(
   proxyUrl: string,
   aadHttpClient: AadHttpClient,
-  clientVersion?: string
+  clientVersion?: string,
+  sponsorFilter?: 'any' | 'exchange' | 'teams',
+  requireUserMailbox?: boolean
 ): Promise<ISponsorsResult> {
+  // Append sponsor eligibility filter parameters as query string values.
+  // The Azure Function validates them server-side before use.
+  const url = new URL(proxyUrl);
+  url.searchParams.set('sponsorFilter', sponsorFilter ?? 'teams');
+  url.searchParams.set('requireUserMailbox', String(requireUserMailbox ?? true));
+
   const options = clientVersion
     ? { headers: { 'X-Client-Version': clientVersion } }
     : undefined;
-  const response = await aadHttpClient.get(proxyUrl, AadHttpClient.configurations.v1, options);
+  const response = await aadHttpClient.get(url.toString(), AadHttpClient.configurations.v1, options);
   const functionVersion = response.headers.get('x-api-version') ?? undefined;
   if (!response.ok) {
     let reasonCode: string | undefined;

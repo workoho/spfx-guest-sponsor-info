@@ -49,8 +49,8 @@
       },
       "officeFabricIconFontName": "People",
       "properties": {
-        "title": "My Sponsors",
-        "titleSize": "medium"
+        "showTitle": true,
+        "titleSize": "h2"
       }
     }
   ]

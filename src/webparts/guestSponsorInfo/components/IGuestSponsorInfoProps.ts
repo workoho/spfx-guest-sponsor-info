@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Workoho GmbH <https://workoho.com>
 // SPDX-FileCopyrightText: 2026 Julian Pawlowski <https://github.com/jpawlowski>
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 
 import { AadHttpClient } from '@microsoft/sp-http';
 import { DisplayMode } from '@microsoft/sp-core-library';
@@ -34,8 +34,10 @@ export interface IGuestSponsorInfoProps {
   photoUrl: string | undefined;
   /** Optional heading shown above the sponsor cards. */
   title: string;
-  /** Size of the title. Defaults to 'medium' (24 px, Subtitle1). */
-  titleSize?: 'small' | 'medium' | 'large';
+  /** Show or hide the heading above the sponsor cards. Default: true. */
+  showTitle?: boolean;
+  /** Size of the title. Defaults to 'h2' (28 px). */
+  titleSize?: 'h2' | 'h3' | 'h4' | 'normal';
   /**
    * When true, the web part behaves as if the current user is a guest and
    * renders fictitious sponsor cards from MockSponsorService instead of
@@ -100,10 +102,24 @@ export interface IGuestSponsorInfoProps {
   showPostalCode: boolean;
   /** Show the sponsor's state or province. Default: false. */
   showState: boolean;
+  /**
+   * Sponsor license eligibility filter applied server-side by the Azure Function.
+   *   'any'      — sponsor must have at least one active license (Enabled or Warning)
+   *   'exchange' — sponsor must have an active Exchange Online plan
+   *   'teams'    — sponsor must have an active Microsoft Teams plan (default)
+   */
+  sponsorFilter: 'any' | 'exchange' | 'teams';
+  /**
+   * When true (default), the Function checks mailboxSettings.userPurpose to ensure
+   * the sponsor has a personal user mailbox (not a shared/room/equipment mailbox).
+   * Requires MailboxSettings.Read; falls back to fail-open when not granted.
+   * When false, an active Exchange Online license is used as a mailbox proxy instead.
+   */
+  requireUserMailbox: boolean;
   /** Optional Azure Maps key used for inline map preview. */
   azureMapsSubscriptionKey: string | undefined;
   /** External map provider used for fallback links. */
-  externalMapProvider: 'bing' | 'google' | 'apple' | 'openstreetmap' | 'here' | 'none';
+  externalMapProvider: 'bing' | 'google' | 'apple' | 'openstreetmap' | 'none';
   /** Show the manager section in the contact card. */
   showManager: boolean;
   /** Show the presence status indicator and label. Default: true. */
@@ -160,6 +176,18 @@ export interface IGuestSponsorInfoProps {
    * to save the page once to apply all settings.
    */
   onWelcomeComplete: (config: IWelcomeSetupConfig) => void;
+  /**
+   * Called when the admin skips the wizard via the X button or "Not now".
+   * The web part class should open the property pane so the admin has a direct
+   * path to configure the web part manually.
+   */
+  onWelcomeSkip: () => void;
+  /**
+   * Called when the admin clicks "Let's go" on the Done step (after committing).
+   * The wizard is about to close; the web part class should open the property
+   * pane so the admin can review their settings.
+   */
+  onWelcomeFinish: () => void;
   /**
    * Unique prefix derived from the SPFx web part instance ID.
    * Passed as `id` to every FluentProvider so multiple web part instances

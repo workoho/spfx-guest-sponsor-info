@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Workoho GmbH <https://workoho.com>
 // SPDX-FileCopyrightText: 2026 Julian Pawlowski <https://github.com/jpawlowski>
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 
 // Mock Fluent UI v9 components so they render inline (avoids portal / ResizeObserver issues).
 // All rendered children are still fully exercised.
@@ -193,8 +193,10 @@ function render(
   showSponsorPhoto = true,
   showManagerPhoto = true,
   azureMapsSubscriptionKey: string | undefined = undefined,
-  externalMapProvider: 'bing' | 'google' | 'apple' | 'openstreetmap' | 'here' = 'bing',
-  compact = false
+  externalMapProvider: 'bing' | 'google' | 'apple' | 'openstreetmap' | 'none' = 'bing',
+  compact = false,
+  onActivateNow = jest.fn(),
+  onForceDeactivate = jest.fn()
 ): void {
   act(() => {
     ReactDOM.render(
@@ -204,7 +206,9 @@ function render(
         compact={compact}
         isActive={isActive}
         onActivate={onActivate}
+        onActivateNow={onActivateNow}
         onScheduleDeactivate={onScheduleDeactivate}
+        onForceDeactivate={onForceDeactivate}
         showBusinessPhones={showBusinessPhones}
         showMobilePhone={showMobilePhone}
         showWorkLocation={showWorkLocation}
@@ -347,12 +351,14 @@ describe('SponsorCard', () => {
       expect(onScheduleDeactivate).toHaveBeenCalled();
     });
 
-    it('calls onActivate when the card is clicked (tap on touch devices)', () => {
-      const onActivate = jest.fn();
-      render(BASE_SPONSOR, 'test-tenant-id', false, onActivate);
+    it('calls onActivateNow when the card is clicked (tap on touch devices)', () => {
+      const onActivateNow = jest.fn();
+      render(BASE_SPONSOR, 'test-tenant-id', false, jest.fn(), jest.fn(), true, true, true,
+        false, false, false, false, false, true, true, false, true, true, false, false,
+        true, true, undefined, 'bing', false, onActivateNow);
       const card = container.querySelector('[role="button"]') as HTMLElement;
       act(() => { card.click(); });
-      expect(onActivate).toHaveBeenCalled();
+      expect(onActivateNow).toHaveBeenCalled();
     });
 
     it('shows the mobile phone when present and business phones are absent', () => {
@@ -374,7 +380,7 @@ describe('SponsorCard', () => {
     it('renders a Teams chat link and a Teams call link when mail is present', () => {
       const tenantId = 'aaaabbbb-0000-0000-0000-000000000001';
       render(BASE_SPONSOR, tenantId, true);
-      const links = Array.from(container.querySelectorAll('[role="dialog"] a[href*="teams.microsoft.com"]'));
+      const links = Array.from(container.querySelectorAll('[role="dialog"] a[href*="teams.cloud.microsoft"]'));
       expect(links).toHaveLength(2);
 
       const chatLink = links.find(l => l.getAttribute('href')!.includes('/l/chat/'));
@@ -398,13 +404,13 @@ describe('SponsorCard', () => {
 
     it('does not render Teams links when mail is absent', () => {
       render({ ...BASE_SPONSOR, mail: undefined }, 'test-tenant-id', true);
-      const links = container.querySelectorAll('[role="dialog"] a[href*="teams.microsoft.com"]');
+      const links = container.querySelectorAll('[role="dialog"] a[href*="teams.cloud.microsoft"]');
       expect(links).toHaveLength(0);
     });
 
     it('does not render Teams Chat or Call links when hasTeams is false', () => {
       render({ ...BASE_SPONSOR, hasTeams: false }, 'test-tenant-id', true);
-      const links = container.querySelectorAll('[role="dialog"] a[href*="teams.microsoft.com"]');
+      const links = container.querySelectorAll('[role="dialog"] a[href*="teams.cloud.microsoft"]');
       expect(links).toHaveLength(0);
     });
 
@@ -550,6 +556,55 @@ describe('SponsorCard', () => {
       expect(globalThis.fetch).toHaveBeenCalled();
       const preview = container.querySelector('img[src*="atlas.microsoft.com/map/static/png"]');
       expect(preview).not.toBeNull();
+    });
+
+    it('renders Azure Maps preview even when external map link is disabled', async () => {
+      globalThis.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          results: [{ type: 'Point Address', position: { lat: 48.1371, lon: 11.5754 } }],
+        }),
+      }) as unknown as typeof fetch;
+
+      render(
+        {
+          ...BASE_SPONSOR,
+          streetAddress: 'Musterstrasse 10',
+          city: 'Munich',
+          country: 'Germany',
+        },
+        'test-tenant-id',
+        true,
+        jest.fn(),
+        jest.fn(),
+        true,
+        true,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        true,
+        true,
+        false,
+        true,
+        false,
+        false,
+        false,
+        true,
+        true,
+        'test-azure-maps-key',
+        'none'
+      );
+
+      await flushAsync();
+
+      expect(globalThis.fetch).toHaveBeenCalled();
+      const preview = container.querySelector('img[src*="atlas.microsoft.com/map/static/png"]');
+      expect(preview).not.toBeNull();
+      const mapLink = container.querySelector('a[href*="google.com/maps/search"], a[href*="bing.com/maps"], a[href*="maps.apple.com"], a[href*="openstreetmap.org"]');
+      expect(mapLink).toBeNull();
     });
 
     it('renders Azure Maps preview for city-only address (Geography/Municipality)', async () => {
@@ -715,12 +770,12 @@ describe('SponsorCard', () => {
         true,
         true,
         'test-azure-maps-key',
-        'here'
+        'google'
       );
 
       await flushAsync();
 
-      const link = container.querySelector('a[href*="wego.here.com/search/"]');
+      const link = container.querySelector('a[href*="google.com/maps/search"]');
       expect(link).not.toBeNull();
       const preview = container.querySelector('img[src*="atlas.microsoft.com/map/static/png"]');
       expect(preview).toBeNull();

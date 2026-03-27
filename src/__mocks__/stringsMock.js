@@ -1,13 +1,13 @@
 // SPDX-FileCopyrightText: 2026 Workoho GmbH <https://workoho.com>
 // SPDX-FileCopyrightText: 2026 Julian Pawlowski <https://github.com/jpawlowski>
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 
 // CommonJS equivalent of loc/en-us.js.
 // The original locale file uses the AMD define() pattern which jest cannot evaluate
 // in a CommonJS test environment. This shim exposes the same strings via module.exports.
 module.exports = {
-  PropertyPaneDescription: 'Configure the Guest Sponsor Info web part.',
   BasicGroupName: 'Settings',
+  ShowTitleFieldLabel: 'Show title',
   TitleFieldLabel: 'Title',
   LoadingMessage: 'Loading your sponsors\u2026',
   NoSponsorsTitle: 'No sponsors found',
@@ -19,6 +19,8 @@ module.exports = {
   ErrorMessage: 'Could not load sponsor information. Please try again later.',
   EditModePlaceholder: 'Guest Sponsor Info \u2014 switch to view mode to see sponsors.',
   GuestOnlyPlaceholder: 'This web part is only visible to guest users in view mode.',
+  MockModeFieldLabel: 'Enable public demo mode for internal users',
+  MockModeFieldDescription: 'Applies only to the live page for visitors. In edit mode, the preview does not change.',
 
   PresenceAvailable: 'Available',
   PresenceAvailableIdle: 'Available, Idle',
@@ -60,9 +62,7 @@ module.exports = {
   ShowStateFieldLabel: 'Show state',
   LocationDisplayHintAddressEnabled: 'Structured address fields are enabled and can be shown in additional rows.',
   LocationDisplayHintSeparateRows: 'City/country and work location are shown as separate rows when enabled.',
-  LocationDisplayHintHidden: 'All location fields are hidden.',
   AdvancedDisplayGroupName: 'Advanced display options',
-  ManagerOptionsDisabledHint: 'Enable "Show manager" to configure manager-specific fields.',
 
   OrganizationSection: 'Organization',
   ManagerLabel: 'Manager',
@@ -83,16 +83,28 @@ module.exports = {
 
   ShowAddressMapFieldLabel: 'Show address map preview',
   AzureMapsSubscriptionKeyFieldLabel: 'Azure Maps subscription key',
+  MapProviderModeAutoLabel: 'Auto mode (recommended)',
+  MapProviderModeManualLabel: 'Manual (same for all devices)',
+  MapProviderModeHint: 'Choose a map provider for each operating system, including iOS and Android. Links open in the browser or the provider\'s app if installed.',
+  MapProviderIosLabel: 'iOS:',
+  MapProviderAndroidLabel: 'Android:',
+  MapProviderWindowsLabel: 'Windows:',
+  MapProviderMacOSLabel: 'macOS:',
+  MapProviderLinuxLabel: 'Linux:',
   ExternalMapProviderFieldLabel: 'External map provider fallback',
   MapProviderBingOption: 'Bing Maps',
   MapProviderGoogleOption: 'Google Maps',
   MapProviderAppleOption: 'Apple Maps',
   MapProviderOpenStreetMapOption: 'OpenStreetMap',
-  MapProviderHereOption: 'HERE WeGo',
   MapProviderNoneOption: 'Disabled (no map link)',
   AddressMapProviderHint: 'Enable at least city and country — that is sufficient for any map provider to show a meaningful location.',
+  AzureMapsPreviewHint:
+    'Optional: Add your Azure Maps subscription key to show a small inline map preview in the contact section. If you deployed the Guest Sponsor API, an Azure Maps account was included — copy the key from its Authentication settings. Without a key, only the map link above is shown.',
   AddressMapFallbackHint: 'If no Azure Maps key is configured or map lookup fails, an external map link is shown.',
   UseInformalAddressFieldLabel: 'Use informal salutation (du/tu)',
+
+  SponsorEligibilityGroupName: 'Sponsor Eligibility',
+  SponsorEligibilityGroupHint: 'Sponsor assignments in Microsoft Entra are maintained by your organization and may not always be accurate. These filters help improve the quality of sponsors shown to guests and prevent unintended information disclosure caused by incorrect assignments.',
 
   VersionMismatchTitle: 'Update available',
   VersionMismatchMessage: 'A web part update is available. Ask your administrator to ensure the web part and the Azure Function are running the same version.',

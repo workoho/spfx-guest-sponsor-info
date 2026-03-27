@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Workoho GmbH <https://workoho.com>
 // SPDX-FileCopyrightText: 2026 Julian Pawlowski <https://github.com/jpawlowski>
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
@@ -97,6 +97,8 @@ function renderWebPart(overrides: Partial<IGuestSponsorInfoProps> = {}): void {
     showStreetAddress: false,
     showPostalCode: false,
     showState: false,
+    sponsorFilter: 'teams',
+    requireUserMailbox: true,
     azureMapsSubscriptionKey: undefined,
     externalMapProvider: 'bing',
     showManager: true,
@@ -115,6 +117,8 @@ function renderWebPart(overrides: Partial<IGuestSponsorInfoProps> = {}): void {
     clientVersion: '0.0.1',
     welcomeSeen: false,
     onWelcomeComplete: () => undefined,
+    onWelcomeSkip: () => undefined,
+    onWelcomeFinish: () => undefined,
     fluentProviderId: 'gsi-test',
   };
   ReactDOM.render(<GuestSponsorInfo {...defaults} {...overrides} />, container);
