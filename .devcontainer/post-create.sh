@@ -95,6 +95,29 @@ fi
 # print a combined summary at the very end of this script instead.
 _CALLOUT_SUPPRESS=1 bash scripts/bootstrap.sh
 
+# Install Jekyll gems for local website development.
+# GEM_HOME keeps gems in user space so no sudo is needed.
+export GEM_HOME="${HOME}/.gems"
+export PATH="${GEM_HOME}/bin:${PATH}"
+if [[ -f website/Gemfile ]]; then
+  echo "Installing Jekyll gems for local website development..."
+  if (cd website && bundle install --jobs 4 --retry 2 2>&1); then
+    echo "${C_GRN}✓${C_RST} Jekyll gems installed."
+  else
+    warn "Jekyll gem installation failed." \
+      "Run 'cd website && bundle install' to retry."
+  fi
+fi
+# Persist GEM_HOME on PATH for interactive shells.
+if ! grep -q 'GEM_HOME' "${HOME}/.bashrc" 2>/dev/null; then
+  # SC2016: single quotes intentional — variables must expand at shell startup.
+  # shellcheck disable=SC2016
+  {
+    echo 'export GEM_HOME="${HOME}/.gems"'
+    echo 'export PATH="${GEM_HOME}/bin:${PATH}"'
+  } >>"${HOME}/.bashrc"
+fi
+
 # Ensure Husky git hooks are properly initialized in dev-container.
 # set in the environment, which would leave core.hooksPath pointing to whatever
 # it was before (possibly a stale or incorrect value). Explicitly setting it
@@ -131,6 +154,8 @@ echo "  Node     $(node --version)"
 echo "  npm      $(npm --version)"
 echo "  Yeoman   $(yo --version)"
 echo "  SPFx     $(npm view @microsoft/generator-sharepoint version)"
+echo "  Ruby     $(ruby --version 2>/dev/null | awk '{print $2}' || echo "(not found)")"
+echo "  Jekyll   $(jekyll --version 2>/dev/null | awk '{print $2}' || echo "(not installed)")"
 echo "  Bicep    $(az bicep version 2>/dev/null || echo "(not installed)")"
 
 # Repeat collected warnings so they are visible after the version summary.
@@ -149,4 +174,5 @@ else
 fi
 
 next_steps "${C_BLD}./scripts/dev-webpart.sh${C_RST}    # start the SPFx dev server" \
-  "${C_BLD}./scripts/dev-function.sh${C_RST}   # start the Azure Function locally"
+  "${C_BLD}./scripts/dev-function.sh${C_RST}   # start the Azure Function locally" \
+  "${C_BLD}./scripts/dev-website.sh${C_RST}    # start the Jekyll website locally"
