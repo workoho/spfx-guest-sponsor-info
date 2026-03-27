@@ -2,7 +2,7 @@
 layout: page
 lang: de
 title: Impressum
-permalink: /de/impressum/
+permalink: /de/imprint/
 description: >-
   Impressum der Workoho GmbH — Angaben gemäß § 5 TMG für das
   Guest Sponsor Info Projekt.
