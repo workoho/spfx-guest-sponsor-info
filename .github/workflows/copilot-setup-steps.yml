@@ -26,6 +26,9 @@ jobs:
 
       # Install Yeoman and the SPFx generator globally so the agent can
       # scaffold a new web part from scratch if needed (e.g. blueprint use).
-      # Versions are pinned to match the devcontainer (post-create.sh).
+      # Versions are derived from package.json config for a single source of truth.
       - name: Install Yeoman and SPFx generator
-        run: npm install --global yo@7.0.0 @microsoft/generator-sharepoint@1.22.2
+        run: |
+          SPFX_VERSION="$(node -p "require('./package.json').config?.spfxVersion || require('./package.json').dependencies['@microsoft/sp-core-library']")"
+          YO_VERSION="$(node -p "require('./package.json').config?.yoVersion || '7.0.0'")"
+          npm install --global "yo@${YO_VERSION}" "@microsoft/generator-sharepoint@${SPFX_VERSION}"

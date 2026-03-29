@@ -66,14 +66,20 @@ jobs:
       # The script reads GIT_CLIFF_VERSION from scripts/release-notes.sh and
       # auto-installs the git-cliff binary on first run — no separate action needed.
       - name: Generate release notes
+        env:
+          FORCE_COLOR_IN_CI: "1"
         run: ./scripts/release-notes.sh --latest > RELEASE_NOTES.md
 
       # Stamp the version into package.json and config/package-solution.json.
       - name: Stamp version
+        env:
+          FORCE_COLOR_IN_CI: "1"
         run: ./scripts/set-version.sh "${{ github.ref_name }}"
 
       # Full production build: npm ci → compile/bundle/test → package .sppkg
       - name: Build and package
+        env:
+          FORCE_COLOR_IN_CI: "1"
         run: ./scripts/build.sh
 
       # Build the Azure Function ZIP package.
