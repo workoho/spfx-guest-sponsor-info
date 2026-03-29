@@ -14,7 +14,7 @@
 
 $ErrorActionPreference = 'Stop'
 
-$APP_DISPLAY_NAME = 'Guest Sponsor Info – SharePoint Web Part Auth'
+$APP_DISPLAY_NAME = 'Guest Sponsor Info - SharePoint Web Part Auth'
 $APP_DESCRIPTION = @(
   'EasyAuth identity provider for the "Guest Sponsor Info"',
   'SharePoint Online web part (SPFx). Authenticates requests from the',

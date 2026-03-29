@@ -5,7 +5,7 @@
 
 .DESCRIPTION
     Idempotent script that ensures an App Registration named
-    "Guest Sponsor Info – SharePoint Web Part Auth" exists with the
+    "Guest Sponsor Info - SharePoint Web Part Auth" exists with the
     correct configuration:
 
       - Supported account types: single tenant (AzureADMyOrg)
@@ -24,7 +24,7 @@
 
 .PARAMETER DisplayName
     Display name for the App Registration. Defaults to
-    "Guest Sponsor Info – SharePoint Web Part Auth".
+    "Guest Sponsor Info - SharePoint Web Part Auth".
 
 .EXAMPLE
     ./setup-app-registration.ps1 -TenantId "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy"
@@ -36,8 +36,8 @@
     <https://polyformproject.org/licenses/shield/1.0.0>
 #>
 param(
-  [Parameter(Mandatory)][string]$TenantId,
-  [string]$DisplayName = 'Guest Sponsor Info – SharePoint Web Part Auth'
+  [string]$TenantId,
+  [string]$DisplayName = 'Guest Sponsor Info - SharePoint Web Part Auth'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -67,6 +67,33 @@ foreach ($module in @(
     Install-Module $module -Scope CurrentUser -Force
   }
   Import-Module $module
+}
+
+# ── Interactive parameter prompts ─────────────────────────────────────────────
+# Each prompt shows a title, a short description, and where to find the value,
+# then re-prompts until a valid GUID is entered.
+$_guidPattern = '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+
+if (-not $TenantId) {
+  Write-Host ''
+  Write-Host '  Required: Entra Tenant ID' -ForegroundColor Cyan
+  Write-Host '  ───────────────────────────────────────────────────────' -ForegroundColor DarkGray
+  Write-Host '  Your Microsoft Entra tenant ID (a GUID).'
+  Write-Host '  Where to find it:'
+  Write-Host '    Microsoft Entra admin center → Overview → Tenant ID'
+  Write-Host '    https://entra.microsoft.com' -ForegroundColor DarkCyan
+  Write-Host ''
+  do {
+    $TenantId = (Read-Host '  Tenant ID').Trim()
+    if (-not $TenantId) {
+      Write-Host '  ⚠ Value is required.' -ForegroundColor Yellow
+    }
+    elseif ($TenantId -notmatch $_guidPattern) {
+      Write-Host '  ⚠ Expected a GUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' -ForegroundColor Yellow
+      $TenantId = ''
+    }
+  } while (-not $TenantId)
+  Write-Host ''
 }
 
 Connect-MgGraph -TenantId $TenantId -Scopes "Application.ReadWrite.All"

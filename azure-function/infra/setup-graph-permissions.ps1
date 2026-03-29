@@ -42,9 +42,9 @@
     <https://polyformproject.org/licenses/shield/1.0.0>
 #>
 param(
-  [Parameter(Mandatory)][string]$ManagedIdentityObjectId,
-  [Parameter(Mandatory)][string]$TenantId,
-  [Parameter(Mandatory)][string]$FunctionAppClientId
+  [string]$ManagedIdentityObjectId,
+  [string]$TenantId,
+  [string]$FunctionAppClientId
 )
 
 $ErrorActionPreference = 'Stop'
@@ -74,6 +74,80 @@ if (-not (Get-Module -ListAvailable -Name Microsoft.Graph.Applications)) {
 
 Import-Module Microsoft.Graph.Authentication
 Import-Module Microsoft.Graph.Applications
+
+# ── Interactive parameter prompts ─────────────────────────────────────────────
+# Each prompt shows a title, a short description, and where to find the value,
+# then re-prompts until a valid GUID is entered.
+$_guidPattern = '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+
+if (-not $TenantId) {
+  Write-Host ''
+  Write-Host '  Required: Entra Tenant ID' -ForegroundColor Cyan
+  Write-Host '  ───────────────────────────────────────────────────────' -ForegroundColor DarkGray
+  Write-Host '  Your Microsoft Entra tenant ID (a GUID).'
+  Write-Host '  Where to find it:'
+  Write-Host '    Microsoft Entra admin center → Overview → Tenant ID'
+  Write-Host '    https://entra.microsoft.com' -ForegroundColor DarkCyan
+  Write-Host ''
+  do {
+    $TenantId = (Read-Host '  Tenant ID').Trim()
+    if (-not $TenantId) {
+      Write-Host '  ⚠ Value is required.' -ForegroundColor Yellow
+    }
+    elseif ($TenantId -notmatch $_guidPattern) {
+      Write-Host '  ⚠ Expected a GUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' -ForegroundColor Yellow
+      $TenantId = ''
+    }
+  } while (-not $TenantId)
+  Write-Host ''
+}
+
+if (-not $ManagedIdentityObjectId) {
+  Write-Host '  Required: Function App Managed Identity — Object ID' -ForegroundColor Cyan
+  Write-Host '  ───────────────────────────────────────────────────────' -ForegroundColor DarkGray
+  Write-Host '  The Object ID of the system-assigned Managed Identity of the'
+  Write-Host '  Azure Function App (a GUID). This is NOT the App Client ID.'
+  Write-Host '  Where to find it:'
+  Write-Host '    Azure Portal → your Function App → Settings → Identity → Object (principal) ID'
+  Write-Host '    or: the deployment outputs → managedIdentityObjectId'
+  Write-Host '    https://portal.azure.com' -ForegroundColor DarkCyan
+  Write-Host ''
+  do {
+    $ManagedIdentityObjectId = (Read-Host '  Managed Identity Object ID').Trim()
+    if (-not $ManagedIdentityObjectId) {
+      Write-Host '  ⚠ Value is required.' -ForegroundColor Yellow
+    }
+    elseif ($ManagedIdentityObjectId -notmatch $_guidPattern) {
+      Write-Host '  ⚠ Expected a GUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' -ForegroundColor Yellow
+      $ManagedIdentityObjectId = ''
+    }
+  } while (-not $ManagedIdentityObjectId)
+  Write-Host ''
+}
+
+if (-not $FunctionAppClientId) {
+  Write-Host '  Required: App Registration Client ID' -ForegroundColor Cyan
+  Write-Host '  ───────────────────────────────────────────────────────' -ForegroundColor DarkGray
+  Write-Host '  The Client ID (Application ID) of the App Registration created'
+  Write-Host '  in the previous step (setup-app-registration.ps1). It was'
+  Write-Host '  printed at the end of that script.'
+  Write-Host '  Where to find it:'
+  Write-Host '    Entra admin center → App registrations →'
+  Write-Host '    "Guest Sponsor Info - SharePoint Web Part Auth" → Application (client) ID'
+  Write-Host '    https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade' -ForegroundColor DarkCyan
+  Write-Host ''
+  do {
+    $FunctionAppClientId = (Read-Host '  App Registration Client ID').Trim()
+    if (-not $FunctionAppClientId) {
+      Write-Host '  ⚠ Value is required.' -ForegroundColor Yellow
+    }
+    elseif ($FunctionAppClientId -notmatch $_guidPattern) {
+      Write-Host '  ⚠ Expected a GUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' -ForegroundColor Yellow
+      $FunctionAppClientId = ''
+    }
+  } while (-not $FunctionAppClientId)
+  Write-Host ''
+}
 
 Connect-MgGraph -TenantId $TenantId -Scopes "AppRoleAssignment.ReadWrite.All", "Application.ReadWrite.All"
 
