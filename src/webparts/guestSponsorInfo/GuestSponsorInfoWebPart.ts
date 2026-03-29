@@ -20,7 +20,7 @@ import { PropertyPaneCustomField } from '@microsoft/sp-property-pane/lib/propert
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
 import { AadHttpClient } from '@microsoft/sp-http';
 import { ThemeProvider, IReadonlyTheme, ThemeChangedEventArgs } from '@microsoft/sp-component-base';
-import { FluentProvider, MessageBar, MessageBarBody, Tooltip, webLightTheme, webDarkTheme } from '@fluentui/react-components';
+import { FluentProvider, MessageBar, MessageBarBody, Tooltip, webLightTheme, webDarkTheme, type Theme } from '@fluentui/react-components';
 import { createV9Theme } from '@fluentui/react-migration-v8-v9';
 import { createDOMRenderer, RendererProvider } from '@griffel/react';
 import { InfoRegular } from '@fluentui/react-icons';
@@ -39,53 +39,21 @@ const griffelRenderer = createDOMRenderer(document, {
 });
 
 /**
- * Migrate old externalMapProvider property to new mapProviderConfig.
- * For backward compatibility with existing web parts that used the old single-value property.
- * Also converts flat property-pane properties (mapProviderConfigMode, etc) to MapProviderConfig.
+ * Builds a MapProviderConfig object from flat property-pane storage properties.
  */
-function migrateMapProviderConfig(props: IGuestSponsorInfoWebPartProps): MapProviderConfig {
-  const asMapProvider = (value: string | undefined, fallback: MapProvider): MapProvider => {
-    switch (value) {
-      case 'bing':
-      case 'google':
-      case 'apple':
-      case 'openstreetmap':
-      case 'none':
-        return value;
-      default:
-        return fallback;
-    }
-  };
-
-  // If we have new flat properties from PropertyPane, use them
+function buildMapProviderConfig(props: IGuestSponsorInfoWebPartProps): MapProviderConfig {
   if (props.mapProviderConfigMode) {
     return {
       mode: props.mapProviderConfigMode,
-      manualProvider: asMapProvider(props.mapProviderConfigManualProvider, 'bing'),
-      iosProvider: asMapProvider(props.mapProviderConfigIosProvider, 'apple'),
-      androidProvider: asMapProvider(props.mapProviderConfigAndroidProvider, 'google'),
-      windowsProvider: asMapProvider(props.mapProviderConfigWindowsProvider, 'bing'),
-      macosProvider: asMapProvider(props.mapProviderConfigMacosProvider, 'apple'),
-      linuxProvider: asMapProvider(props.mapProviderConfigLinuxProvider, 'openstreetmap'),
+      manualProvider: props.mapProviderConfigManualProvider ?? 'bing',
+      iosProvider: props.mapProviderConfigIosProvider ?? 'apple',
+      androidProvider: props.mapProviderConfigAndroidProvider ?? 'google',
+      windowsProvider: props.mapProviderConfigWindowsProvider ?? 'bing',
+      macosProvider: props.mapProviderConfigMacosProvider ?? 'apple',
+      linuxProvider: props.mapProviderConfigLinuxProvider ?? 'openstreetmap',
     };
   }
 
-  // If we have the old mapProviderConfig object (unlikely, but for completeness)
-  if (props.mapProviderConfig) {
-    return props.mapProviderConfig;
-  }
-
-  // Backward compatibility: existing instances that already set the legacy
-  // property keep manual mode semantics.
-  if (props.externalMapProvider) {
-    const legacyProvider = props.externalMapProvider;
-    return {
-      mode: 'manual',
-      manualProvider: legacyProvider,
-    };
-  }
-
-  // Default for new instances: auto mode with OS-specific defaults.
   return {
     mode: 'auto',
     windowsProvider: 'bing',
@@ -157,21 +125,17 @@ export interface IGuestSponsorInfoWebPartProps {
   /** Map provider mode: 'auto' for OS-specific, 'manual' for unified. Default: 'auto'. */
   mapProviderConfigMode?: 'auto' | 'manual' | 'none';
   /** iOS map provider (auto mode). Default: 'apple'. */
-  mapProviderConfigIosProvider?: string;
+  mapProviderConfigIosProvider?: MapProvider;
   /** Android map provider (auto mode). Default: 'google'. */
-  mapProviderConfigAndroidProvider?: string;
+  mapProviderConfigAndroidProvider?: MapProvider;
   /** Windows map provider (auto mode). Default: 'bing'. */
-  mapProviderConfigWindowsProvider?: string;
+  mapProviderConfigWindowsProvider?: MapProvider;
   /** macOS map provider (auto mode). Default: 'apple'. */
-  mapProviderConfigMacosProvider?: string;
+  mapProviderConfigMacosProvider?: MapProvider;
   /** Linux map provider (auto mode). Default: 'openstreetmap'. */
-  mapProviderConfigLinuxProvider?: string;
-  /** Manual map provider (manual mode) */
-  mapProviderConfigManualProvider?: string;
-  /** Map provider configuration (new system). See mapProviderUtils. */
-  mapProviderConfig?: MapProviderConfig;
-  /** External map provider used for fallback links. DEPRECATED: Use mapProviderConfig* properties instead. */
-  externalMapProvider?: 'bing' | 'google' | 'apple' | 'openstreetmap' | 'none';
+  mapProviderConfigLinuxProvider?: MapProvider;
+  /** Manual map provider (manual mode). */
+  mapProviderConfigManualProvider?: MapProvider;
   /** Show the manager section in the contact card. Default: true. */
   showManager: boolean;
   /** Show the presence status indicator and label. Default: true. */
@@ -220,6 +184,8 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
   private static readonly _GITHUB_CACHE_TTL = 3_600_000;
   private _themeProvider: ThemeProvider | undefined;
   private _theme: IReadonlyTheme | undefined;
+  /** Resolved Fluent v9 theme — derived from `_theme` via `createV9Theme`, falling back to `webLightTheme`. */
+  private _v9Theme: Theme = webLightTheme;
 
   public render(): void {
     const element: React.ReactElement<IGuestSponsorInfoProps> = React.createElement(
@@ -269,7 +235,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
         azureMapsSubscriptionKey: this.properties.azureMapsSubscriptionKey || undefined,
         externalMapProvider: getEffectiveMapProvider(
           navigator.userAgent,
-          migrateMapProviderConfig(this.properties)
+          buildMapProviderConfig(this.properties)
         ),
         showManager: this.properties.showManager ?? true,
         showPresence: this.properties.showPresence ?? true,
@@ -348,6 +314,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
     // host site's v8-style theme and convert it to a v9 theme via createV9Theme.
     this._themeProvider = this.context.serviceScope.consume(ThemeProvider.serviceKey);
     this._theme = this._themeProvider?.tryGetTheme();
+    this._v9Theme = this._buildV9Theme(this._theme);
     this._themeProvider?.themeChangedEvent.add(this, this._handleThemeChanged);
     // Acquire Graph and AAD clients in the background — do NOT await them here.
     // SPFx awaits the onInit() Promise before rendering any web part on the page,
@@ -359,8 +326,18 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
 
   private _handleThemeChanged = (args: ThemeChangedEventArgs): void => {
     this._theme = args.theme;
+    this._v9Theme = this._buildV9Theme(args.theme);
     this.render();
   };
+
+  /** Creates a Fluent v9 theme from an SPFx v8 IReadonlyTheme, falling back to webLightTheme. */
+  private _buildV9Theme(theme: IReadonlyTheme | undefined): Theme {
+    if (!theme) return webLightTheme;
+    return createV9Theme(
+      theme as unknown as Parameters<typeof createV9Theme>[0],
+      theme.isInverted ? webDarkTheme : webLightTheme
+    );
+  }
 
   /**
    * Queries the Azure Function's `/api/getLatestRelease` endpoint for the latest
@@ -567,9 +544,8 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
   private _renderSectionHeader(element: HTMLElement | undefined, label: string): void {
     if (!element) return;
     element.innerHTML = '';
-    const sc = this._theme?.semanticColors;
-    const divider = sc?.bodyDivider ?? '#e1e1e1';
-    const subtext = sc?.bodySubtext ?? '#616161';
+    const divider = this._v9Theme.colorNeutralStroke2;
+    const subtext = this._v9Theme.colorNeutralForeground3;
 
     const wrapper = document.createElement('div');
     wrapper.style.display = 'flex';
@@ -606,8 +582,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
     if (!element) return;
     element.innerHTML = '';
 
-    const sc = this._theme?.semanticColors;
-    const bodySubtext = sc?.bodySubtext ?? '#616161';
+    const bodySubtext = this._v9Theme.colorNeutralForeground3;
 
     const description = document.createElement('div');
     description.textContent = text;
@@ -669,9 +644,8 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
     if (!element) return;
     element.innerHTML = '';
 
-    const sc = this._theme?.semanticColors;
-    const bodyText = sc?.bodyText ?? '#323130';
-    const bodySubtext = sc?.bodySubtext ?? '#616161';
+    const bodyText = this._v9Theme.colorNeutralForeground1;
+    const bodySubtext = this._v9Theme.colorNeutralForeground3;
 
     const row = document.createElement('div');
     row.style.display = 'inline-flex';
@@ -723,25 +697,15 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
 
     element.innerHTML = '';
 
-    // Extract semantic colour tokens from the SPFx theme. Every value has a
-    // fallback that matches the SharePoint default blue theme, so the section
-    // renders correctly even when no site theme has been applied yet.
-    const p  = this._theme?.palette;
-    const sc = this._theme?.semanticColors;
-    // Link / button foreground (e.g. SharePoint blue #0078d4)
-    const linkColor          = sc?.link              ?? '#0078d4';
-    // Subdued body text (footer meta line)
-    const bodySubtextColor   = sc?.bodySubtext        ?? '#616161';
-    // Very-light neutral surface (EasyLife partner box background)
-    const neutralLighterBg   = p?.neutralLighter      ?? '#f5f5f5';
-    // Light neutral border (EasyLife partner box border)
-    const neutralQuatBorder  = p?.neutralQuaternary   ?? '#e1e1e1';
-    // Very-light primary accent (Munich badge + mismatch badge background)
-    const themeLighterBg     = p?.themeLighter        ?? '#eef6ff';
-    // Light primary accent (mismatch badge border)
-    const themeLightBorder   = p?.themeLight          ?? '#c7e0f4';
-    // Dark primary accent (Munich badge + mismatch badge foreground text)
-    const themeDarkColor     = p?.themeDark           ?? '#24527a';
+    // Read resolved colour tokens from the cached Fluent v9 theme.
+    const t = this._v9Theme;
+    const linkColor          = t.colorBrandForegroundLink;
+    const bodySubtextColor   = t.colorNeutralForeground3;
+    const neutralLighterBg   = t.colorNeutralBackground3;
+    const neutralQuatBorder  = t.colorNeutralStroke2;
+    const themeLighterBg     = t.colorBrandBackground2;
+    const themeLightBorder   = t.colorBrandStroke2;
+    const themeDarkColor     = t.colorBrandForeground2;
 
     const createParagraph = (
       text: string,
@@ -934,9 +898,9 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
       newRelBadge.style.display = 'inline-block';
       newRelBadge.style.padding = '1px 7px';
       newRelBadge.style.borderRadius = '4px';
-      newRelBadge.style.backgroundColor = '#f0fdf4';
-      newRelBadge.style.color = '#15803d';
-      newRelBadge.style.border = '1px solid #86efac';
+      newRelBadge.style.backgroundColor = t.colorPaletteGreenBackground1;
+      newRelBadge.style.color = t.colorPaletteGreenForeground1;
+      newRelBadge.style.border = `1px solid ${t.colorPaletteGreenBorder1}`;
       newRelBadge.style.fontWeight = '700';
       newRelBadge.style.fontSize = '11px';
       newRelBadge.style.textDecoration = 'none';
@@ -957,7 +921,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
     if (!(strings as unknown as object | undefined)) return { pages: [] };
 
     const showManager = this.properties.showManager ?? true;
-    const mapProviderConfig = migrateMapProviderConfig(this.properties);
+    const mapProviderConfig = buildMapProviderConfig(this.properties);
     const mapProviderMode = mapProviderConfig.mode;
     const locationDisplayHint = this._getLocationDisplayHint();
     const hasAddressFieldsEnabled =
@@ -1285,58 +1249,165 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                 ...(this.properties.functionClientId && !isValidGuid(this.properties.functionClientId)
                   ? [this._infoBoxField('functionClientIdValidationError', strings.InvalidGuidFormat, 'error')]
                   : []),
+                // Inline Entra hint — hoverable info icon next to a short label
+                // that reveals the exact App Registration name + a direct Entra
+                // portal link, so admins can find the Client ID easily.
+                PropertyPaneCustomField({
+                  key: 'clientIdEntraHintField',
+                  onRender: (element: HTMLElement | undefined) => {
+                    if (!element) return;
+                    element.innerHTML = '';
+
+                    const linkColor = this._v9Theme.colorBrandForegroundLink;
+                    const subtextColor = this._v9Theme.colorNeutralForeground3;
+                    const bgColor = this._v9Theme.colorNeutralBackground1;
+                    const borderColor = this._v9Theme.colorNeutralStroke2;
+
+                    // Wrapper row: info icon + label
+                    const row = document.createElement('div');
+                    row.style.position = 'relative';
+                    row.style.display = 'inline-flex';
+                    row.style.alignItems = 'center';
+                    row.style.gap = '4px';
+                    row.style.cursor = 'default';
+
+                    // ⓘ circle icon (Unicode)
+                    const icon = document.createElement('span');
+                    icon.textContent = '\u24d8';
+                    icon.style.fontSize = '13px';
+                    icon.style.color = linkColor;
+
+                    // Short trigger label
+                    const label = document.createElement('span');
+                    label.textContent = strings.PpClientIdHintLabel;
+                    label.style.fontSize = '11px';
+                    label.style.color = subtextColor;
+
+                    // Popup — hidden by default, shown on hover
+                    const popup = document.createElement('div');
+                    popup.style.display = 'none';
+                    popup.style.position = 'absolute';
+                    popup.style.left = '0';
+                    popup.style.top = '100%';
+                    popup.style.padding = '12px 10px 8px';
+                    popup.style.backgroundColor = bgColor;
+                    popup.style.border = `1px solid ${borderColor}`;
+                    popup.style.borderRadius = '4px';
+                    popup.style.boxShadow = this._v9Theme.shadow8;
+                    popup.style.zIndex = '10';
+                    popup.style.minWidth = '200px';
+                    popup.style.maxWidth = '280px';
+                    popup.style.lineHeight = '1.5';
+
+                    // Popup content
+                    const desc = document.createElement('div');
+                    desc.style.fontSize = '11px';
+                    desc.style.color = subtextColor;
+                    desc.textContent = strings.PpClientIdHintBody;
+                    popup.appendChild(desc);
+
+                    const appName = document.createElement('div');
+                    appName.style.fontSize = '11px';
+                    appName.style.fontWeight = '600';
+                    appName.style.color = subtextColor;
+                    appName.style.marginTop = '4px';
+                    appName.textContent = '“Guest Sponsor Info - SharePoint Web Part Auth”';
+                    popup.appendChild(appName);
+
+                    const entraLink = document.createElement('a');
+                    entraLink.textContent = strings.FunctionEntraLinkLabel;
+                    entraLink.href =
+                      'https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade';
+                    entraLink.target = '_blank';
+                    entraLink.rel = 'noopener noreferrer';
+                    entraLink.style.display = 'block';
+                    entraLink.style.marginTop = '4px';
+                    entraLink.style.fontSize = '11px';
+                    entraLink.style.color = linkColor;
+                    entraLink.style.textDecoration = 'none';
+                    popup.appendChild(entraLink);
+
+                    // Show/hide on hover
+                    row.addEventListener('mouseenter', () => { popup.style.display = 'block'; });
+                    row.addEventListener('mouseleave', () => { popup.style.display = 'none'; });
+
+                    row.appendChild(icon);
+                    row.appendChild(label);
+                    row.appendChild(popup);
+                    element.appendChild(row);
+                  },
+                  onDispose: (element: HTMLElement | undefined) => {
+                    if (element) element.innerHTML = '';
+                  },
+                }) as unknown as IPropertyPaneField<unknown>,
                 PropertyPaneCustomField({
                   key: 'functionSetupLinksField',
                   onRender: (element: HTMLElement | undefined) => {
                     if (!element) return;
                     element.innerHTML = '';
 
-                    const sc = this._theme?.semanticColors;
-                    const deployLinkColor = sc?.link ?? '#0078d4';
+                    const linkColor = this._v9Theme.colorBrandForegroundLink;
+                    const subtextColor = this._v9Theme.colorNeutralForeground3;
 
-                    // Build a versioned "Deploy to Azure" portal URL.
-                    // Use raw.githubusercontent.com so the Azure Portal can fetch
-                    // the template without CORS issues (releases/download redirects
-                    // do not expose the required CORS headers).
-                    const deploySemver = this.manifest.version.split('.').slice(0, 3).join('.');
-                    const deployTemplatePath =
-                      `https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/v${deploySemver}/azure-function/infra/azuredeploy.json`;
-                    const deployToAzureHref =
-                      'https://portal.azure.com/#create/Microsoft.Template/uri/' +
-                      encodeURIComponent(deployTemplatePath);
                     const setupGuideHref =
-                      'https://github.com/workoho/spfx-guest-sponsor-info/blob/main/docs/deployment.md';
+                      'https://github.com/workoho/spfx-guest-sponsor-info/blob/main/README.md#deploy-the-guest-sponsor-api';
+
+                    const isConfigured = !!(this.properties.functionUrl && this.properties.functionClientId);
+                    const isOk = isConfigured && this._proxyStatus === 'ok';
+                    const isError = isConfigured && this._proxyStatus === 'error';
 
                     const wrapper = document.createElement('div');
                     wrapper.style.marginTop = '8px';
                     wrapper.style.display = 'flex';
                     wrapper.style.flexDirection = 'column';
                     wrapper.style.alignItems = 'flex-start';
-                    wrapper.style.gap = '6px';
+                    wrapper.style.gap = '4px';
 
-                    // "Deploy to Azure" — official Microsoft badge image
-                    const deployBtn = document.createElement('a');
-                    deployBtn.href = deployToAzureHref;
-                    deployBtn.target = '_blank';
-                    deployBtn.rel = 'noopener noreferrer';
-                    deployBtn.style.display = 'inline-block';
-                    const deployImg = document.createElement('img');
-                    deployImg.src = 'https://aka.ms/deploytoazurebutton';
-                    deployImg.alt = strings.AuthorSectionDeployToAzureLabel;
-                    deployImg.style.display = 'block';
-                    deployImg.style.maxWidth = '100%';
-                    deployBtn.appendChild(deployImg);
-                    wrapper.appendChild(deployBtn);
+                    // Show the 3-step overview when unconfigured or on error
+                    if (!isOk) {
+                      const stepsIntro = document.createElement('div');
+                      stepsIntro.style.fontSize = '12px';
+                      stepsIntro.style.lineHeight = '1.45';
+                      stepsIntro.style.color = subtextColor;
+                      stepsIntro.textContent = strings.PpSetupIntro;
+                      wrapper.appendChild(stepsIntro);
 
-                    // "View setup guide" link
+                      const steps = [
+                        strings.WelcomeDialogSetupStep1Label,
+                        strings.WelcomeDialogDeployToAzureLabel,
+                        strings.WelcomeDialogSetupStep3Label,
+                      ];
+                      steps.forEach((text, i) => {
+                        const step = document.createElement('div');
+                        step.style.fontSize = '12px';
+                        step.style.fontWeight = '600';
+                        step.style.color = subtextColor;
+                        step.textContent = `${i + 1}. ${text}`;
+                        wrapper.appendChild(step);
+                      });
+                    }
+
+                    // Re-run hint — shown only on error
+                    if (isError) {
+                      const rerunHint = document.createElement('div');
+                      rerunHint.style.fontSize = '11px';
+                      rerunHint.style.lineHeight = '1.5';
+                      rerunHint.style.color = subtextColor;
+                      rerunHint.style.marginTop = '2px';
+                      rerunHint.textContent = strings.PpSetupRerunHint;
+                      wrapper.appendChild(rerunHint);
+                    }
+
+                    // "View setup guide" link — always visible
                     const setupGuideLink = document.createElement('a');
                     setupGuideLink.textContent = strings.WelcomeDialogOptionApiDocsLabel;
                     setupGuideLink.href = setupGuideHref;
                     setupGuideLink.target = '_blank';
                     setupGuideLink.rel = 'noopener noreferrer';
                     setupGuideLink.style.fontSize = '12px';
-                    setupGuideLink.style.color = deployLinkColor;
+                    setupGuideLink.style.color = linkColor;
                     setupGuideLink.style.textDecoration = 'none';
+                    if (!isOk) setupGuideLink.style.marginTop = '2px';
                     wrapper.appendChild(setupGuideLink);
 
                     element.appendChild(wrapper);

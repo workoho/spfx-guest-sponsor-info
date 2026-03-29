@@ -5,7 +5,7 @@
 import { AadHttpClient } from '@microsoft/sp-http';
 import { ISponsor } from './ISponsor';
 
-/** Result returned by getSponsors. */
+/** Result returned by getSponsorsViaProxy. */
 export interface ISponsorsResult {
   /** Sponsor accounts whose directory object still exists in Entra. */
   activeSponsors: ISponsor[];
@@ -14,7 +14,7 @@ export interface ISponsorsResult {
    * could no longer be found (HTTP 404 – hard-deleted or past the soft-delete
    * recycle-bin period).  Accounts that are merely disabled (accountEnabled ===
    * false) still appear in activeSponsors because reading that property requires
-   * User.Read.All, which exceeds the declared permission scope.
+   * User.Read.All, which is only available to the Azure Function's Managed Identity.
    */
   unavailableCount: number;
   /**

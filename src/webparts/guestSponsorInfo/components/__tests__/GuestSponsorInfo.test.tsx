@@ -156,7 +156,7 @@ describe('GuestSponsorInfo', () => {
       expect(container.textContent).toContain('Anna Müller');
     });
 
-    it('never calls getSponsors in edit mode', () => {
+    it('never calls getSponsorsViaProxy in edit mode', () => {
       act(() => { renderWebPart({ displayMode: DisplayMode.Edit, welcomeSeen: true }); });
       expect(mockGetSponsors).not.toHaveBeenCalled();
     });
@@ -173,7 +173,7 @@ describe('GuestSponsorInfo', () => {
       expect(container.firstChild).toBeNull();
     });
 
-    it('never calls getSponsors for a non-guest visitor', () => {
+    it('never calls getSponsorsViaProxy for a non-guest visitor', () => {
       mockIsGuestUser.mockReturnValue(false);
       act(() => { renderWebPart({ loginName: 'member@fabrikam.onmicrosoft.com', isExternalGuestUser: false }); });
       expect(mockGetSponsors).not.toHaveBeenCalled();
@@ -188,7 +188,7 @@ describe('GuestSponsorInfo', () => {
       expect(mockGetSponsors).not.toHaveBeenCalled();
     });
 
-    it('shows the skeleton placeholder while getSponsors is still pending', () => {
+    it('shows the skeleton placeholder while getSponsorsViaProxy is still pending', () => {
       // Return a promise that never resolves so loading state persists throughout the test.
       mockGetSponsors.mockReturnValue(new Promise(() => { /* intentionally pending */ }));
       act(() => { renderWebPart({}); });
@@ -196,14 +196,14 @@ describe('GuestSponsorInfo', () => {
       expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
     });
 
-    it('calls getSponsors exactly once on first render', async () => {
+    it('calls getSponsorsViaProxy exactly once on first render', async () => {
       mockGetSponsors.mockResolvedValue({ activeSponsors: [], unavailableCount: 0 });
       act(() => { renderWebPart({}); });
       await flushAsync();
       expect(mockGetSponsors).toHaveBeenCalledTimes(1);
     });
 
-    it('renders sponsor cards when getSponsors resolves with active sponsors', async () => {
+    it('renders sponsor cards when getSponsorsViaProxy resolves with active sponsors', async () => {
       mockGetSponsors.mockResolvedValue({ activeSponsors: [SPONSOR], unavailableCount: 0 });
       act(() => { renderWebPart({}); });
       await flushAsync();
@@ -290,7 +290,7 @@ describe('GuestSponsorInfo', () => {
       expect(container.textContent).not.toContain('no longer available');
     });
 
-    it('shows the error message when getSponsors rejects with a 4xx status', async () => {
+    it('shows the error message when getSponsorsViaProxy rejects with a 4xx status', async () => {
       // Transient (network) errors are retried silently; only 4xx errors surface immediately.
       const err = Object.assign(new Error('Unauthorized'), { statusCode: 401 });
       mockGetSponsors.mockRejectedValue(err);

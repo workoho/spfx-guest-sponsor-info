@@ -11,6 +11,7 @@ import {
   Radio,
   RadioGroup,
   Text,
+  Tooltip,
   makeStyles,
   mergeClasses,
   tokens,
@@ -21,6 +22,7 @@ import {
   ChevronLeftRegular,
   ChevronRightRegular,
   CloudRegular,
+  CopyRegular,
   DismissRegular,
 } from '@fluentui/react-icons';
 import * as strings from 'GuestSponsorInfoWebPartStrings';
@@ -53,6 +55,27 @@ function buildDeployToAzureUrl(semver: string | undefined): string {
   const templatePath =
     `https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/${ref}/azure-function/infra/azuredeploy.json`;
   return 'https://portal.azure.com/#create/Microsoft.Template/uri/' + encodeURIComponent(templatePath);
+}
+
+/**
+ * Builds a versioned GitHub release download URL for a setup script.
+ * Falls back to `releases/latest/download` when the version is unavailable.
+ */
+function buildScriptUrl(semver: string | undefined, scriptName: string): string {
+  const ref = semver ? `download/v${semver}` : 'latest/download';
+  return `https://github.com/workoho/spfx-guest-sponsor-info/releases/${ref}/${scriptName}`;
+}
+
+/** Builds the PowerShell one-liner for the App Registration setup script. */
+function buildStep1Command(semver: string | undefined): string {
+  const url = buildScriptUrl(semver, 'setup-app-registration.ps1');
+  return `& ([scriptblock]::Create((iwr '${url}')))`;
+}
+
+/** Builds the PowerShell one-liner for the Graph permissions setup script. */
+function buildStep3Command(semver: string | undefined): string {
+  const url = buildScriptUrl(semver, 'setup-graph-permissions.ps1');
+  return `& ([scriptblock]::Create((iwr '${url}')))`;
 }
 
 const useStyles = makeStyles({
@@ -296,10 +319,60 @@ const useStyles = makeStyles({
     },
   },
   deployPanelExpanded: {
-    maxHeight: '300px',
+    // Step 3 command now renders on 4 lines (pre-formatted) → extra height needed.
+    maxHeight: '800px',
     opacity: 1,
     paddingTop: tokens.spacingVerticalM,
     paddingBottom: tokens.spacingVerticalM,
+  },
+  // ── 3-step setup guide inside the deploy panel ────────────────────────────
+  stepLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalXS,
+    marginTop: tokens.spacingVerticalS,
+  },
+  stepNumber: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '20px',
+    height: '20px',
+    borderRadius: tokens.borderRadiusCircular,
+    backgroundColor: tokens.colorBrandBackground,
+    color: tokens.colorNeutralForegroundOnBrand,
+    fontSize: tokens.fontSizeBase100,
+    fontWeight: tokens.fontWeightSemibold,
+    flexShrink: 0,
+  },
+  codeWrap: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: tokens.spacingHorizontalXS,
+    marginTop: tokens.spacingVerticalXS,
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: tokens.borderRadiusMedium,
+    padding: tokens.spacingVerticalXS,
+    paddingLeft: tokens.spacingHorizontalS,
+  },
+  codeBlock: {
+    // min-width: 0 is required for flex children to shrink below their content
+    // size; without it, overflow-x: auto never triggers.
+    flex: 1,
+    minWidth: 0,
+    fontFamily: tokens.fontFamilyMonospace,
+    fontSize: tokens.fontSizeBase100,
+    lineHeight: tokens.lineHeightBase200,
+    color: tokens.colorNeutralForeground1,
+    // Horizontal scrolling so long one-liners are readable without wrapping.
+    // 'pre' preserves embedded newlines (step 3 command) and prevents word-wrap
+    // on single-line commands (step 1), matching GitHub code-block behaviour.
+    overflowX: 'auto' as const,
+    whiteSpace: 'pre' as const,
+  },
+  copyButton: {
+    flexShrink: 0,
+    alignSelf: 'flex-start',
   },
   // ── Action rows ────────────────────────────────────────────────────────────
   actionsSplit: {
@@ -384,74 +457,143 @@ interface IStep2SetupProps {
   classes: ReturnType<typeof useStyles>;
   choice: 'api' | 'demo';
   deployToAzureUrl: string;
+  semver?: string;
   onChoiceChange: (v: 'api' | 'demo') => void;
 }
 
 /** Step 2 — Setup choice: API vs. Demo Mode. */
 const Step2Setup: React.FC<IStep2SetupProps> = ({
-  classes, choice, deployToAzureUrl, onChoiceChange,
-}) => (
-  <>
-    <Text block className={classes.setupIntro}>{strings.WelcomeDialogSetupIntro}</Text>
+  classes, choice, deployToAzureUrl, semver, onChoiceChange,
+}) => {
+  // Track which command block just had its content copied to the clipboard.
+  // Resets to null after a short delay so the "Copied!" tooltip disappears.
+  const [copiedStep, setCopiedStep] = React.useState<1 | 3 | null>(null);
 
-    {/* ILLUSTRATION PLACEHOLDER — replace with a split-screen SVG asset (see comment in useStyles) */}
-    <RadioGroup value={choice} onChange={(_, d) => onChoiceChange(d.value as 'api' | 'demo')}>
-      {/* Option A: Use Guest Sponsor API */}
-      <div
-        role="presentation"
-        className={mergeClasses(classes.optionCard, choice === 'api' && classes.optionCardSelectedTop)}
-        onClick={() => onChoiceChange('api')}
-      >
-        <CloudRegular style={{ width: 24, height: 24 }} className={classes.optionIcon} />
-        <div className={classes.optionText}>
-          <Radio value="api" label={
-            <>
-              <Text weight="semibold">{strings.WelcomeDialogOptionApiTitle}</Text>
-              <Text size={200} block className={classes.muted}>{strings.WelcomeDialogOptionApiBody}</Text>
-            </>
-          } />
-        </div>
-      </div>
+  const step1Cmd = React.useMemo(() => buildStep1Command(semver), [semver]);
+  const step3Cmd = React.useMemo(() => buildStep3Command(semver), [semver]);
 
-      {/* Deploy panel — slides out from under the API option card when selected */}
-      <div className={mergeClasses(classes.deployPanel, choice === 'api' && classes.deployPanelExpanded)}>
-        <Text size={200} block className={classes.muted}>{strings.WelcomeDialogDeployNote}</Text>
-        <Link href={deployToAzureUrl} target="_blank" rel="noopener noreferrer">
-          <img
-            src="https://aka.ms/deploytoazurebutton"
-            alt={strings.WelcomeDialogDeployToAzureLabel}
-            style={{ display: 'block', maxWidth: '100%' }}
-          />
-        </Link>
-        <Link
-          href={GITHUB_SETUP_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={classes.docsLink}
+  const handleCopy = (cmd: string, step: 1 | 3): void => {
+    navigator.clipboard.writeText(cmd).then(() => {
+      setCopiedStep(step);
+      setTimeout(() => setCopiedStep(null), 2000);
+    }).catch(() => { /* clipboard unavailable — silent */ });
+  };
+
+  return (
+    <>
+      <Text block className={classes.setupIntro}>{strings.WelcomeDialogSetupIntro}</Text>
+
+      {/* ILLUSTRATION PLACEHOLDER — replace with a split-screen SVG asset (see comment in useStyles) */}
+      <RadioGroup value={choice} onChange={(_, d) => onChoiceChange(d.value as 'api' | 'demo')}>
+        {/* Option A: Use Guest Sponsor API */}
+        <div
+          role="presentation"
+          className={mergeClasses(classes.optionCard, choice === 'api' && classes.optionCardSelectedTop)}
+          onClick={() => onChoiceChange('api')}
         >
-          {strings.WelcomeDialogOptionApiDocsLabel}
-        </Link>
-      </div>
-
-      {/* Option B: Demo Mode */}
-      <div
-        role="presentation"
-        className={mergeClasses(classes.optionCard, choice === 'demo' && classes.optionCardSelected)}
-        onClick={() => onChoiceChange('demo')}
-      >
-        <BeakerRegular style={{ width: 24, height: 24 }} className={classes.optionIcon} />
-        <div className={classes.optionText}>
-          <Radio value="demo" label={
-            <>
-              <Text weight="semibold">{strings.WelcomeDialogOptionDemoTitle}</Text>
-              <Text size={200} block className={classes.muted}>{strings.WelcomeDialogOptionDemoBody}</Text>
-            </>
-          } />
+          <CloudRegular style={{ width: 24, height: 24 }} className={classes.optionIcon} />
+          <div className={classes.optionText}>
+            <Radio value="api" label={
+              <>
+                <Text weight="semibold">{strings.WelcomeDialogOptionApiTitle}</Text>
+                <Text size={200} block className={classes.muted}>{strings.WelcomeDialogOptionApiBody}</Text>
+              </>
+            } />
+          </div>
         </div>
-      </div>
-    </RadioGroup>
-  </>
-);
+
+        {/* Deploy panel — slides out from under the API option card when selected */}
+        <div className={mergeClasses(classes.deployPanel, choice === 'api' && classes.deployPanelExpanded)}>
+          <Text size={200} block className={classes.muted}>{strings.WelcomeDialogDeployNote}</Text>
+
+          {/* ① Create App Registration */}
+          <div className={classes.stepLabel}>
+            <span className={classes.stepNumber}>1</span>
+            <Text size={200} weight="semibold">{strings.WelcomeDialogSetupStep1Label}</Text>
+          </div>
+          <Text size={100} className={classes.muted}>{strings.WelcomeDialogSetupPwshHint}</Text>
+          <div className={classes.codeWrap}>
+            <code className={classes.codeBlock}>{step1Cmd}</code>
+            <Tooltip
+              content={copiedStep === 1 ? strings.CopiedToClipboardLabel : strings.CopyToClipboardLabel}
+              relationship="label"
+            >
+              <Button
+                appearance="subtle"
+                size="small"
+                icon={copiedStep === 1 ? <CheckmarkRegular /> : <CopyRegular />}
+                className={classes.copyButton}
+                onClick={() => handleCopy(step1Cmd, 1)}
+              />
+            </Tooltip>
+          </div>
+
+          {/* ② Deploy to Azure */}
+          <div className={classes.stepLabel}>
+            <span className={classes.stepNumber}>2</span>
+            <Text size={200} weight="semibold">{strings.WelcomeDialogDeployToAzureLabel}</Text>
+          </div>
+          <Text size={100} className={classes.muted}>{strings.DeployToAzureClickHint}</Text>
+          <Link href={deployToAzureUrl} target="_blank" rel="noopener noreferrer">
+            <img
+              src="https://aka.ms/deploytoazurebutton"
+              alt={strings.WelcomeDialogDeployToAzureLabel}
+              style={{ display: 'block', maxWidth: '100%' }}
+            />
+          </Link>
+
+          {/* ③ Grant Graph permissions */}
+          <div className={classes.stepLabel}>
+            <span className={classes.stepNumber}>3</span>
+            <Text size={200} weight="semibold">{strings.WelcomeDialogSetupStep3Label}</Text>
+          </div>
+          <Text size={100} className={classes.muted}>{strings.WelcomeDialogSetupStep3Hint}</Text>
+          <div className={classes.codeWrap}>
+            <code className={classes.codeBlock}>{step3Cmd}</code>
+            <Tooltip
+              content={copiedStep === 3 ? strings.CopiedToClipboardLabel : strings.CopyToClipboardLabel}
+              relationship="label"
+            >
+              <Button
+                appearance="subtle"
+                size="small"
+                icon={copiedStep === 3 ? <CheckmarkRegular /> : <CopyRegular />}
+                className={classes.copyButton}
+                onClick={() => handleCopy(step3Cmd, 3)}
+              />
+            </Tooltip>
+          </div>
+
+          <Link
+            href={GITHUB_SETUP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={classes.docsLink}
+          >
+            {strings.WelcomeDialogOptionApiDocsLabel}
+          </Link>
+        </div>
+
+        {/* Option B: Demo Mode */}
+        <div
+          role="presentation"
+          className={mergeClasses(classes.optionCard, choice === 'demo' && classes.optionCardSelected)}
+          onClick={() => onChoiceChange('demo')}
+        >
+          <BeakerRegular style={{ width: 24, height: 24 }} className={classes.optionIcon} />
+          <div className={classes.optionText}>
+            <Radio value="demo" label={
+              <>
+                <Text weight="semibold">{strings.WelcomeDialogOptionDemoTitle}</Text>
+                <Text size={200} block className={classes.muted}>{strings.WelcomeDialogOptionDemoBody}</Text>
+              </>
+            } />
+          </div>
+        </div>
+      </RadioGroup>
+    </>
+  );
+};
 
 interface IStep3ConnectProps {
   classes: ReturnType<typeof useStyles>;
@@ -659,6 +801,7 @@ const WelcomeDialog: React.FC<IWelcomeDialogProps> = ({ open, onCommit, onSkip, 
             classes={classes}
             choice={choice}
             deployToAzureUrl={deployToAzureUrl}
+            semver={semver}
             onChoiceChange={setChoice}
           />
         )}

@@ -112,9 +112,22 @@ declare interface IGuestSponsorInfoWebPartStrings {
   FunctionGroupName: string;
   FunctionUrlFieldLabel: string;
   FunctionClientIdFieldLabel: string;
+  /** Short trigger label for the Client ID tooltip. */
+  PpClientIdHintLabel: string;
+  /** Body text inside the Client ID hover popup. */
+  PpClientIdHintBody: string;
+  FunctionEntraLinkLabel: string;
   ProxyStatusChecking: string;
   ProxyStatusOk: string;
   ProxyStatusError: string;
+  /** Short intro shown above the 3-step setup guide in the property pane. */
+  PpSetupIntro: string;
+  /** Troubleshooting hint shown in the property pane when the proxy status is 'error'. */
+  PpSetupRerunHint: string;
+
+  // Clipboard copy feedback (shared)
+  CopyToClipboardLabel: string;
+  CopiedToClipboardLabel: string;
 
   // Author/company information section
   AuthorSectionGroupName: string;
@@ -128,6 +141,7 @@ declare interface IGuestSponsorInfoWebPartStrings {
   AuthorSectionSourceCodeLabel: string;
   AuthorSectionVersionLabel: string;
   AuthorSectionDeployToAzureLabel: string;
+  DeployToAzureClickHint: string;
   AuthorSectionDeploymentGuideLabel: string;
   NewReleaseAvailableLabel: string;
 
@@ -231,6 +245,14 @@ declare interface IGuestSponsorInfoWebPartStrings {
   WelcomeDialogOptionApiDocsLabel: string;
   WelcomeDialogDeployToAzureLabel: string;
   WelcomeDialogDeployNote: string;
+  /** Step label for "Create App Registration" in the 3-step setup guide. */
+  WelcomeDialogSetupStep1Label: string;
+  /** Step label for "Grant Graph permissions" in the 3-step setup guide. */
+  WelcomeDialogSetupStep3Label: string;
+  /** Short hint shown above step 1 and 3 code blocks (e.g. "PowerShell 7+:"). */
+  WelcomeDialogSetupPwshHint: string;
+  /** Hint shown below step 3 code block (e.g. "Uses values from steps 1 and 2"). */
+  WelcomeDialogSetupStep3Hint: string;
   WelcomeDialogConnectApiTitle: string;
   WelcomeDialogConnectApiIntro: string;
   WelcomeDialogOptionDemoTitle: string;

@@ -384,7 +384,7 @@ const SponsorGridSkeleton: React.FC<{ compact: boolean }> = ({ compact }) => {
  * sponsors are, while active accounts "nachrücken" to fill the visible slots.
  *
  * Falls back to independent slice() when sponsorOrder is empty (e.g. older
- * Function versions or the direct Graph path without ordering info).
+ * Function versions without ordering info).
  */
 function buildVisibleSponsorSets(
   activeSponsors: ISponsor[],
@@ -641,7 +641,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
           const referenceId = (err as { referenceId?: string }).referenceId;
           const retryable = (err as { retryable?: boolean }).retryable;
           // Structured console log for first-level operations triage.
-          console.error('[GuestSponsorInfo] getSponsors failed', {
+          console.error('[GuestSponsorInfo] getSponsorsViaProxy failed', {
             status,
             reasonCode,
             referenceId,
