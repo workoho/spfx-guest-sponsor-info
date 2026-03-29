@@ -1,0 +1,14 @@
+{% if page.mermaid %}
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+    mermaid.initialize({ startOnLoad: false, theme: 'neutral' });
+    document.querySelectorAll('pre > code.language-mermaid').forEach(function (el) {
+        var pre = el.parentElement;
+        var div = document.createElement('div');
+        div.className = 'mermaid';
+        div.textContent = el.textContent;
+        pre.parentElement.replaceChild(div, pre);
+    });
+    mermaid.run();
+</script>
+{% endif %}

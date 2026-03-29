@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Redirecting… — {{ site.title }}</title>
+  <!-- Fallback for browsers without JS: go to English -->
+  <meta http-equiv="refresh" content="0; url=/en/{{ page.page_path }}/">
+  <script>
+    (function () {
+      var lang = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
+      var target = lang.startsWith('de') ? '/de/' : '/en/';
+      window.location.replace(target + '{{ page.page_path }}/');
+    })();
+  </script>
+</head>
+
+<body>
+  <p>
+    Redirecting… please follow one of these links:<br>
+    <a href="/en/{{ page.page_path }}/">English</a> |
+    <a href="/de/{{ page.page_path }}/">Deutsch</a>
+  </p>
+</body>
+
+</html>

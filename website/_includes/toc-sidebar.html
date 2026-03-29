@@ -1,0 +1,8 @@
+{%- assign strings = site.data[page.lang].strings -%}
+
+<aside class="doc-toc" aria-label="{{ strings.doc.toc_label | default: 'Table of contents' }}">
+    <nav class="doc-toc-nav">
+        <h3 class="doc-toc-title">{{ strings.doc.toc_title | default: 'On this page' }}</h3>
+        <ul class="doc-toc-list"></ul>
+    </nav>
+</aside>

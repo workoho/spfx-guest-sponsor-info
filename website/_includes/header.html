@@ -1,10 +1,6 @@
 {%- assign strings = site.data[page.lang].strings -%}
 {%- assign lang = page.lang | default: site.default_lang -%}
-{%- assign other_lang = "de" -%}
-{%- if lang == "de" -%}{%- assign other_lang = "en" -%}{%- endif -%}
 {%- assign lang_prefix = "/" | append: lang | append: "/" -%}
-{%- assign other_prefix = "/" | append: other_lang | append: "/" -%}
-{%- assign switched_url = page.url | replace: lang_prefix, other_prefix -%}
 
 <header class="site-header">
     <div class="container header-inner">
@@ -19,15 +15,34 @@
             </button>
 
             <ul class="nav-list">
-                <li><a href="{{ '/' | append: lang | append: '/' | relative_url }}">{{ strings.nav.home }}</a></li>
+                <li><a href="{{ '/' | append: lang | append: '/why/' | relative_url }}">{{ strings.nav.why }}</a></li>
                 <li><a href="{{ '/' | append: lang | append: '/features/' | relative_url }}">{{ strings.nav.features
                         }}</a></li>
-                <li><a href="https://github.com/{{ site.repository }}" target="_blank" rel="noopener">GitHub</a></li>
+                <li><a href="{{ '/' | append: lang | append: '/setup/' | relative_url }}">{{ strings.nav.setup
+                        }}</a></li>
+                <li><a href="https://github.com/{{ site.repository }}" target="_blank" rel="noopener">{%- include
+                        icon-github.html -%}GitHub</a></li>
                 <li class="lang-switch">
-                    <a href="{{ switched_url | relative_url }}" lang="{{ other_lang }}"
+                    <button class="lang-switch-toggle" type="button" aria-expanded="false" aria-haspopup="true"
                         aria-label="{{ strings.nav.switch_lang }}">
-                        {%- if other_lang == "de" -%}DE{%- else -%}EN{%- endif -%}
-                    </a>
+                        <span class="lang-switch-code">{{ lang | upcase }}</span>
+                        <span class="lang-switch-caret" aria-hidden="true">&#9662;</span>
+                    </button>
+                    <ul class="lang-menu" hidden>
+                        {%- for available_lang in site.languages -%}
+                        {%- assign target_prefix = "/" | append: available_lang | append: "/" -%}
+                        {%- assign target_url = page.url | replace: lang_prefix, target_prefix -%}
+                        {%- assign lang_name = available_lang | upcase -%}
+                        {%- case available_lang -%}
+                        {%- when "en" -%}{%- assign lang_name = "English" -%}
+                        {%- when "de" -%}{%- assign lang_name = "Deutsch" -%}
+                        {%- endcase -%}
+                        <li>
+                            <a href="{{ target_url | relative_url }}" lang="{{ available_lang }}" {% if
+                                available_lang==lang %} aria-current="true" {% endif %}>{{ lang_name }}</a>
+                        </li>
+                        {%- endfor -%}
+                    </ul>
                 </li>
             </ul>
         </nav>

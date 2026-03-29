@@ -1,0 +1,26 @@
+---
+layout: default
+---
+{%- assign strings = site.data[page.lang].strings -%}
+
+<article class="doc-page">
+    <div class="container doc-layout">
+        <div class="doc-content">
+            <h1>{{ page.title }}</h1>
+            {% if page.lead %}<p class="doc-lead">{{ page.lead }}</p>{% endif %}
+            {{ content }}
+            {% if page.github_doc %}
+            <p class="doc-source">
+                <a href="https://github.com/{{ site.repository }}/blob/main/docs/{{ page.github_doc }}" target="_blank"
+                    rel="noopener">
+                    {{ strings.doc.view_on_github | default: "View full documentation on GitHub" }} &rarr;
+                </a>
+            </p>
+            {% endif %}
+        </div>
+        {%- include toc-sidebar.html -%}
+    </div>
+</article>
+
+{%- include mermaid-script.html -%}
+{%- include toc-script.html -%}

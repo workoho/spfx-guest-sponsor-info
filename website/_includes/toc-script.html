@@ -1,0 +1,38 @@
+<script>
+    (function () {
+        var content = document.querySelector('.doc-content');
+        var list = document.querySelector('.doc-toc-list');
+        if (!content || !list) return;
+
+        var headings = content.querySelectorAll('h2, h3');
+        if (headings.length < 2) {
+            var toc = document.querySelector('.doc-toc');
+            if (toc) toc.style.display = 'none';
+            return;
+        }
+
+        headings.forEach(function (h, i) {
+            if (!h.id) h.id = 'section-' + i;
+            var li = document.createElement('li');
+            if (h.tagName === 'H3') li.className = 'doc-toc-sub';
+            var a = document.createElement('a');
+            a.href = '#' + h.id;
+            a.textContent = h.textContent;
+            li.appendChild(a);
+            list.appendChild(li);
+        });
+
+        var links = list.querySelectorAll('a');
+        var observer = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (entry.isIntersecting) {
+                    links.forEach(function (l) { l.classList.remove('is-active'); });
+                    var active = list.querySelector('a[href="#' + CSS.escape(entry.target.id) + '"]');
+                    if (active) active.classList.add('is-active');
+                }
+            });
+        }, { rootMargin: '-80px 0px -70% 0px' });
+
+        headings.forEach(function (h) { observer.observe(h); });
+    })();
+</script>

@@ -6,19 +6,27 @@ meta:
 
 nav:
   home: Home
+  why: Why?
   features: Features
+  setup: Setup
   aria_label: Main navigation
   toggle: Toggle menu
   switch_lang: Zur deutschen Version wechseln
 
+doc:
+  toc_title: On this page
+  toc_label: Table of contents
+  view_on_github: View full documentation on GitHub
+
 hero:
   title: Let your guests know who to call
   subtitle: >-
-    A SharePoint Framework web part that shows B2B guest users their
-    assigned Microsoft Entra sponsors — live contact cards with photos,
-    Teams presence, and one-click communication.
-  cta_primary: Download Latest Release
-  cta_secondary: Explore Features
+    When guest accounts are provisioned through a governed process, they
+    arrive in your tenant before Teams is ready. This web part shows guests
+    their assigned contact automatically — and tells them honestly when
+    Teams isn't set up for them yet.
+  cta_primary: Explore Features
+  cta_secondary: Why?
   illustration_alt: >-
     Illustration showing sponsor contact cards connecting to a guest user
   badge_languages: 14 Languages
@@ -78,6 +86,18 @@ features_page:
       - "Three layout modes: Full, Compact, and Auto"
       - Live profile photos from Microsoft Graph
       - Office address with optional map integration
+  contact_panel:
+    title: Rich Contact Details
+    description: >-
+      Hovering or tabbing to a card opens a contact panel with everything
+      a guest needs — email, work phone, mobile, office location, and
+      full address. Each field has a one-click copy button. The panel also
+      shows the sponsor's manager and reporting chain.
+    highlights:
+      - One-click copy for email, phone, and mobile
+      - Inline map preview via Azure Maps
+      - Manager name, title, and department
+      - Every field individually toggleable by admins
   onboarding:
     title: Teams Onboarding Status
     description: >-
@@ -122,6 +142,12 @@ features_page:
       skips unavailable sponsors automatically. Disabled accounts, shared
       mailboxes, and deleted users are filtered out — guests always see
       active, reachable contacts.
+    detail: >-
+      Sponsors are evaluated in the configured priority order — primary
+      first, then secondary, and so on. Each sponsor is checked for
+      account status, mailbox type, and presence. The first active,
+      reachable sponsor is shown to the guest. If none qualify, the last
+      valid entry is displayed with a reduced contact set.
   more:
     title: And there's more
     languages:
@@ -142,6 +168,23 @@ features_page:
         Page editors see realistic demo cards with mock data — no Graph
         calls, no guest account required. Design the landing page before
         any guests have been invited.
+    resilience:
+      title: Built-in Resilience
+      description: >-
+        Exponential backoff, progressive loading, and graceful degradation
+        handle Graph throttling and transient errors without user impact.
+    permissions:
+      title: Privacy-First Permissions
+      description: >-
+        Sponsor data flows through the Azure Function's Managed Identity —
+        guests never hold directory permissions. Profile photos are fetched
+        directly from Graph CDN using the guest's existing SharePoint token.
+    guest_only:
+      title: Guest-Only Rendering
+      description: >-
+        The web part renders nothing for member users — no unnecessary
+        Graph calls, no visual noise. Editors get a compact preview mode
+        instead.
 
 made_by:
   label: Created & maintained by
@@ -161,18 +204,42 @@ made_by:
     sites, Viva Engage, and other Microsoft 365 workspaces — including
     guest onboarding and sponsor assignments.
 
+problem:
+  title: A guest accepted your invitation. Now what?
+  body: >-
+    The standard Microsoft 365 guest experience answers none of the questions
+    a new guest actually has. This web part closes three gaps at once.
+  cta: Why?
+  items:
+    - title: No orientation at the entrance
+      body: >-
+        After accepting, guests land in their own organization's Teams or
+        MyApps — with no signal they're now inside your tenant. There's no
+        "you've arrived" moment at all.
+    - title: Their contact is invisible
+      body: >-
+        Sponsors are assigned in Microsoft Entra, but guests never see them.
+        By the time they need help, the invitation email names whoever clicked
+        "Invite" — which may not be the right person today.
+    - title: Teams looks ready — but isn't
+      body: >-
+        A proper governance process creates the Entra account before adding
+        guests to any Team. Until that step happens, chat and call buttons are
+        silently broken. Guests get no explanation.
+
 cta:
   title: Ready to improve your guest experience?
   description: >-
-    Deploy in minutes with the included Azure Function and ARM template.
+    Set up in minutes with the included Azure Function and ARM template.
     Free and open source under the PolyForm Shield License.
-  deploy: Deployment Guide
+  deploy: Setup Guide
   github: View on GitHub
 
 footer:
   tagline: >-
     Helping B2B guest users find their contacts since day one.
   product: Product
+  why: Why this exists
   releases: Releases
   source_code: Source Code
   docs: Documentation

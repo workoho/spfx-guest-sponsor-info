@@ -6,11 +6,10 @@
             <h1 class="hero-title">{{ strings.hero.title }}</h1>
             <p class="hero-subtitle">{{ strings.hero.subtitle }}</p>
             <div class="hero-actions">
-                <a href="https://github.com/{{ site.repository }}/releases" class="btn btn-primary" target="_blank"
-                    rel="noopener">
+                <a href="{{ '/' | append: page.lang | append: '/features/' | relative_url }}" class="btn btn-primary">
                     {{ strings.hero.cta_primary }}
                 </a>
-                <a href="{{ '/' | append: page.lang | append: '/features/' | relative_url }}" class="btn btn-secondary">
+                <a href="{{ '/' | append: page.lang | append: '/why/' | relative_url }}" class="btn btn-secondary">
                     {{ strings.hero.cta_secondary }}
                 </a>
             </div>

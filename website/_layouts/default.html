@@ -45,12 +45,71 @@
 
     <script>
         (function () {
+            var links = document.querySelectorAll('a[href]');
+            links.forEach(function (link) {
+                var rawHref = link.getAttribute('href');
+                if (!rawHref || rawHref.startsWith('#')) return;
+                if (link.classList.contains('no-external-icon')) return;
+                if (link.textContent.trim() === '') return;
+
+                var url;
+                try {
+                    url = new URL(rawHref, window.location.href);
+                } catch (_err) {
+                    return;
+                }
+
+                var isHttp = url.protocol === 'http:' || url.protocol === 'https:';
+                var isExternal = isHttp && url.origin !== window.location.origin;
+                if (!isExternal) return;
+
+                link.classList.add('external-link');
+            });
+
             var toggle = document.querySelector('.nav-toggle');
             var navList = document.querySelector('.nav-list');
-            if (!toggle || !navList) return;
-            toggle.addEventListener('click', function () {
-                var open = navList.classList.toggle('is-open');
-                toggle.setAttribute('aria-expanded', open);
+            if (toggle && navList) {
+                toggle.addEventListener('click', function () {
+                    var open = navList.classList.toggle('is-open');
+                    toggle.setAttribute('aria-expanded', open);
+                });
+            }
+
+            var langSwitch = document.querySelector('.lang-switch');
+            var langToggle = document.querySelector('.lang-switch-toggle');
+            var langMenu = document.querySelector('.lang-menu');
+
+            if (!langSwitch || !langToggle || !langMenu) {
+                return;
+            }
+
+            function setLangMenu(open) {
+                langSwitch.classList.toggle('is-open', open);
+                langToggle.setAttribute('aria-expanded', String(open));
+                langMenu.hidden = !open;
+            }
+
+            langToggle.addEventListener('click', function () {
+                var open = langToggle.getAttribute('aria-expanded') !== 'true';
+                setLangMenu(open);
+            });
+
+            document.addEventListener('click', function (event) {
+                if (!langSwitch.contains(event.target)) {
+                    setLangMenu(false);
+                }
+            });
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape') {
+                    setLangMenu(false);
+                }
+            });
+
+            langMenu.addEventListener('click', function (event) {
+                if (event.target.closest('a')) {
+                    setLangMenu(false);
+                }
             });
         })();
     </script>

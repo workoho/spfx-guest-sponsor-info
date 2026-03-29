@@ -6,19 +6,27 @@ meta:
 
 nav:
   home: Startseite
+  why: Warum?
   features: Funktionen
+  setup: Installation
   aria_label: Hauptnavigation
   toggle: Menü öffnen
   switch_lang: Switch to English version
 
+doc:
+  toc_title: Auf dieser Seite
+  toc_label: Inhaltsverzeichnis
+  view_on_github: Vollständige Dokumentation auf GitHub ansehen
+
 hero:
   title: Zeigen Sie Ihren Gästen, wen sie kontaktieren können
   subtitle: >-
-    Ein SharePoint Framework Web Part, das B2B-Gastbenutzern ihre
-    zugewiesenen Microsoft Entra Sponsoren anzeigt — Live-Kontaktkarten
-    mit Fotos, Teams-Präsenz und direkter Kommunikation.
-  cta_primary: Neueste Version herunterladen
-  cta_secondary: Funktionen entdecken
+    Wenn Gastkonten über einen geregelten Prozess bereitgestellt werden,
+    sind sie in Ihrem Tenant vorhanden, bevor Teams für sie eingerichtet ist.
+    Dieses Web Part zeigt Gästen automatisch ihren zugewiesenen Ansprechpartner
+    — und informiert sie ehrlich, wenn Teams noch nicht bereit ist.
+  cta_primary: Funktionen entdecken
+  cta_secondary: Warum?
   illustration_alt: >-
     Illustration mit Sponsor-Kontaktkarten, die sich mit einem Gastbenutzer verbinden
   badge_languages: 14 Sprachen
@@ -81,6 +89,19 @@ features_page:
       - "Drei Layout-Modi: Vollständig, Kompakt und Auto"
       - Live-Profilfotos aus Microsoft Graph
       - Büroadresse mit optionaler Kartenintegration
+  contact_panel:
+    title: Umfangreiche Kontaktdetails
+    description: >-
+      Beim Überfahren oder Fokussieren einer Karte öffnet sich ein
+      Kontaktpanel mit allem, was ein Gast braucht — E-Mail, Telefon,
+      Mobilnummer, Bürostandort und vollständige Adresse. Jedes Feld
+      hat einen Kopieren-Button. Das Panel zeigt auch den Vorgesetzten
+      und die Berichtskette des Sponsors.
+    highlights:
+      - Ein-Klick-Kopieren für E-Mail, Telefon und Mobil
+      - Inline-Kartenvorschau über Azure Maps
+      - Name, Titel und Abteilung des Vorgesetzten
+      - Jedes Feld einzeln durch Admins ein-/ausschaltbar
   onboarding:
     title: Teams-Onboarding-Status
     description: >-
@@ -126,6 +147,13 @@ features_page:
       überspringt das Web Part nicht verfügbare automatisch. Deaktivierte
       Konten, geteilte Postfächer und gelöschte Benutzer werden
       ausgefiltert — Gäste sehen immer aktive, erreichbare Kontakte.
+    detail: >-
+      Sponsoren werden in der konfigurierten Prioritätsreihenfolge
+      geprüft — zuerst der primäre, dann der sekundäre usw. Jeder
+      Sponsor wird auf Kontostatus, Postfachtyp und Präsenz
+      überprüft. Der erste aktive, erreichbare Sponsor wird dem Gast
+      angezeigt. Wenn keiner qualifiziert ist, wird der letzte
+      gültige Eintrag mit reduziertem Kontaktumfang dargestellt.
   more:
     title: Und es gibt noch mehr
     languages:
@@ -146,6 +174,24 @@ features_page:
         Seitenbearbeiter sehen realistische Demo-Karten mit Beispieldaten
         — keine Graph-Aufrufe, kein Gastkonto erforderlich. Gestalten Sie
         das Layout bevor Gäste eingeladen wurden.
+    resilience:
+      title: Eingebaute Resilienz
+      description: >-
+        Exponentielles Backoff, progressives Laden und Graceful
+        Degradation fangen Graph-Drosselung und vorübergehende Fehler
+        ohne Auswirkung auf den Benutzer ab.
+    permissions:
+      title: Privacy-First-Berechtigungen
+      description: >-
+        Sponsordaten fließen über die Managed Identity der Azure Function —
+        Gäste erhalten keinerlei Verzeichnisberechtigungen. Profilfotos
+        werden direkt vom Graph-CDN mit dem SharePoint-Token des Gastes geladen.
+    guest_only:
+      title: Nur für Gäste sichtbar
+      description: >-
+        Das Web Part rendert für Mitglieder-Benutzer nichts —
+        keine unnötigen Graph-Aufrufe, kein visueller Ballast.
+        Editoren erhalten stattdessen einen kompakten Vorschaumodus.
 
 made_by:
   label: Erstellt & gepflegt von
@@ -166,19 +212,45 @@ made_by:
     Arbeitsumgebungen — einschließlich Gäste-Onboarding und
     Sponsor-Verwaltung.
 
+problem:
+  title: Ein Gast hat Ihre Einladung angenommen. Und jetzt?
+  body: >-
+    Die Standard-Gasterfahrung in Microsoft 365 beantwortet keine der
+    Fragen, die ein neuer Gast tatsächlich hat. Dieses Web Part schließt
+    drei Lücken auf einmal.
+  cta: Warum?
+  items:
+    - title: Keine Orientierung am Eingang
+      body: >-
+        Nach der Annahme landen Gäste im Teams oder MyApps ihrer eigenen
+        Organisation — ohne Hinweis, dass sie jetzt in Ihrem Tenant sind.
+        Es gibt keinen "Sie sind angekommen"-Moment.
+    - title: Ihr Ansprechpartner ist unsichtbar
+      body: >-
+        Sponsoren sind in Microsoft Entra hinterlegt, aber Gäste sehen sie
+        nie. Wenn sie Hilfe brauchen, nennt die Einladungs-E-Mail denjenigen,
+        der auf "Einladen" geklickt hat — was heute vielleicht nicht mehr
+        der richtige Ansprechpartner ist.
+    - title: Teams scheint bereit — ist es aber nicht
+      body: >-
+        Ein geregelter Governance-Prozess legt das Entra-Konto an, bevor
+        der Gast einem Team hinzugefügt wird. Bis dieser Schritt erfolgt,
+        funktionieren Chat- und Anrufbuttons stillschweigend nicht.
+        Gäste erhalten keine Erklärung.
+
 cta:
   title: Bereit, die Gast-Erfahrung zu verbessern?
   description: >-
-    In Minuten bereitgestellt mit der mitgelieferten Azure Function
-    und ARM-Vorlage. Kostenlos und Open Source unter der PolyForm
-    Shield-Lizenz.
-  deploy: Bereitstellungsanleitung
+    In Minuten eingerichtet mit der mitgelieferten Azure Function und
+    ARM-Vorlage. Kostenlos und Open Source unter der PolyForm Shield-Lizenz.
+  deploy: Installationsanleitung
   github: Auf GitHub ansehen
 
 footer:
   tagline: >-
     Damit B2B-Gastbenutzer vom ersten Tag an ihre Kontakte finden.
   product: Produkt
+  why: Warum dieses Web Part?
   releases: Versionen
   source_code: Quellcode
   docs: Dokumentation

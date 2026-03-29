@@ -12,44 +12,54 @@
       <div class="footer-col">
         <h4>{{ strings.footer.product }}</h4>
         <ul>
-          <li><a href="{{ '/' | append: page.lang | append: '/features/' | relative_url }}">{{ strings.nav.features
+          <li><a href="{{ '/' | append: page.lang | append: '/why/' | relative_url }}">{%- include
+              icon-chevron-right.html -%}{{ strings.footer.why }}</a></li>
+          <li><a href="{{ '/' | append: page.lang | append: '/features/' | relative_url }}">{%- include
+              icon-chevron-right.html -%}{{ strings.nav.features
               }}</a></li>
-          <li><a href="https://github.com/{{ site.repository }}/releases" target="_blank" rel="noopener">{{
-              strings.footer.releases }}</a></li>
-          <li><a href="https://github.com/{{ site.repository }}" target="_blank" rel="noopener">{{
-              strings.footer.source_code }}</a></li>
+          <li><a href="https://github.com/{{ site.repository }}/releases" target="_blank" rel="noopener">{%- include
+              icon-github.html -%}{{ strings.footer.releases }}</a></li>
+          <li><a href="https://github.com/{{ site.repository }}" target="_blank" rel="noopener">{%- include
+              icon-github.html -%}{{ strings.footer.source_code }}</a></li>
         </ul>
       </div>
       <div class="footer-col">
         <h4>{{ strings.footer.docs }}</h4>
         <ul>
-          <li><a href="https://github.com/{{ site.repository }}/blob/main/docs/deployment.md" target="_blank"
-              rel="noopener">{{ strings.footer.deployment }}</a></li>
-          <li><a href="https://github.com/{{ site.repository }}/blob/main/docs/architecture.md" target="_blank"
-              rel="noopener">{{ strings.footer.architecture }}</a></li>
-          <li><a href="https://github.com/{{ site.repository }}/blob/main/docs/operations.md" target="_blank"
-              rel="noopener">{{ strings.footer.operations }}</a></li>
+          <li><a href="{{ '/' | append: page.lang | append: '/setup/' | relative_url }}">{%- include
+              icon-chevron-right.html -%}{{
+              strings.footer.deployment }}</a></li>
+          <li><a href="{{ '/' | append: page.lang | append: '/architecture/' | relative_url }}">{%- include
+              icon-chevron-right.html -%}{{
+              strings.footer.architecture }}</a></li>
+          <li><a href="{{ '/' | append: page.lang | append: '/operations/' | relative_url }}">{%- include
+              icon-chevron-right.html -%}{{
+              strings.footer.operations }}</a></li>
         </ul>
       </div>
       <div class="footer-col">
         <h4>{{ strings.footer.legal }}</h4>
         <ul>
-          <li><a href="{{ '/' | append: page.lang | append: '/privacy/' | relative_url }}">{{ strings.footer.privacy
+          <li><a href="{{ '/' | append: page.lang | append: '/privacy/' | relative_url }}">{%- include
+              icon-chevron-right.html -%}{{ strings.footer.privacy
               }}</a></li>
-          <li><a href="{{ '/' | append: page.lang | append: '/terms/' | relative_url }}">{{ strings.footer.terms }}</a>
+          <li><a href="{{ '/' | append: page.lang | append: '/terms/' | relative_url }}">{%- include
+              icon-chevron-right.html -%}{{ strings.footer.terms }}</a>
           </li>
-          <li><a href="{{ '/' | append: page.lang | append: '/imprint/' | relative_url }}">{{ strings.footer.imprint
+          <li><a href="{{ '/' | append: page.lang | append: '/imprint/' | relative_url }}">{%- include
+              icon-chevron-right.html -%}{{ strings.footer.imprint
               }}</a>
           </li>
-          <li><a href="https://github.com/{{ site.repository }}/blob/main/docs/telemetry.md" target="_blank"
-              rel="noopener">{{ strings.footer.telemetry }}</a></li>
+          <li><a href="{{ '/' | append: page.lang | append: '/telemetry/' | relative_url }}">{%- include
+              icon-chevron-right.html -%}{{ strings.footer.telemetry
+              }}</a></li>
         </ul>
       </div>
     </div>
 
     <div class="footer-bottom">
-      <p>&copy; {{ "now" | date: "%Y" }} <a href="{{ site.author_url }}" target="_blank" rel="noopener">{{ site.author
-          }}</a>. {{ strings.footer.license }}</p>
+      <p>&copy; {{ "now" | date: "%Y" }} <a href="{{ site.author_url }}" target="_blank" rel="noopener"
+          class="no-external-icon">{{ site.author }}</a>. {{ strings.footer.license }}</p>
     </div>
   </div>
 </footer>

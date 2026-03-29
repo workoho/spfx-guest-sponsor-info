@@ -7,8 +7,7 @@
             <p>{{ strings.cta.description }}</p>
         </div>
         <div class="cta-actions">
-            <a href="https://github.com/{{ site.repository }}/blob/main/docs/deployment.md" class="btn btn-primary"
-                target="_blank" rel="noopener">
+            <a href="{{ '/' | append: page.lang | append: '/setup/' | relative_url }}" class="btn btn-primary">
                 {{ strings.cta.deploy }}
             </a>
             <a href="https://github.com/{{ site.repository }}" class="btn btn-outline" target="_blank" rel="noopener">

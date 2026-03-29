@@ -12,80 +12,102 @@ layout: default
 </section>
 
 <div class="fp-features">
-    <div class="container">
+    <div class="container doc-layout">
+        <div class="doc-content">
 
-        <div class="fp-row">
-            <div class="fp-icon">
-                <img src="{{ '/assets/images/feature-cards.svg' | relative_url }}" alt="" width="80" height="80">
-            </div>
-            <div class="fp-text">
-                <h2>{{ f.cards.title }}</h2>
-                <p>{{ f.cards.description }}</p>
-                <ul class="fp-highlights">
-                    {%- for item in f.cards.highlights %}
-                    <li>{{ item }}</li>
-                    {%- endfor %}
-                </ul>
-            </div>
-        </div>
-
-        <div class="fp-row fp-row--reverse">
-            <div class="fp-icon">
-                <img src="{{ '/assets/images/feature-onboarding.svg' | relative_url }}" alt="" width="80" height="80">
-            </div>
-            <div class="fp-text">
-                <h2>{{ f.onboarding.title }}</h2>
-                <p>{{ f.onboarding.description }}</p>
-            </div>
-        </div>
-
-        <div class="fp-row">
-            <div class="fp-icon">
-                <img src="{{ '/assets/images/feature-presence.svg' | relative_url }}" alt="" width="80" height="80">
-            </div>
-            <div class="fp-text">
-                <h2>{{ f.presence.title }}</h2>
-                <p>{{ f.presence.description }}</p>
-                <div class="fp-statuses">
-                    {%- for status in f.presence.statuses %}
-                    <span class="fp-status-pill">{{ status }}</span>
-                    {%- endfor %}
+            <div class="fp-row">
+                <div class="fp-icon">
+                    <img src="{{ '/assets/images/feature-cards.svg' | relative_url }}" alt="" width="80" height="80">
+                </div>
+                <div class="fp-text">
+                    <h2 id="sponsor-cards">{{ f.cards.title }}</h2>
+                    <p>{{ f.cards.description }}</p>
+                    <ul class="fp-highlights">
+                        {%- for item in f.cards.highlights %}
+                        <li>{{ item }}</li>
+                        {%- endfor %}
+                    </ul>
                 </div>
             </div>
-        </div>
 
-        <div class="fp-row fp-row--reverse">
-            <div class="fp-icon">
-                <img src="{{ '/assets/images/feature-teams.svg' | relative_url }}" alt="" width="80" height="80">
+            <div class="fp-row fp-row--reverse">
+                <div class="fp-icon">
+                    <img src="{{ '/assets/images/feature-contact.svg' | relative_url }}" alt="" width="80" height="80">
+                </div>
+                <div class="fp-text">
+                    <h2 id="contact-panel">{{ f.contact_panel.title }}</h2>
+                    <p>{{ f.contact_panel.description }}</p>
+                    <ul class="fp-highlights">
+                        {%- for item in f.contact_panel.highlights %}
+                        <li>{{ item }}</li>
+                        {%- endfor %}
+                    </ul>
+                </div>
             </div>
-            <div class="fp-text">
-                <h2>{{ f.teams.title }}</h2>
-                <p>{{ f.teams.description }}</p>
-            </div>
-        </div>
 
-        <div class="fp-row">
-            <div class="fp-icon">
-                <img src="{{ '/assets/images/feature-privacy.svg' | relative_url }}" alt="" width="80" height="80">
+            <div class="fp-row">
+                <div class="fp-icon">
+                    <img src="{{ '/assets/images/feature-presence.svg' | relative_url }}" alt="" width="80" height="80">
+                </div>
+                <div class="fp-text">
+                    <h2 id="presence">{{ f.presence.title }}</h2>
+                    <p>{{ f.presence.description }}</p>
+                    <div class="fp-statuses">
+                        {%- for status in f.presence.statuses %}
+                        <span class="fp-status-pill">{{ status }}</span>
+                        {%- endfor %}
+                    </div>
+                </div>
             </div>
-            <div class="fp-text">
-                <h2>{{ f.privacy.title }}</h2>
-                <p>{{ f.privacy.description }}</p>
-                <a href="{{ '/' | append: page.lang | append: '/privacy/' | relative_url }}" class="fp-link">{{
-                    f.privacy.link }} &rarr;</a>
-            </div>
-        </div>
 
-        <div class="fp-row fp-row--reverse">
-            <div class="fp-icon">
-                <img src="{{ '/assets/images/feature-delegation.svg' | relative_url }}" alt="" width="80" height="80">
+            <div class="fp-row fp-row--reverse">
+                <div class="fp-icon">
+                    <img src="{{ '/assets/images/feature-teams.svg' | relative_url }}" alt="" width="80" height="80">
+                </div>
+                <div class="fp-text">
+                    <h2 id="teams">{{ f.teams.title }}</h2>
+                    <p>{{ f.teams.description }}</p>
+                </div>
             </div>
-            <div class="fp-text">
-                <h2>{{ f.delegation.title }}</h2>
-                <p>{{ f.delegation.description }}</p>
-            </div>
-        </div>
 
+            <div class="fp-row">
+                <div class="fp-icon">
+                    <img src="{{ '/assets/images/feature-onboarding.svg' | relative_url }}" alt="" width="80"
+                        height="80">
+                </div>
+                <div class="fp-text">
+                    <h2 id="onboarding">{{ f.onboarding.title }}</h2>
+                    <p>{{ f.onboarding.description }}</p>
+                </div>
+            </div>
+
+            <div class="fp-row fp-row--reverse">
+                <div class="fp-icon">
+                    <img src="{{ '/assets/images/feature-delegation.svg' | relative_url }}" alt="" width="80"
+                        height="80">
+                </div>
+                <div class="fp-text">
+                    <h2 id="delegation">{{ f.delegation.title }}</h2>
+                    <p>{{ f.delegation.description }}</p>
+                    <p class="fp-detail">{{ f.delegation.detail }}</p>
+                </div>
+            </div>
+
+            <div class="fp-row">
+                <div class="fp-icon">
+                    <img src="{{ '/assets/images/feature-privacy.svg' | relative_url }}" alt="" width="80" height="80">
+                </div>
+                <div class="fp-text">
+                    <h2 id="privacy">{{ f.privacy.title }}</h2>
+                    <p>{{ f.privacy.description }}</p>
+                    <a href="https://github.com/{{ site.repository }}/blob/main/docs/privacy-policy.md" class="fp-link"
+                        target="_blank" rel="noopener">{{
+                        f.privacy.link }} &rarr;</a>
+                </div>
+            </div>
+
+        </div>
+        {%- include toc-sidebar.html -%}
     </div>
 </div>
 
@@ -105,8 +127,21 @@ layout: default
                 <h3>{{ f.more.editor.title }}</h3>
                 <p>{{ f.more.editor.description }}</p>
             </div>
+            <div class="fp-extra-card">
+                <h3>{{ f.more.resilience.title }}</h3>
+                <p>{{ f.more.resilience.description }}</p>
+            </div>
+            <div class="fp-extra-card">
+                <h3>{{ f.more.permissions.title }}</h3>
+                <p>{{ f.more.permissions.description }}</p>
+            </div>
+            <div class="fp-extra-card">
+                <h3>{{ f.more.guest_only.title }}</h3>
+                <p>{{ f.more.guest_only.description }}</p>
+            </div>
         </div>
     </div>
 </section>
 
 {%- include cta-section.html -%}
+{%- include toc-script.html -%}
