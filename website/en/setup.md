@@ -173,13 +173,13 @@ EasyAuth needs an Entra App Registration as its identity provider.
 [PowerShell 7+](https://learn.microsoft.com/powershell/scripting/install/installing-powershell)):
 
 ```powershell
-& ([scriptblock]::Create((iwr 'https://github.com/workoho/spfx-guest-sponsor-info/releases/latest/download/setup-app-registration.ps1'))) -TenantId "<your-tenant-id>"
+& ([scriptblock]::Create((iwr 'https://github.com/workoho/spfx-guest-sponsor-info/releases/latest/download/setup-app-registration.ps1')))
 ```
 
 **Option B — from a local clone:**
 
 ```powershell
-./azure-function/infra/setup-app-registration.ps1 -TenantId "<your-tenant-id>"
+./azure-function/infra/setup-app-registration.ps1
 ```
 
 <details>
@@ -193,7 +193,7 @@ Invoke-WebRequest `
 # Review the script content before running it:
 Get-Content setup-app-registration.ps1
 
-./setup-app-registration.ps1 -TenantId "<your-tenant-id>"
+./setup-app-registration.ps1
 ```
 
 </details>
@@ -306,26 +306,25 @@ After setup, open **Resource Group → Deployments → Outputs**:
 **Option A — run directly from the web:**
 
 ```powershell
-& ([scriptblock]::Create((iwr 'https://github.com/workoho/spfx-guest-sponsor-info/releases/latest/download/setup-graph-permissions.ps1'))) `
-  -ManagedIdentityObjectId "<oid-from-deployment-output>" `
-  -TenantId "<your-tenant-id>" `
-  -FunctionAppClientId "<client-id-from-pre-step>"
+& ([scriptblock]::Create((iwr 'https://github.com/workoho/spfx-guest-sponsor-info/releases/latest/download/setup-graph-permissions.ps1')))
 ```
 
 **Option B — from a local clone:**
 
 ```powershell
-./azure-function/infra/setup-graph-permissions.ps1 `
-  -ManagedIdentityObjectId "<oid-from-deployment-output>" `
-  -TenantId "<your-tenant-id>" `
-  -FunctionAppClientId "<client-id-from-pre-step>"
+./azure-function/infra/setup-graph-permissions.ps1
 ```
 
 This script:
 
-1. **Managed Identity Graph permissions** — assigns `User.Read.All`,
-   `Presence.Read.All` (optional), `MailboxSettings.Read` (optional), and
-   `TeamMember.Read.All` (optional).
+1. **Managed Identity Graph permissions** — assigns
+  [`User.Read.All`](https://learn.microsoft.com/en-us/graph/permissions-reference#userreadall),
+  [`Presence.Read.All`](https://learn.microsoft.com/en-us/graph/permissions-reference#presencereadall)
+  (optional),
+  [`MailboxSettings.Read`](https://learn.microsoft.com/en-us/graph/permissions-reference#mailboxsettingsread)
+  (optional), and
+  [`TeamMember.Read.All`](https://learn.microsoft.com/en-us/graph/permissions-reference#teammemberreadall)
+  (optional).
 2. **App Registration setup** — exposes a `user_impersonation` scope and
    pre-authorizes *SharePoint Online Web Client Extensibility* so the web
    part can acquire tokens silently.
@@ -355,3 +354,5 @@ For security posture and trust assumptions, see the
 
 For telemetry and attribution details, see
 [Telemetry]({{ '/en/telemetry/' | relative_url }}).
+
+If something does not work as expected, see the [Support]({{ '/en/support/' | relative_url }}) page.

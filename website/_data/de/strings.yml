@@ -2,7 +2,7 @@ meta:
   description: >-
     Guest Sponsor Info — ein kostenloses SharePoint Framework Web Part,
     das Microsoft Entra Sponsoren für B2B-Gastbenutzer anzeigt, mit
-    Live-Kontaktkarten, Teams-Präsenz und 14 Sprachen.
+    Live-Kontaktkarten, Teams-Präsenz und 17 Sprachen.
 
 nav:
   why: Warum?
@@ -28,7 +28,7 @@ hero:
   cta_secondary: Warum?
   illustration_alt: >-
     Illustration mit Sponsor-Kontaktkarten, die sich mit einem Gastbenutzer verbinden
-  badge_languages: 14 Sprachen
+  badge_languages: 17 Sprachen
   badge_privacy: Privacy-First
   badge_opensource: Open Source
 
@@ -156,11 +156,12 @@ features_page:
   more:
     title: Und es gibt noch mehr
     languages:
-      title: 14 Sprachen
+      title: 17 Sprachen
       description: >-
         Englisch, Deutsch, Französisch, Spanisch, Italienisch, Dänisch,
         Finnisch, Japanisch, Norwegisch, Schwedisch, Chinesisch,
-        Portugiesisch, Polnisch und Niederländisch — inkl. Du/Sie-Modus.
+        Portugiesisch, Polnisch, Niederländisch, Tschechisch, Ungarisch
+        und Rumänisch — inkl. Du/Sie-Modus.
     api:
       title: Guest Sponsor API
       description: >-
@@ -256,6 +257,7 @@ footer:
   deployment: Setup
   architecture: Architektur
   operations: Operations
+  support: Support
   legal: Rechtliches
   privacy: Datenschutz
   terms: Nutzungsbedingungen

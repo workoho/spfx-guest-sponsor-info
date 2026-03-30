@@ -4,11 +4,14 @@ lang: en
 title: Privacy Policy
 permalink: /en/privacy/
 description: >-
-  Privacy policy for the Guest Sponsor Info web part — how data is handled,
-  what permissions are used, and where data is stored.
+  Privacy policy for Guest Sponsor Info for Microsoft Entra B2B and the
+  Guest Sponsor API for Microsoft Entra B2B — how data is handled, what
+  permissions are used, and where data is stored.
 ---
 
-Guest Sponsor Info is designed with a **privacy-first architecture**. All data
+This policy covers both **Guest Sponsor Info for Microsoft Entra B2B** (the SharePoint web
+part) and the **Guest Sponsor API for Microsoft Entra B2B** (the companion Azure Function).
+Together they are designed with a **privacy-first architecture**. All data
 processing happens within your own Microsoft 365 and Azure tenant boundaries.
 
 ## Key Principles
@@ -25,12 +28,15 @@ processing happens within your own Microsoft 365 and Azure tenant boundaries.
 
 ## Permissions Used
 
-| Scope | Type | Purpose |
-|-------|------|---------|
-| `User.Read.All` | Application (Managed Identity) | Read sponsor details via API proxy |
-| `Presence.Read.All` | Application (optional) | Teams presence indicators |
-| `MailboxSettings.Read` | Application (optional) | Filter shared/room/equipment mailboxes |
-| `TeamMember.Read.All` | Application (optional) | Detect guest Teams account provisioning |
+All Microsoft Graph permissions are held exclusively by the
+**Guest Sponsor API for Microsoft Entra B2B** — the web part itself has none.
+
+| Scope | Required? | Purpose |
+|-------|-----------|---------|
+| [`User.Read.All`](https://learn.microsoft.com/en-us/graph/permissions-reference#userreadall) | Required | Read sponsor profiles and filter disabled accounts |
+| [`Presence.Read.All`](https://learn.microsoft.com/en-us/graph/permissions-reference#presencereadall) | Optional | Teams presence indicators |
+| [`MailboxSettings.Read`](https://learn.microsoft.com/en-us/graph/permissions-reference#mailboxsettingsread) | Optional | Filter shared/room/equipment mailboxes |
+| [`TeamMember.Read.All`](https://learn.microsoft.com/en-us/graph/permissions-reference#teammemberreadall) | Optional | Detect guest Teams account provisioning |
 
 ## Full Policy
 

@@ -341,6 +341,18 @@ ul {
   transition: background var(--transition), color var(--transition), border-color var(--transition), transform var(--transition), box-shadow var(--transition);
 }
 
+.btn,
+.btn:hover,
+.btn:focus,
+.btn:active {
+  text-decoration: none;
+}
+
+.btn:focus-visible {
+  outline: 3px solid rgba(18, 178, 205, 0.45);
+  outline-offset: 2px;
+}
+
 .btn::after {
   content: "\2192";
   font-size: 0.95em;
@@ -374,14 +386,14 @@ ul {
 }
 
 .btn-primary {
-  background: var(--color-teal);
+  background: var(--color-dark);
   color: var(--color-white);
-  border-color: var(--color-teal);
+  border-color: var(--color-dark);
 }
 
 .btn-primary:hover {
-  background: var(--color-teal-dark);
-  border-color: var(--color-teal-dark);
+  background: var(--color-dark-light);
+  border-color: var(--color-dark-light);
   color: var(--color-white);
 }
 
@@ -854,6 +866,43 @@ ul {
   text-decoration-color: var(--color-teal);
 }
 
+/* Button-style links must not inherit underline styles from prose links. */
+.page-content a.btn,
+.page-content a.btn:hover,
+.page-content a.btn:focus,
+.page-content a.btn:active,
+.doc-content a.btn,
+.doc-content a.btn:hover,
+.doc-content a.btn:focus,
+.doc-content a.btn:active {
+  text-decoration: none;
+}
+
+/* Keep button variant colors when rendered inside content containers. */
+.page-content a.btn-primary,
+.page-content a.btn-primary:hover,
+.doc-content a.btn-primary,
+.doc-content a.btn-primary:hover {
+  color: var(--color-white);
+}
+
+.page-content a.btn-secondary,
+.doc-content a.btn-secondary {
+  color: var(--color-dark);
+}
+
+.page-content a.btn-secondary:hover,
+.doc-content a.btn-secondary:hover {
+  color: var(--color-white);
+}
+
+.page-content a.btn-outline,
+.page-content a.btn-outline:hover,
+.doc-content a.btn-outline,
+.doc-content a.btn-outline:hover {
+  color: var(--color-white);
+}
+
 /* ============================================================
    Doc Page Layout (two-column with sticky TOC)
    ============================================================ */
@@ -951,24 +1000,37 @@ ul {
   color: var(--color-dark);
 }
 
+.page-content table,
 .doc-content table {
   width: 100%;
   border-collapse: collapse;
-  margin: 1rem 0 1.5rem;
-  font-size: 0.9rem;
+  margin: 1.1rem 0 1.75rem;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  border: 1px solid rgba(10, 61, 79, 0.24);
+  background: var(--color-white);
 }
 
+.page-content th,
+.page-content td,
 .doc-content th,
 .doc-content td {
-  padding: 0.6rem 0.75rem;
+  padding: 0.72rem 0.95rem;
   text-align: left;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  vertical-align: top;
+  border: 1px solid rgba(10, 61, 79, 0.16);
 }
 
+.page-content th,
 .doc-content th {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-dark);
-  background: var(--color-bg);
+  background: rgba(18, 178, 205, 0.12);
+}
+
+.page-content tbody tr:nth-child(even) td,
+.doc-content tbody tr:nth-child(even) td {
+  background: rgba(18, 178, 205, 0.04);
 }
 
 .doc-content blockquote {
@@ -1496,6 +1558,14 @@ a.external-link:not(.btn):hover::after {
   .cta-actions {
     flex-direction: column;
     align-items: center;
+  }
+
+  .page-content table,
+  .doc-content table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
   }
 
   .fp-hero h1 {

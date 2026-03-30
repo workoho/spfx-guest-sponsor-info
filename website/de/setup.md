@@ -177,13 +177,13 @@ EasyAuth benötigt eine Entra App-Registrierung als Identitätsanbieter.
 ([PowerShell 7+](https://learn.microsoft.com/powershell/scripting/install/installing-powershell)):
 
 ```powershell
-& ([scriptblock]::Create((iwr 'https://github.com/workoho/spfx-guest-sponsor-info/releases/latest/download/setup-app-registration.ps1'))) -TenantId "<ihre-tenant-id>"
+& ([scriptblock]::Create((iwr 'https://github.com/workoho/spfx-guest-sponsor-info/releases/latest/download/setup-app-registration.ps1')))
 ```
 
 **Option B — aus einem lokalen Klon:**
 
 ```powershell
-./azure-function/infra/setup-app-registration.ps1 -TenantId "<ihre-tenant-id>"
+./azure-function/infra/setup-app-registration.ps1
 ```
 
 Kopieren Sie die am Ende angezeigte **Client ID**.
@@ -247,26 +247,25 @@ Nach dem Setup: **Ressourcengruppe → Bereitstellungen → Ausgaben**:
 **Option A — direkt aus dem Web ausführen:**
 
 ```powershell
-& ([scriptblock]::Create((iwr 'https://github.com/workoho/spfx-guest-sponsor-info/releases/latest/download/setup-graph-permissions.ps1'))) `
-  -ManagedIdentityObjectId "<oid-aus-bereitstellungsausgabe>" `
-  -TenantId "<ihre-tenant-id>" `
-  -FunctionAppClientId "<client-id-aus-vorbereitung>"
+& ([scriptblock]::Create((iwr 'https://github.com/workoho/spfx-guest-sponsor-info/releases/latest/download/setup-graph-permissions.ps1')))
 ```
 
 **Option B — aus einem lokalen Klon:**
 
 ```powershell
-./azure-function/infra/setup-graph-permissions.ps1 `
-  -ManagedIdentityObjectId "<oid-aus-bereitstellungsausgabe>" `
-  -TenantId "<ihre-tenant-id>" `
-  -FunctionAppClientId "<client-id-aus-vorbereitung>"
+./azure-function/infra/setup-graph-permissions.ps1
 ```
 
 Dieses Skript:
 
-1. **Managed Identity Graph-Berechtigungen** — weist `User.Read.All`,
-   `Presence.Read.All` (optional), `MailboxSettings.Read` (optional) und
-   `TeamMember.Read.All` (optional) zu.
+1. **Managed Identity Graph-Berechtigungen** — weist
+  [`User.Read.All`](https://learn.microsoft.com/en-us/graph/permissions-reference#userreadall),
+  [`Presence.Read.All`](https://learn.microsoft.com/en-us/graph/permissions-reference#presencereadall)
+  (optional),
+  [`MailboxSettings.Read`](https://learn.microsoft.com/en-us/graph/permissions-reference#mailboxsettingsread)
+  (optional) und
+  [`TeamMember.Read.All`](https://learn.microsoft.com/en-us/graph/permissions-reference#teammemberreadall)
+  (optional) zu.
 2. **App-Registrierung einrichten** — stellt einen `user_impersonation`-Scope
    bereit und autorisiert *SharePoint Online Web Client Extensibility* vorab,
    damit das Web Part Tokens lautlos abrufen kann.
@@ -296,3 +295,5 @@ Für Sicherheitsbewertung und Vertrauensannahmen siehe die
 
 Für Telemetrie und Zuordnungsdetails siehe
 [Telemetrie]({{ '/de/telemetry/' | relative_url }}).
+
+Bei Problemen oder Fragen zum Betrieb siehe die [Support]({{ '/de/support/' | relative_url }})-Seite.

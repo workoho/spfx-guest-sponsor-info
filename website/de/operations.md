@@ -170,3 +170,9 @@ az stack group delete \
 ```
 
 </details>
+
+---
+
+## Support
+
+Bei Problemen oder Fragen zum Betrieb siehe die [Support]({{ '/de/support/' | relative_url }})-Seite.

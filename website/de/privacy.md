@@ -4,12 +4,14 @@ lang: de
 title: Datenschutz
 permalink: /de/privacy/
 description: >-
-  Datenschutzrichtlinie für das Guest Sponsor Info Web Part — wie
-  Daten verarbeitet werden, welche Berechtigungen verwendet werden
-  und wo Daten gespeichert werden.
+  Datenschutzrichtlinie für Guest Sponsor Info für Microsoft Entra B2B und
+  die Guest Sponsor API für Microsoft Entra B2B — wie Daten verarbeitet
+  werden, welche Berechtigungen verwendet werden und wo Daten gespeichert werden.
 ---
 
-Guest Sponsor Info ist mit einer **Privacy-First-Architektur** konzipiert.
+Diese Richtlinie gilt für **Guest Sponsor Info für Microsoft Entra B2B** (das SharePoint
+Web Part) und die **Guest Sponsor API für Microsoft Entra B2B** (die begleitende Azure
+Function). Beide sind mit einer **Privacy-First-Architektur** konzipiert.
 Die gesamte Datenverarbeitung findet innerhalb Ihrer eigenen Microsoft 365
 und Azure Tenant-Grenzen statt.
 
@@ -28,12 +30,15 @@ und Azure Tenant-Grenzen statt.
 
 ## Verwendete Berechtigungen
 
-| Berechtigung | Typ | Zweck |
+Alle Microsoft Graph-Berechtigungen liegen ausschließlich bei der
+**Guest Sponsor API für Microsoft Entra B2B** — das Web Part selbst hat keine.
+
+| Berechtigung | Erforderlich? | Zweck |
 |---|---|---|
-| `User.Read.All` | Anwendung (Managed Identity) | Lesen von Sponsor-Details über den API-Proxy |
-| `Presence.Read.All` | Anwendung (optional) | Teams-Präsenz-Indikatoren |
-| `MailboxSettings.Read` | Anwendung (optional) | Freigegebene Postfächer/Raum-/Gerätekonten filtern |
-| `TeamMember.Read.All` | Anwendung (optional) | Teams-Konto-Provisionierung von Gästen erkennen |
+| [`User.Read.All`](https://learn.microsoft.com/en-us/graph/permissions-reference#userreadall) | Erforderlich | Sponsor-Profile lesen und deaktivierte Konten filtern |
+| [`Presence.Read.All`](https://learn.microsoft.com/en-us/graph/permissions-reference#presencereadall) | Optional | Teams-Präsenz-Indikatoren |
+| [`MailboxSettings.Read`](https://learn.microsoft.com/en-us/graph/permissions-reference#mailboxsettingsread) | Optional | Freigegebene Postfächer/Raum-/Gerätekonten filtern |
+| [`TeamMember.Read.All`](https://learn.microsoft.com/en-us/graph/permissions-reference#teammemberreadall) | Optional | Teams-Konto-Provisionierung von Gästen erkennen |
 
 ## Vollständige Richtlinie
 
