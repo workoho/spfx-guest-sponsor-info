@@ -8,10 +8,13 @@ import {
   Field,
   Input,
   Link,
+  Popover,
+  PopoverSurface,
+  PopoverTrigger,
+  PortalMountNodeProvider,
   Radio,
   RadioGroup,
   Text,
-  Tooltip,
   makeStyles,
   mergeClasses,
   tokens,
@@ -22,6 +25,7 @@ import {
   ChevronLeftRegular,
   ChevronRightRegular,
   CloudRegular,
+  CodeRegular,
   CopyRegular,
   DismissRegular,
 } from '@fluentui/react-icons';
@@ -78,6 +82,54 @@ function buildStep3Command(semver: string | undefined): string {
   return `& ([scriptblock]::Create((iwr '${url}')))`;
 }
 
+// ── PowerShell syntax tokenizer ───────────────────────────────────────────────
+// Handles the specific one-liner pattern used in the setup commands:
+//   & ([scriptblock]::Create((iwr 'URL')))
+// No external dependency — keeps the bundle lean.
+type PsTokenType = 'op' | 'type' | 'method' | 'cmdlet' | 'str' | 'punct' | 'default';
+interface IPsToken { t: PsTokenType; v: string; }
+
+/** Cmdlet names and aliases that appear in the setup command one-liners. */
+const PS_CMDLETS = new Set(['iwr', 'Invoke-WebRequest']);
+
+function tokenizePwsh(cmd: string): IPsToken[] {
+  const result: IPsToken[] = [];
+  let i = 0;
+  while (i < cmd.length) {
+    const ch = cmd[i];
+    // Single-quoted string  'text'
+    if (ch === "'") {
+      const end = cmd.indexOf("'", i + 1);
+      if (end !== -1) { result.push({ t: 'str', v: cmd.slice(i, end + 1) }); i = end + 1; continue; }
+      result.push({ t: 'default', v: cmd.slice(i) }); break;
+    }
+    // Type literal  [TypeName]
+    if (ch === '[') {
+      const end = cmd.indexOf(']', i + 1);
+      if (end !== -1) { result.push({ t: 'type', v: cmd.slice(i, end + 1) }); i = end + 1; continue; }
+    }
+    // Static-method operator  ::MethodName
+    if (ch === ':' && cmd[i + 1] === ':') {
+      result.push({ t: 'op', v: '::' }); i += 2;
+      let j = i; while (j < cmd.length && /\w/.test(cmd[j])) j++;
+      if (j > i) { result.push({ t: 'method', v: cmd.slice(i, j) }); i = j; }
+      continue;
+    }
+    // Call operator  &
+    if (ch === '&') { result.push({ t: 'op', v: '&' }); i++; continue; }
+    // Parentheses
+    if (ch === '(' || ch === ')') { result.push({ t: 'punct', v: ch }); i++; continue; }
+    // Word boundary — cmdlet or plain identifier
+    if (/\w/.test(ch)) {
+      let j = i; while (j < cmd.length && /[\w-]/.test(cmd[j])) j++;
+      const word = cmd.slice(i, j);
+      result.push({ t: PS_CMDLETS.has(word) ? 'cmdlet' : 'default', v: word }); i = j; continue;
+    }
+    result.push({ t: 'default', v: ch }); i++;
+  }
+  return result;
+}
+
 const useStyles = makeStyles({
   // ── Inline card wrapper ───────────────────────────────────────────────────
   // The wizard renders as plain DOM content inside the web part zone — no
@@ -95,6 +147,9 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground1,
     boxShadow: tokens.shadow16,
     borderRadius: tokens.borderRadiusXLarge,
+    // Clip any overflowing children (e.g. long code blocks in the deploy panel)
+    // to the card boundary. This also enforces the border-radius visually.
+    overflow: 'hidden' as const,
     padding: `${tokens.spacingVerticalXXL} ${tokens.spacingHorizontalXXL}`,
     // Reduce horizontal padding in narrow web-part zones (≤ 400 px viewport)
     // so content never gets squeezed to zero by the 40 px × 2 side padding.
@@ -301,6 +356,10 @@ const useStyles = makeStyles({
     // bottom border when collapsed (maxHeight: 0), making the closed state invisible.
     marginTop: '-2px',
     overflow: 'hidden',
+    // Explicit width so the flex child never expands beyond the card content area,
+    // which is required for text-overflow: ellipsis inside to trigger correctly.
+    width: '100%',
+    boxSizing: 'border-box' as const,
     maxHeight: '0',
     opacity: 0,
     display: 'flex',
@@ -326,11 +385,55 @@ const useStyles = makeStyles({
     paddingBottom: tokens.spacingVerticalM,
   },
   // ── 3-step setup guide inside the deploy panel ────────────────────────────
-  stepLabel: {
+  stepToggle: {
     display: 'flex',
     alignItems: 'center',
     gap: tokens.spacingHorizontalXS,
     marginTop: tokens.spacingVerticalS,
+    width: '100%',
+    background: 'none',
+    border: 'none',
+    paddingTop: tokens.spacingVerticalXXS,
+    paddingBottom: tokens.spacingVerticalXXS,
+    paddingLeft: 0,
+    paddingRight: 0,
+    cursor: 'pointer',
+    color: 'inherit',
+    textAlign: 'left' as const,
+  },
+  stepToggleLabel: {
+    flexGrow: 1,
+    color: tokens.colorNeutralForeground1,
+  },
+  stepChevron: {
+    color: tokens.colorNeutralForeground3,
+    width: '16px',
+    height: '16px',
+    transitionProperty: 'transform',
+    transitionDuration: tokens.durationNormal,
+    transitionTimingFunction: tokens.curveEasyEase,
+    flexShrink: 0,
+    '@media (prefers-reduced-motion: reduce)': {
+      transitionDuration: '0s',
+    },
+  },
+  stepChevronOpen: {
+    transform: 'rotate(90deg)',
+  },
+  stepContent: {
+    maxHeight: 0,
+    overflow: 'hidden' as const,
+    opacity: 0,
+    transitionProperty: 'max-height, opacity',
+    transitionDuration: `${tokens.durationSlower}, ${tokens.durationNormal}`,
+    transitionTimingFunction: `${tokens.curveEasyEase}, ease-in-out`,
+    '@media (prefers-reduced-motion: reduce)': {
+      transitionDuration: '0s',
+    },
+  },
+  stepContentOpen: {
+    maxHeight: '500px',
+    opacity: 1,
   },
   stepNumber: {
     display: 'inline-flex',
@@ -347,33 +450,81 @@ const useStyles = makeStyles({
   },
   codeWrap: {
     display: 'flex',
-    alignItems: 'flex-start',
-    gap: tokens.spacingHorizontalXS,
+    flexDirection: 'column',
     marginTop: tokens.spacingVerticalXS,
-    backgroundColor: tokens.colorNeutralBackground3,
+    // Always dark — code blocks are terminal-style regardless of the site theme.
+    backgroundColor: '#1e1e1e',
     borderRadius: tokens.borderRadiusMedium,
-    padding: tokens.spacingVerticalXS,
+    // clip children to the rounded corners
+    overflow: 'hidden' as const,
+  },
+  codeLangBar: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: tokens.spacingVerticalXXS,
+    paddingBottom: tokens.spacingVerticalXXS,
     paddingLeft: tokens.spacingHorizontalS,
+    backgroundColor: '#2d2d2d',
+    borderBottom: '1px solid #454545',
+  },
+  codeLangLabel: {
+    fontFamily: tokens.fontFamilyMonospace,
+    fontSize: tokens.fontSizeBase100,
+    color: '#a0a0a0',
+  },
+  codeLangActions: {
+    display: 'flex',
+    alignItems: 'center',
   },
   codeBlock: {
-    // min-width: 0 is required for flex children to shrink below their content
-    // size; without it, overflow-x: auto never triggers.
-    flex: 1,
-    minWidth: 0,
     fontFamily: tokens.fontFamilyMonospace,
     fontSize: tokens.fontSizeBase100,
     lineHeight: tokens.lineHeightBase200,
-    color: tokens.colorNeutralForeground1,
-    // Horizontal scrolling so long one-liners are readable without wrapping.
-    // 'pre' preserves embedded newlines (step 3 command) and prevents word-wrap
-    // on single-line commands (step 1), matching GitHub code-block behaviour.
+    color: '#d4d4d4',
+    // Horizontal scrolling so the user can select and copy the full command.
     overflowX: 'auto' as const,
-    whiteSpace: 'pre' as const,
+    whiteSpace: 'nowrap' as const,
+    paddingTop: tokens.spacingVerticalXS,
+    paddingBottom: tokens.spacingVerticalXS,
+    paddingLeft: tokens.spacingHorizontalS,
+    paddingRight: tokens.spacingHorizontalS,
   },
   copyButton: {
     flexShrink: 0,
+  },
+  // ── URL / Client ID field hints (Step 3 — Connect) ───────────────────────
+  // Mirrors the visual pattern of the property-pane hints:
+  // a small ⓘ icon + label that reveals a Popover on hover.
+  urlHintRow: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalXXS,
+    marginTop: tokens.spacingVerticalXXS,
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    cursor: 'help',
+    textAlign: 'left' as const,
+    // Prevent the flex-column parent from stretching the button to full width.
     alignSelf: 'flex-start',
   },
+  urlHintIcon: {
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorBrandForeground1,
+    lineHeight: '1',
+    flexShrink: 0,
+  },
+  urlHintLabel: {
+    color: tokens.colorNeutralForeground3,
+  },
+  // ── PowerShell syntax-highlight token colours (fixed; always on dark bg) ──
+  psOp:     { color: '#569cd6' },  // &  ::
+  psType:   { color: '#4ec9b0' },  // [scriptblock]
+  psMethod: { color: '#dcdcaa' },  // Create
+  psCmdlet: { color: '#dcdcaa' },  // iwr
+  psStr:    { color: '#ce9178' },  // 'url'
+  psPunct:  { color: '#808080' },  // ( )
   // ── Action rows ────────────────────────────────────────────────────────────
   actionsSplit: {
     display: 'flex',
@@ -471,6 +622,12 @@ const Step2Setup: React.FC<IStep2SetupProps> = ({
 
   const step1Cmd = React.useMemo(() => buildStep1Command(semver), [semver]);
   const step3Cmd = React.useMemo(() => buildStep3Command(semver), [semver]);
+  const step1Tokens = React.useMemo(() => tokenizePwsh(step1Cmd), [step1Cmd]);
+  const step3Tokens = React.useMemo(() => tokenizePwsh(step3Cmd), [step3Cmd]);
+  // Raw script URLs — shown in the tooltip and as "View script source" links
+  // so admins can inspect the PowerShell before running it.
+  const step1Url = React.useMemo(() => buildScriptUrl(semver, 'setup-app-registration.ps1'), [semver]);
+  const step3Url = React.useMemo(() => buildScriptUrl(semver, 'setup-graph-permissions.ps1'), [semver]);
 
   const handleCopy = (cmd: string, step: 1 | 3): void => {
     navigator.clipboard.writeText(cmd).then(() => {
@@ -478,6 +635,10 @@ const Step2Setup: React.FC<IStep2SetupProps> = ({
       setTimeout(() => setCopiedStep(null), 2000);
     }).catch(() => { /* clipboard unavailable — silent */ });
   };
+
+  const [openStep, setOpenStep] = React.useState<number | null>(null);
+  const toggleStep = (n: number): void =>
+    setOpenStep(prev => (prev === n ? null : n));
 
   return (
     <>
@@ -504,66 +665,8 @@ const Step2Setup: React.FC<IStep2SetupProps> = ({
 
         {/* Deploy panel — slides out from under the API option card when selected */}
         <div className={mergeClasses(classes.deployPanel, choice === 'api' && classes.deployPanelExpanded)}>
-          <Text size={200} block className={classes.muted}>{strings.WelcomeDialogDeployNote}</Text>
-
-          {/* ① Create App Registration */}
-          <div className={classes.stepLabel}>
-            <span className={classes.stepNumber}>1</span>
-            <Text size={200} weight="semibold">{strings.WelcomeDialogSetupStep1Label}</Text>
-          </div>
-          <Text size={100} className={classes.muted}>{strings.WelcomeDialogSetupPwshHint}</Text>
-          <div className={classes.codeWrap}>
-            <code className={classes.codeBlock}>{step1Cmd}</code>
-            <Tooltip
-              content={copiedStep === 1 ? strings.CopiedToClipboardLabel : strings.CopyToClipboardLabel}
-              relationship="label"
-            >
-              <Button
-                appearance="subtle"
-                size="small"
-                icon={copiedStep === 1 ? <CheckmarkRegular /> : <CopyRegular />}
-                className={classes.copyButton}
-                onClick={() => handleCopy(step1Cmd, 1)}
-              />
-            </Tooltip>
-          </div>
-
-          {/* ② Deploy to Azure */}
-          <div className={classes.stepLabel}>
-            <span className={classes.stepNumber}>2</span>
-            <Text size={200} weight="semibold">{strings.WelcomeDialogDeployToAzureLabel}</Text>
-          </div>
-          <Text size={100} className={classes.muted}>{strings.DeployToAzureClickHint}</Text>
-          <Link href={deployToAzureUrl} target="_blank" rel="noopener noreferrer">
-            <img
-              src="https://aka.ms/deploytoazurebutton"
-              alt={strings.WelcomeDialogDeployToAzureLabel}
-              style={{ display: 'block', maxWidth: '100%' }}
-            />
-          </Link>
-
-          {/* ③ Grant Graph permissions */}
-          <div className={classes.stepLabel}>
-            <span className={classes.stepNumber}>3</span>
-            <Text size={200} weight="semibold">{strings.WelcomeDialogSetupStep3Label}</Text>
-          </div>
-          <Text size={100} className={classes.muted}>{strings.WelcomeDialogSetupStep3Hint}</Text>
-          <div className={classes.codeWrap}>
-            <code className={classes.codeBlock}>{step3Cmd}</code>
-            <Tooltip
-              content={copiedStep === 3 ? strings.CopiedToClipboardLabel : strings.CopyToClipboardLabel}
-              relationship="label"
-            >
-              <Button
-                appearance="subtle"
-                size="small"
-                icon={copiedStep === 3 ? <CheckmarkRegular /> : <CopyRegular />}
-                className={classes.copyButton}
-                onClick={() => handleCopy(step3Cmd, 3)}
-              />
-            </Tooltip>
-          </div>
-
+          {/* Setup guide note — shown first so admins read it before running scripts */}
+          <Text size={100} block className={classes.muted}>{strings.WelcomeDialogSetupGuideNote}</Text>
           <Link
             href={GITHUB_SETUP_URL}
             target="_blank"
@@ -572,6 +675,146 @@ const Step2Setup: React.FC<IStep2SetupProps> = ({
           >
             {strings.WelcomeDialogOptionApiDocsLabel}
           </Link>
+          <Text size={200} block className={classes.muted}>{strings.WelcomeDialogDeployNote}</Text>
+          <Text size={100} weight="semibold" block className={classes.muted}>{strings.WelcomeDialogSetupStepsOrderHint}</Text>
+
+          {/* ① Create App Registration */}
+          <button
+            type="button"
+            className={classes.stepToggle}
+            onClick={() => toggleStep(1)}
+            aria-expanded={openStep === 1}
+          >
+            <span className={classes.stepNumber}>1</span>
+            <Text size={200} weight="semibold" className={classes.stepToggleLabel}>
+              {strings.WelcomeDialogSetupStep1Label}
+            </Text>
+            <ChevronRightRegular className={mergeClasses(classes.stepChevron, openStep === 1 && classes.stepChevronOpen)} />
+          </button>
+          <div className={mergeClasses(classes.stepContent, openStep === 1 && classes.stepContentOpen)}>
+            <div className={classes.codeWrap}>
+              <div className={classes.codeLangBar}>
+                <span className={classes.codeLangLabel}>PowerShell</span>
+                <div className={classes.codeLangActions}>
+                  <Button
+                    as="a"
+                    href={step1Url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    appearance="transparent"
+                    size="small"
+                    icon={<CodeRegular />}
+                    style={{ color: '#e0e0e0' }}
+                  >
+                    {strings.ViewScriptSourceLabel}
+                  </Button>
+                  <Button
+                    appearance="transparent"
+                    size="small"
+                    icon={copiedStep === 1 ? <CheckmarkRegular /> : <CopyRegular />}
+                    className={classes.copyButton}
+                    style={{ color: '#e0e0e0' }}
+                    onClick={() => handleCopy(step1Cmd, 1)}
+                  >
+                    {copiedStep === 1 ? strings.CopiedToClipboardLabel : strings.CopyToClipboardLabel}
+                  </Button>
+                </div>
+              </div>
+              <code className={classes.codeBlock}>{step1Tokens.map((tok, idx) => (
+                <span key={idx} className={
+                  tok.t === 'op'     ? classes.psOp :
+                  tok.t === 'type'   ? classes.psType :
+                  tok.t === 'method' ? classes.psMethod :
+                  tok.t === 'cmdlet' ? classes.psCmdlet :
+                  tok.t === 'str'    ? classes.psStr :
+                  tok.t === 'punct'  ? classes.psPunct :
+                  undefined
+                }>{tok.v}</span>
+              ))}</code>
+            </div>
+          </div>
+
+          {/* ② Deploy to Azure */}
+          <button
+            type="button"
+            className={classes.stepToggle}
+            onClick={() => toggleStep(2)}
+            aria-expanded={openStep === 2}
+          >
+            <span className={classes.stepNumber}>2</span>
+            <Text size={200} weight="semibold" className={classes.stepToggleLabel}>
+              {strings.WelcomeDialogDeployToAzureLabel}
+            </Text>
+            <ChevronRightRegular className={mergeClasses(classes.stepChevron, openStep === 2 && classes.stepChevronOpen)} />
+          </button>
+          <div className={mergeClasses(classes.stepContent, openStep === 2 && classes.stepContentOpen)}>
+            <Text size={100} block className={classes.muted}>{strings.WelcomeDialogSetupStep2Hint}</Text>
+            <Text size={100} block className={classes.muted}>{strings.DeployToAzureClickHint}</Text>
+            <Link href={deployToAzureUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex' }}>
+              <img
+                src="https://aka.ms/deploytoazurebutton"
+                alt={strings.WelcomeDialogDeployToAzureLabel}
+                style={{ display: 'block', maxWidth: '100%' }}
+              />
+            </Link>
+          </div>
+
+          {/* ③ Grant Graph permissions */}
+          <button
+            type="button"
+            className={classes.stepToggle}
+            onClick={() => toggleStep(3)}
+            aria-expanded={openStep === 3}
+          >
+            <span className={classes.stepNumber}>3</span>
+            <Text size={200} weight="semibold" className={classes.stepToggleLabel}>
+              {strings.WelcomeDialogSetupStep3Label}
+            </Text>
+            <ChevronRightRegular className={mergeClasses(classes.stepChevron, openStep === 3 && classes.stepChevronOpen)} />
+          </button>
+          <div className={mergeClasses(classes.stepContent, openStep === 3 && classes.stepContentOpen)}>
+            <Text size={100} block className={classes.muted}>{strings.WelcomeDialogSetupStep3Hint}</Text>
+            <div className={classes.codeWrap}>
+              <div className={classes.codeLangBar}>
+                <span className={classes.codeLangLabel}>PowerShell</span>
+                <div className={classes.codeLangActions}>
+                  <Button
+                    as="a"
+                    href={step3Url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    appearance="transparent"
+                    size="small"
+                    icon={<CodeRegular />}
+                    style={{ color: '#e0e0e0' }}
+                  >
+                    {strings.ViewScriptSourceLabel}
+                  </Button>
+                  <Button
+                    appearance="transparent"
+                    size="small"
+                    icon={copiedStep === 3 ? <CheckmarkRegular /> : <CopyRegular />}
+                    className={classes.copyButton}
+                    style={{ color: '#e0e0e0' }}
+                    onClick={() => handleCopy(step3Cmd, 3)}
+                  >
+                    {copiedStep === 3 ? strings.CopiedToClipboardLabel : strings.CopyToClipboardLabel}
+                  </Button>
+                </div>
+              </div>
+              <code className={classes.codeBlock}>{step3Tokens.map((tok, idx) => (
+                <span key={idx} className={
+                  tok.t === 'op'     ? classes.psOp :
+                  tok.t === 'type'   ? classes.psType :
+                  tok.t === 'method' ? classes.psMethod :
+                  tok.t === 'cmdlet' ? classes.psCmdlet :
+                  tok.t === 'str'    ? classes.psStr :
+                  tok.t === 'punct'  ? classes.psPunct :
+                  undefined
+                }>{tok.v}</span>
+              ))}</code>
+            </div>
+          </div>
         </div>
 
         {/* Option B: Demo Mode */}
@@ -609,39 +852,94 @@ interface IStep3ConnectProps {
 /** Step 3 — Connect Guest Sponsor API (optional credentials, API path only). */
 const Step3Connect: React.FC<IStep3ConnectProps> = ({
   classes, isDark, apiUrl, clientId, urlError, clientIdError, onApiUrlChange, onClientIdChange,
-}) => (
-  <>
-    <div className={classes.illustrationWrap}>
-      <img src={isDark ? wizardConnectIllustrationDark : wizardConnectIllustration} alt="" className={classes.illustrationImg} />
-    </div>
-    <Text block className={classes.setupIntro}>{strings.WelcomeDialogConnectApiIntro}</Text>
-    <div className={classes.apiFields}>
-      <Field
-        label={strings.FunctionUrlFieldLabel}
-        validationMessage={urlError || undefined}
-        validationState={urlError ? 'error' : 'none'}
-      >
-        <Input
-          value={apiUrl}
-          onChange={(_, d) => onApiUrlChange(d.value)}
-          placeholder="https://my-app.azurewebsites.net"
-          type="url"
-        />
-      </Field>
-      <Field
-        label={strings.FunctionClientIdFieldLabel}
-        validationMessage={clientIdError || undefined}
-        validationState={clientIdError ? 'error' : 'none'}
-      >
-        <Input
-          value={clientId}
-          onChange={(_, d) => onClientIdChange(d.value)}
-          placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-        />
-      </Field>
-    </div>
-  </>
-);
+}) => {
+  const [urlHintOpen, setUrlHintOpen] = React.useState(false);
+  const [clientIdHintOpen, setClientIdHintOpen] = React.useState(false);
+  return (
+    <>
+      <div className={classes.illustrationWrap}>
+        <img src={isDark ? wizardConnectIllustrationDark : wizardConnectIllustration} alt="" className={classes.illustrationImg} />
+      </div>
+      <Text block className={classes.setupIntro}>{strings.WelcomeDialogConnectApiIntro}</Text>
+      <div className={classes.apiFields}>
+        <Field
+          label={strings.FunctionUrlFieldLabel}
+          validationMessage={urlError || undefined}
+          validationState={urlError ? 'error' : 'none'}
+        >
+          <Input
+            value={apiUrl}
+            onChange={(_, d) => onApiUrlChange(d.value)}
+            placeholder="https://my-app.azurewebsites.net"
+            type="url"
+          />
+        </Field>
+        <Popover open={urlHintOpen} onOpenChange={(_, d) => setUrlHintOpen(d.open)}>
+          <PopoverTrigger disableButtonEnhancement>
+            <button
+              type="button"
+              className={classes.urlHintRow}
+              onMouseEnter={() => setUrlHintOpen(true)}
+              onMouseLeave={() => setUrlHintOpen(false)}
+            >
+              <span className={classes.urlHintIcon}>ⓘ</span>
+              <Text size={100} className={classes.urlHintLabel}>{strings.WelcomeDialogUrlHintLabel}</Text>
+            </button>
+          </PopoverTrigger>
+          <PopoverSurface
+            onMouseEnter={() => setUrlHintOpen(true)}
+            onMouseLeave={() => setUrlHintOpen(false)}
+            style={{ maxWidth: '280px' }}
+          >
+            <Text size={100} block>{strings.WelcomeDialogUrlHintBody}</Text>
+          </PopoverSurface>
+        </Popover>
+        <Field
+          label={strings.FunctionClientIdFieldLabel}
+          validationMessage={clientIdError || undefined}
+          validationState={clientIdError ? 'error' : 'none'}
+        >
+          <Input
+            value={clientId}
+            onChange={(_, d) => onClientIdChange(d.value)}
+            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+          />
+        </Field>
+        <Popover open={clientIdHintOpen} onOpenChange={(_, d) => setClientIdHintOpen(d.open)}>
+          <PopoverTrigger disableButtonEnhancement>
+            <button
+              type="button"
+              className={classes.urlHintRow}
+              onMouseEnter={() => setClientIdHintOpen(true)}
+              onMouseLeave={() => setClientIdHintOpen(false)}
+            >
+              <span className={classes.urlHintIcon}>ⓘ</span>
+              <Text size={100} className={classes.urlHintLabel}>{strings.PpClientIdHintLabel}</Text>
+            </button>
+          </PopoverTrigger>
+          <PopoverSurface
+            onMouseEnter={() => setClientIdHintOpen(true)}
+            onMouseLeave={() => setClientIdHintOpen(false)}
+            style={{ maxWidth: '280px' }}
+          >
+            <Text size={100} block>{strings.PpClientIdHintBody}</Text>
+            <Text size={100} block style={{ fontWeight: 600, marginTop: '4px' }}>
+              {'"Guest Sponsor Info \u2013 SharePoint Web Part Auth"'}
+            </Text>
+            <Link
+              href="https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontSize: tokens.fontSizeBase100, display: 'block', marginTop: '4px' }}
+            >
+              {strings.FunctionEntraLinkLabel}
+            </Link>
+          </PopoverSurface>
+        </Popover>
+      </div>
+    </>
+  );
+};
 
 /** Step 4 — Confirmation (content differs by chosen path and whether credentials were skipped). */
 const Step4Done: React.FC<{
@@ -668,6 +966,13 @@ const Step4Done: React.FC<{
 
 const WelcomeDialog: React.FC<IWelcomeDialogProps> = ({ open, onCommit, onSkip, onDismiss, semver, isDark }) => {
   const classes = useStyles();
+  // Card element used as the mount node for Tooltip portals so they render
+  // inside the FluentProvider's DOM subtree and inherit CSS token variables.
+  // PortalMountNodeContextValue accepts HTMLElement | undefined, not null.
+  const [cardMountNode, setCardMountNode] = React.useState<HTMLElement | undefined>(undefined);
+  const cardRef = React.useCallback((node: HTMLDivElement | null) => {
+    setCardMountNode(node ?? undefined);
+  }, []);
   const [step, setStep] = React.useState(0);
   const [choice, setChoice] = React.useState<'api' | 'demo'>('demo');
   const [apiUrl, setApiUrl] = React.useState('');
@@ -761,8 +1066,9 @@ const WelcomeDialog: React.FC<IWelcomeDialogProps> = ({ open, onCommit, onSkip, 
   if (!open) return null;
 
   return (
+    <PortalMountNodeProvider value={cardMountNode}>
     <div className={classes.root}>
-      <div className={classes.card}>
+      <div ref={cardRef} className={classes.card}>
         {/* Card header: wizard title + dismiss (X) button on steps 0-2 */}
         <div className={classes.cardHeader}>
           <Text as="h2" className={classes.wizardTitle}>{stepTitle}</Text>
@@ -881,6 +1187,7 @@ const WelcomeDialog: React.FC<IWelcomeDialogProps> = ({ open, onCommit, onSkip, 
         </div>
       </div>
     </div>
+    </PortalMountNodeProvider>
   );
 };
 

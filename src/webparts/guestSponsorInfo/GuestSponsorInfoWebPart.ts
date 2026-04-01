@@ -1379,6 +1379,69 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                 ...(this.properties.functionUrl && !isValidFunctionUrl(this.properties.functionUrl)
                   ? [this._infoBoxField('functionUrlValidationError', strings.InvalidUrlFormat, 'error')]
                   : []),
+                // Inline hint — hoverable info icon that explains where to find
+                // the Function App URL in the Azure portal.
+                PropertyPaneCustomField({
+                  key: 'functionUrlHintField',
+                  onRender: (element: HTMLElement | undefined) => {
+                    if (!element) return;
+                    element.innerHTML = '';
+
+                    const linkColor = this._v9Theme.colorBrandForegroundLink;
+                    const subtextColor = this._v9Theme.colorNeutralForeground3;
+                    const bgColor = this._v9Theme.colorNeutralBackground1;
+                    const borderColor = this._v9Theme.colorNeutralStroke2;
+
+                    const row = document.createElement('div');
+                    row.style.position = 'relative';
+                    row.style.display = 'inline-flex';
+                    row.style.alignItems = 'center';
+                    row.style.gap = '4px';
+                    row.style.cursor = 'help';
+
+                    const icon = document.createElement('span');
+                    icon.textContent = '\u24d8';
+                    icon.style.fontSize = '13px';
+                    icon.style.color = linkColor;
+
+                    const label = document.createElement('span');
+                    label.textContent = strings.WelcomeDialogUrlHintLabel;
+                    label.style.fontSize = '11px';
+                    label.style.color = subtextColor;
+
+                    const popup = document.createElement('div');
+                    popup.style.display = 'none';
+                    popup.style.position = 'absolute';
+                    popup.style.left = '0';
+                    popup.style.top = '100%';
+                    popup.style.padding = '12px 10px 8px';
+                    popup.style.backgroundColor = bgColor;
+                    popup.style.border = `1px solid ${borderColor}`;
+                    popup.style.borderRadius = '4px';
+                    popup.style.boxShadow = this._v9Theme.shadow8;
+                    popup.style.zIndex = '10';
+                    popup.style.minWidth = '200px';
+                    popup.style.maxWidth = '280px';
+                    popup.style.lineHeight = '1.5';
+
+                    const desc = document.createElement('div');
+                    desc.style.fontSize = '11px';
+                    desc.style.color = subtextColor;
+                    desc.textContent = strings.WelcomeDialogUrlHintBody;
+                    popup.appendChild(desc);
+
+                    row.addEventListener('mouseenter', () => { popup.style.display = 'block'; });
+                    row.addEventListener('mouseleave', () => { popup.style.display = 'none'; });
+
+                    row.appendChild(icon);
+                    row.appendChild(label);
+                    row.appendChild(popup);
+                    element.appendChild(row);
+                  },
+                  onDispose: (element: HTMLElement | undefined) => {
+                    if (element) element.innerHTML = '';
+                  },
+                }) as unknown as IPropertyPaneField<unknown>,
                 PropertyPaneTextField('functionClientId', {
                   label: strings.FunctionClientIdFieldLabel
                 }),
@@ -1407,7 +1470,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                     row.style.display = 'inline-flex';
                     row.style.alignItems = 'center';
                     row.style.gap = '4px';
-                    row.style.cursor = 'default';
+                    row.style.cursor = 'help';
 
                     // ⓘ circle icon (Unicode)
                     const icon = document.createElement('span');

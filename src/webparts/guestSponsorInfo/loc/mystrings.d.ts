@@ -255,18 +255,30 @@ declare interface IGuestSponsorInfoWebPartStrings {
   WelcomeDialogOptionApiTitle: string;
   WelcomeDialogOptionApiBody: string;
   WelcomeDialogOptionApiDocsLabel: string;
+  /** Compact preamble shown at the top of the quick-start setup panel, before the 3 steps. */
+  WelcomeDialogSetupGuideNote: string;
   WelcomeDialogDeployToAzureLabel: string;
   WelcomeDialogDeployNote: string;
+  /** Instruction text above the 3-step accordion (e.g. "Complete the steps in order:"). */
+  WelcomeDialogSetupStepsOrderHint: string;
   /** Step label for "Create App Registration" in the 3-step setup guide. */
   WelcomeDialogSetupStep1Label: string;
+  /** Hint shown below the step-2 accordion header (e.g. "Uses the App Registration created in step 1"). */
+  WelcomeDialogSetupStep2Hint: string;
   /** Step label for "Grant Graph permissions" in the 3-step setup guide. */
   WelcomeDialogSetupStep3Label: string;
-  /** Short hint shown above step 1 and 3 code blocks (e.g. "PowerShell 7+:"). */
+  /** Short hint shown above step 1 and 3 code blocks (e.g. "PowerShell:"). */
   WelcomeDialogSetupPwshHint: string;
-  /** Hint shown below step 3 code block (e.g. "Uses values from steps 1 and 2"). */
+  /** Hint shown below step 3 code block (e.g. "Uses the App Registration (step 1) and the Function App URL (step 2)"). */
   WelcomeDialogSetupStep3Hint: string;
+  /** Button label for viewing the raw PowerShell script source before running it. */
+  ViewScriptSourceLabel: string;
   WelcomeDialogConnectApiTitle: string;
   WelcomeDialogConnectApiIntro: string;
+  /** Trigger label for the URL hint Popover below the Function URL field. */
+  WelcomeDialogUrlHintLabel: string;
+  /** Body text inside the URL hint Popover explaining where to find the Function App URL. */
+  WelcomeDialogUrlHintBody: string;
   WelcomeDialogOptionDemoTitle: string;
   WelcomeDialogOptionDemoBody: string;
   WelcomeDialogFunctionUrlRequired: string;
