@@ -15,25 +15,23 @@ github_doc: operations.md
 
 ## Web Part aktualisieren
 
-Für nachfolgende Versionsupdates gelten die drei Bedingungen aus der
-Ersteinrichtung nicht mehr. Nur **Websitesammlungsadministrator** auf
-der Landingpage-Site ist erforderlich — Sie benötigen weder die
-SharePoint-Admin-Rolle noch Zugriff auf den mandantenweiten App Catalog.
-
-Laden Sie die neue `.sppkg` über die bestehende hoch unter:
-`https://<tenant>.sharepoint.com/sites/<landing-site>/AppCatalog/`
-
-Alternativer Pfad: **Websiteinhalte → Apps für SharePoint**.
+Wenn eine neue Version im AppSource veröffentlicht wird, erscheint sie als
+ausstehende Aktualisierung unter **SharePoint Admin Center → Apps → Öffnen**.
+Bestätigen Sie die Aktualisierung dort, um sie auf allen Sites mit installierter
+App zu deployen.
 
 SharePoint ersetzt die vorherige Version sofort. Im Normalfall ist weder
 eine Seitenveröffentlichung noch eine Cache-Leerung erforderlich.
 
-> **Tipp:** Jeder Benutzer mit **Vollständige Kontrolle** auf der
-> Landingpage-Site (z.B. ein Websitebesitzer) kann den Upload durchführen.
+> **Erweiterte Deployment-Szenarien** — Wenn Sie außerhalb des AppSource
+> bereitgestellt haben (direkter Upload in den Tenant App Catalog oder über
+> einen Site Collection App Catalog), finden Sie das entsprechende
+> Aktualisierungsverfahren im
+> [Operations-Dokument auf GitHub](https://github.com/workoho/spfx-guest-sponsor-info/blob/main/docs/operations.md).
 
 ---
 
-## Inline-Adresskarte (Azure Maps)
+## Inline-Adresskarte (Azure Maps) {#inline-adresskarte-azure-maps}
 
 Die ARM-Vorlage stellt standardmäßig ein Azure Maps-Konto bereit
 (`deployAzureMaps=true`).
@@ -73,7 +71,7 @@ Erlauben Sie mindestens:
 3. Kein konfigurierter Schlüssel = keine Azure Maps-Anfragen = keine Kosten.
 
 **Abrechnung:** Azure Maps basiert auf Anfragen mit einem kostenlosen
-monatlichen Kontingent (S0).
+monatlichen Kontingent (Gen2).
 
 ---
 
@@ -82,7 +80,8 @@ monatlichen Kontingent (S0).
 ### Consumption-Plan
 
 Die Function App verwendet `WEBSITE_RUN_FROM_PACKAGE` mit Verweis auf das
-aktuelle GitHub-Release-ZIP. Ein Neustart lädt das aktuelle ZIP:
+GitHub-Release-ZIP. Bei Bereitstellung mit `appVersion=latest` (Standard)
+lädt ein Neustart immer das aktuelle Release:
 
 ```bash
 az functionapp restart \
@@ -92,9 +91,15 @@ az functionapp restart \
 
 Oder im Azure-Portal: **Function App → Übersicht → Neustart**.
 
+> **Feste Version?** Wenn Sie ursprünglich mit einer bestimmten `appVersion`
+> bereitgestellt haben, lädt ein Neustart keine neuere Version. Führen Sie
+> zunächst die ARM-Bereitstellung mit der neuen Versionsnummer (oder
+> `appVersion=latest`) erneut aus, um die Paket-URL zu aktualisieren,
+> und starten Sie dann neu.
+
 ### Flex Consumption-Plan
 
-Stellen Sie die ARM-Vorlage mit einer festen `appVersion` erneut bereit:
+Stellen Sie die ARM-Vorlage mit der neuen Version erneut bereit:
 
 ```bash
 az deployment group create \

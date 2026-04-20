@@ -8,33 +8,27 @@ description: >-
   Azure Maps, and updating the Azure Function.
 lead: >-
   Day-2 administration tasks for SharePoint and Azure administrators.
-  For initial setup, use the Deployment Guide.
+  For initial setup, use the Setup Guide.
 github_doc: operations.md
 ---
 
 ## Updating the Web Part
 
-For subsequent version updates, the three conditions from the initial setup do
-not apply. Only **Site Collection Administrator** on the landing-page site is
-required — you do not need the SharePoint Admin role and do not need access to
-the tenant App Catalog.
-
-Upload the new `.sppkg` over the existing one at:
-`https://<tenant>.sharepoint.com/sites/<landing-site>/AppCatalog/`
-
-Alternative path: **Site Contents → Apps for SharePoint**.
+When a new version is published to AppSource, it will appear as a pending
+update in **SharePoint Admin Center → Apps → Open**. Approve it there to
+deploy the update to all sites that have the app installed.
 
 SharePoint replaces the previous version immediately. No page republish or
 cache flush is needed in normal circumstances.
 
-> **Tip:** any user who has **Full Control** on the landing-page site (for
-> example, a Site Owner) can perform the upload. Site Collection Administrator
-> is only required when the site's permission model restricts App Catalog
-> library access.
+> **Advanced deployment scenarios** — If you deployed outside of AppSource
+> (direct Tenant App Catalog upload or Site Collection App Catalog), see the
+> [operations guide on GitHub](https://github.com/workoho/spfx-guest-sponsor-info/blob/main/docs/operations.md)
+> for the corresponding update procedure.
 
 ---
 
-## Inline Address Map (Azure Maps)
+## Inline Address Map (Azure Maps) {#inline-address-map-azure-maps}
 
 The ARM template deploys an Azure Maps account by default
 (`deployAzureMaps=true`).
@@ -72,7 +66,7 @@ Allow at least:
 3. No key configured means no Azure Maps requests are issued.
 
 **Billing:** Azure Maps pricing is request-based with a free monthly quota
-(S0). No key configured in the web part = no requests = no cost.
+(Gen2). No key configured in the web part = no requests = no cost.
 
 ---
 
@@ -80,8 +74,9 @@ Allow at least:
 
 ### Consumption plan
 
-The Function App uses `WEBSITE_RUN_FROM_PACKAGE` pointing to the latest GitHub
-Release ZIP. A restart pulls the current ZIP:
+The Function App uses `WEBSITE_RUN_FROM_PACKAGE` pointing to the GitHub
+Release ZIP. When deployed with `appVersion=latest` (the default), a restart
+always pulls the current latest release:
 
 ```bash
 az functionapp restart \
@@ -91,9 +86,14 @@ az functionapp restart \
 
 Or from the Azure Portal: **Function App → Overview → Restart**.
 
+> **Pinned version?** If you originally deployed with a specific `appVersion`,
+> a restart will not pick up a newer release. Re-run the ARM deployment with
+> the new version number (or `appVersion=latest`) to update the package URL
+> first, then restart.
+
 ### Flex Consumption plan
 
-Re-deploy the ARM template with a pinned `appVersion`:
+Re-deploy the ARM template with the new version:
 
 ```bash
 az deployment group create \

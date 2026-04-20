@@ -20,10 +20,10 @@ doc:
 hero:
   title: Let your guests know who to call
   subtitle: >-
-    When guest accounts are provisioned through a governed process, they
-    arrive in your tenant before Teams is ready. This web part shows guests
-    their assigned contact automatically — and tells them honestly when
-    Teams isn't set up for them yet.
+    Guest accounts provisioned through a formal process exist in Entra
+    before Microsoft Teams is ready for them. This web part shows each
+    guest their assigned sponsor automatically — and is honest about
+    what they can and can't do yet.
   cta_primary: Explore Features
   cta_secondary: Why?
   illustration_alt: >-
@@ -36,7 +36,7 @@ features:
   section_title: Everything guests need — nothing they don't
   section_subtitle: >-
     Purpose-built for the moment a guest user lands in your tenant
-    and needs to know who their contact is.
+    and needs to know who their sponsor is.
   cards:
     title: Live Sponsor Cards
     description: >-
@@ -50,13 +50,15 @@ features:
   teams:
     title: Teams Chat & Call
     description: >-
-      One-click deep links to start a Teams chat or call with the sponsor,
-      with built-in detection for "Teams not provisioned yet" states.
+      One-click deep links to start a Teams chat or call with the sponsor.
+      If Teams isn't provisioned for the guest yet, the web part shows an
+      honest status instead of a button that silently fails.
   privacy:
     title: Privacy-First Architecture
     description: >-
-      All data stays in your Microsoft 365 tenant. No external services,
-      no tracking, no data leaves your boundary. Period.
+      All data stays within your Microsoft 365 tenant. No external services,
+      no tracking, no phone-home. The Azure Function proxy ensures guests
+      never hold directory permissions.
   onboarding:
     title: Teams Onboarding Status
     description: >-
@@ -73,7 +75,7 @@ features:
 features_page:
   subtitle: >-
     Purpose-built for the moment a B2B guest user lands in your tenant
-    and needs to know who their internal contact is.
+    and needs to know who their sponsor is.
   cards:
     title: Live Sponsor Cards
     description: >-
@@ -157,11 +159,11 @@ features_page:
         Dutch, Czech, Hungarian, and Romanian — including formal and
         informal modes.
     api:
-      title: Guest Sponsor API
+      title: Zero-Trust Security
       description: >-
-        The included Azure Function acts as a secure proxy between the
-        guest's browser and Microsoft Graph. EasyAuth + Managed Identity,
-        rate limiting, and exponential backoff are built in.
+        Guests authenticate with their own identity but never hold directory
+        permissions. EasyAuth validates every request before it reaches the
+        function; the Managed Identity handles all Graph calls on their behalf.
     editor:
       title: Editor Preview Mode
       description: >-
@@ -171,32 +173,32 @@ features_page:
     resilience:
       title: Built-in Resilience
       description: >-
-        Exponential backoff, progressive loading, and graceful degradation
-        handle Graph throttling and transient errors without user impact.
+        Handles Microsoft Graph throttling and transient failures without
+        showing errors to guests. Progressive loading keeps something visible
+        at all times; the web part recovers automatically.
     permissions:
-      title: Privacy-First Permissions
+      title: Try Before You Commit
       description: >-
-        Sponsor data flows through the Azure Function's Managed Identity —
-        guests never hold directory permissions. Profile photos are fetched
-        directly from Graph CDN using the guest's existing SharePoint token.
+        Demo Mode lets you place the web part on a page and see it working —
+        with realistic mock sponsor cards — before setting up any Azure
+        infrastructure. No API, no guests, no commitment required.
     guest_only:
-      title: Guest-Only Rendering
+      title: Silent for Internal Users
       description: >-
-        The web part renders nothing for member users — no unnecessary
-        Graph calls, no visual noise. Editors get a compact preview mode
-        instead.
+        The web part renders nothing for internal member accounts — no Graph
+        calls, no visible component. Only B2B guests see the sponsor cards.
+        Page editors see a compact preview instead of the full interface.
 
 made_by:
   label: Created & maintained by
   intro: >-
-    Microsoft 365 governance, identity, and guest access — our domain.
+    Microsoft 365 governance, identity, and guest access — this is what we do.
   description: >-
-    We built Guest Sponsor Info because we work with exactly these
-    challenges every day. As a consultancy specialising in Microsoft 365
-    collaboration, security, and identity management, we help organisations
-    design and implement scalable solutions — from architecture to rollout.
-    This web part is our contribution to the community, provided free of
-    charge.
+    We built Guest Sponsor Info because we work with exactly these scenarios
+    every day. As a consultancy specialising in Microsoft 365 collaboration,
+    security, and identity management, we help organisations design and
+    implement guest access from policy to production. This web part is our
+    contribution to the community — free of charge, no strings attached.
   cta: Work with us
   partner_tier: Platinum Partner
   partner_tagline: >-
@@ -208,31 +210,33 @@ made_by:
 problem:
   title: A guest accepted your invitation. Now what?
   body: >-
-    The standard Microsoft 365 guest experience answers none of the questions
-    a new guest actually has. This web part closes three gaps at once.
+    Microsoft 365 provides no built-in answer to this question. Guests land
+    somewhere in their own tenant with no idea who their sponsor is or what
+    they can do. This web part closes three specific gaps.
   cta: Why?
   items:
     - title: No orientation at the entrance
       body: >-
         After accepting, guests land in their own organization's Teams or
-        MyApps — with no signal they're now inside your tenant. There's no
-        "you've arrived" moment at all.
-    - title: Their contact is invisible
+        MyApps — with no indication that they now have access to your tenant.
+        There is no "you've arrived" moment.
+    - title: Their sponsor is invisible
       body: >-
-        Sponsors are assigned in Microsoft Entra, but guests never see them.
-        By the time they need help, the invitation email names whoever clicked
-        "Invite" — which may not be the right person today.
+        Sponsors are assigned in Microsoft Entra, but guests have no way to
+        see them. When they need help, the only name they have is whoever sent
+        the invitation email — which may no longer be the right person.
     - title: Teams looks ready — but isn't
       body: >-
-        A proper governance process creates the Entra account before adding
-        guests to any Team. Until that step happens, chat and call buttons are
-        silently broken. Guests get no explanation.
+        A structured onboarding process creates the Entra account before
+        adding the guest to any Teams team. Until that happens, chat and call
+        buttons appear on screen but do nothing. No error. No explanation.
 
 cta:
   title: Ready to improve your guest experience?
   description: >-
-    Set up in minutes with the included Azure Function and ARM template.
-    Free and open source under the PolyForm Shield License.
+    Deploy the companion Azure Function to Azure with the included ARM
+    template — one button click. The built-in Setup Wizard guides you
+    through the rest, directly from the SharePoint page. Free and open source.
   deploy: Setup Guide
   github: View on GitHub
 

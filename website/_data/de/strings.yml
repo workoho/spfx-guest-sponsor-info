@@ -20,10 +20,10 @@ doc:
 hero:
   title: Zeigen Sie Ihren Gästen, wen sie kontaktieren können
   subtitle: >-
-    Wenn Gastkonten über einen geregelten Prozess bereitgestellt werden,
-    sind sie in Ihrem Tenant vorhanden, bevor Teams für sie eingerichtet ist.
-    Dieses Web Part zeigt Gästen automatisch ihren zugewiesenen Ansprechpartner
-    — und informiert sie ehrlich, wenn Teams noch nicht bereit ist.
+    Gastkonten, die über einen formalen Prozess angelegt werden, existieren
+    in Entra, bevor Microsoft Teams für sie bereit ist. Dieses Web Part
+    zeigt jedem Gast automatisch seinen zugewiesenen Sponsor — und sagt
+    ehrlich, was bereits möglich ist und was noch nicht.
   cta_primary: Features entdecken
   cta_secondary: Warum?
   illustration_alt: >-
@@ -36,7 +36,7 @@ features:
   section_title: Alles was Gäste brauchen — nicht mehr
   section_subtitle: >-
     Entwickelt für den Moment, in dem ein Gastbenutzer in Ihrem
-    Tenant landet und wissen muss, wer sein Ansprechpartner ist.
+    Tenant landet und wissen muss, wer sein Sponsor ist.
   cards:
     title: Live-Sponsor-Karten
     description: >-
@@ -51,14 +51,15 @@ features:
   teams:
     title: Teams-Chat & -Anruf
     description: >-
-      Ein-Klick-Deeplinks zum Starten eines Teams-Chats oder -Anrufs
-      mit dem Sponsor, mit integrierter Erkennung des Status
-      „Teams noch nicht bereitgestellt".
+      Ein-Klick-Deeplinks für Teams-Chat oder -Anruf mit dem Sponsor.
+      Wenn Teams für den Gast noch nicht bereitgestellt wurde, zeigt das
+      Web Part eine ehrliche Statusmeldung statt eines defekten Buttons.
   privacy:
     title: Privacy-First-Architektur
     description: >-
       Alle Daten bleiben in Ihrem Microsoft 365 Tenant. Keine externen
-      Dienste, kein Tracking, keine Daten verlassen Ihre Grenze. Punkt.
+      Dienste, kein Tracking, kein Phone-Home. Der Azure Function Proxy
+      stellt sicher, dass Gäste keinerlei Verzeichnisberechtigungen benötigen.
   onboarding:
     title: Teams-Onboarding-Status
     description: >-
@@ -76,7 +77,7 @@ features:
 features_page:
   subtitle: >-
     Entwickelt für den Moment, in dem ein B2B-Gastbenutzer in Ihrem
-    Tenant landet und wissen muss, wer sein Ansprechpartner ist.
+    Tenant landet und wissen muss, wer sein Sponsor ist.
   cards:
     title: Live-Sponsor-Karten
     description: >-
@@ -163,11 +164,11 @@ features_page:
         Portugiesisch, Polnisch, Niederländisch, Tschechisch, Ungarisch
         und Rumänisch — inkl. Du/Sie-Modus.
     api:
-      title: Guest Sponsor API
+      title: Zero-Trust-Sicherheit
       description: >-
-        Die mitgelieferte Azure Function dient als sicherer Proxy zwischen
-        Browser und Microsoft Graph. EasyAuth + Managed Identity,
-        Rate-Limiting und exponentielles Backoff sind integriert.
+        Gäste authentifizieren sich mit ihrer eigenen Identität, erhalten
+        aber keinerlei Verzeichnisberechtigungen. EasyAuth prüft jede Anfrage
+        vor der Function; die Managed Identity übernimmt alle Graph-Aufrufe.
     editor:
       title: Vorschaumodus für Editoren
       description: >-
@@ -177,33 +178,32 @@ features_page:
     resilience:
       title: Eingebaute Resilienz
       description: >-
-        Exponentielles Backoff, progressives Laden und Graceful
-        Degradation fangen Graph-Drosselung und vorübergehende Fehler
-        ohne Auswirkung auf den Benutzer ab.
+        Graph-Drosselung und vorübergehende Fehler werden lautlos
+        verarbeitet — Gäste sehen keine Fehlermeldungen. Progressives
+        Laden hält immer etwas sichtbar; das Web Part erholt sich automatisch.
     permissions:
-      title: Privacy-First-Berechtigungen
+      title: Testen ohne Verpflichtung
       description: >-
-        Sponsordaten fließen über die Managed Identity der Azure Function —
-        Gäste erhalten keinerlei Verzeichnisberechtigungen. Profilfotos
-        werden direkt vom Graph-CDN mit dem SharePoint-Token des Gastes geladen.
+        Der Demo-Modus zeigt das Web Part mit realistischen Beispiel-Sponsorkarten
+        — ganz ohne Azure-Infrastruktur. Kein API, kein Gast, kein Setup
+        erforderlich. Ideal zum Ausprobieren vor dem eigentlichen Rollout.
     guest_only:
-      title: Nur für Gäste sichtbar
+      title: Unsichtbar für interne Benutzer
       description: >-
-        Das Web Part rendert für Mitglieder-Benutzer nichts —
-        keine unnötigen Graph-Aufrufe, kein visueller Ballast.
-        Editoren erhalten stattdessen einen kompakten Vorschaumodus.
+        Das Web Part rendert für interne Mitglieder-Konten absolut nichts —
+        keine Graph-Aufrufe, kein sichtbares Element. Nur B2B-Gäste sehen
+        die Sponsorkarten. Seitenbearbeiter sehen einen kompakten Vorschaumodus.
 
 made_by:
   label: Erstellt & gepflegt von
   intro: >-
-    Microsoft 365 Governance, Identität und Gastzugriff - unser Thema.
+    Microsoft 365 Governance, Identität und Gastzugriff — das ist unser Fachgebiet.
   description: >-
-    Dieses Web Part haben wir gebaut, weil genau das unser tägliches
-    Thema ist. Als Beratungsunternehmen für Microsoft 365 Collaboration,
-    Security und Identity Management helfen wir Unternehmen, sichere und
-    skalierbare Lösungen zu entwerfen und umzusetzen — von der Architektur
-    bis zum Rollout. Dieses Web Part ist unser Beitrag an die Community,
-    kostenfrei bereitgestellt.
+    Dieses Web Part haben wir gebaut, weil genau das unser tägliches Thema ist.
+    Als Beratungsunternehmen für Microsoft 365 Collaboration, Security und Identity
+    Management helfen wir Unternehmen, Gastzugriff von der Richtlinie bis zur
+    Umsetzung zu gestalten. Dieses Web Part ist unser Beitrag an die Community —
+    kostenfrei und ohne Bedingungen.
   cta: Kontakt aufnehmen
   partner_tier: Platinum Partner
   partner_tagline: >-
@@ -216,34 +216,36 @@ made_by:
 problem:
   title: Ein Gast hat Ihre Einladung angenommen. Und jetzt?
   body: >-
-    Die Standard-Gasterfahrung in Microsoft 365 beantwortet keine der
-    Fragen, die ein neuer Gast tatsächlich hat. Dieses Web Part schließt
-    drei Lücken auf einmal.
+    Microsoft 365 gibt darauf keine Antwort. Gäste landen irgendwo in ihrem
+    eigenen Tenant — ohne zu wissen, wer ihr Sponsor ist oder was sie
+    überhaupt tun können. Dieses Web Part schließt drei konkrete Lücken.
   cta: Warum?
   items:
     - title: Keine Orientierung am Eingang
       body: >-
-        Nach der Annahme landen Gäste im Teams oder MyApps ihrer eigenen
-        Organisation — ohne Hinweis, dass sie jetzt in Ihrem Tenant sind.
-        Es gibt keinen "Sie sind angekommen"-Moment.
-    - title: Ihr Ansprechpartner ist unsichtbar
+        Nach der Annahme landen Gäste im Teams oder in den MyApps ihrer
+        eigenen Organisation — ohne jeden Hinweis, dass sie jetzt auch
+        Zugang zu Ihrem Tenant haben. Es gibt keinen „Willkommen"-Moment.
+    - title: Ihr Sponsor ist unsichtbar
       body: >-
-        Sponsoren sind in Microsoft Entra hinterlegt, aber Gäste sehen sie
-        nie. Wenn sie Hilfe brauchen, nennt die Einladungs-E-Mail denjenigen,
-        der auf "Einladen" geklickt hat — was heute vielleicht nicht mehr
+        Sponsoren sind in Microsoft Entra hinterlegt, aber Gäste haben keine
+        Möglichkeit, sie einzusehen. Wenn sie Hilfe brauchen, kennen sie nur
+        den Namen auf der Einladungs-E-Mail — der heute vielleicht nicht mehr
         der richtige Ansprechpartner ist.
     - title: Teams scheint bereit — ist es aber nicht
       body: >-
-        Ein geregelter Governance-Prozess legt das Entra-Konto an, bevor
-        der Gast einem Team hinzugefügt wird. Bis dieser Schritt erfolgt,
-        funktionieren Chat- und Anrufbuttons stillschweigend nicht.
-        Gäste erhalten keine Erklärung.
+        Ein geregelter Onboarding-Prozess legt das Entra-Konto an, bevor
+        der Gast einem Teams-Team hinzugefügt wird. Bis dieser Schritt
+        erfolgt, erscheinen Chat- und Anruf-Buttons auf dem Bildschirm,
+        tun aber nichts. Kein Fehler. Keine Erklärung.
 
 cta:
   title: Bereit, die Gast-Erfahrung zu verbessern?
   description: >-
-    In Minuten eingerichtet mit der mitgelieferten Azure Function und
-    ARM-Vorlage. Kostenlos und Open Source unter der PolyForm Shield-Lizenz.
+    Stellen Sie die begleitende Azure Function mit der mitgelieferten
+    ARM-Vorlage bereit — per Klick auf einen Button. Der integrierte
+    Setup-Assistent führt Sie durch den Rest, direkt auf der SharePoint-Seite.
+    Kostenlos und Open Source.
   deploy: Setup-Anleitung
   github: Auf GitHub ansehen
 

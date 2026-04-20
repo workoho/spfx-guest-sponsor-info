@@ -12,14 +12,40 @@ lead: >-
 github_doc: deployment.md
 ---
 
-## SharePoint Setup
+## Overview
+
+Setting up Guest Sponsor Info involves three phases:
+
+| Phase | Where | Minimum role required |
+|---|---|---|
+| 1 — SharePoint | SharePoint Admin Center + landing page site | SharePoint Administrator |
+| 2 — Guest Sponsor API | Azure Portal / Cloud Shell / PowerShell | Azure Contributor + Entra Admin |
+| 3 — Web part | SharePoint landing page (edit mode) | Site Owner |
+
+> **The web part includes a built-in Setup Wizard**
+>
+> The first time you add the web part to a page, a **Setup Wizard** opens
+> automatically. It walks you through choosing between production mode
+> (Guest Sponsor API) and demo mode, shows the Azure setup commands
+> inline with copy buttons, and lets you enter the API credentials at the
+> end. This page is the full reference that the wizard links to — work
+> through Phases 1 and 2 before (or alongside) running the wizard, then
+> complete Phase 3 inside it.
+
+---
+
+## Phase 1 — SharePoint
 
 ### Install from Microsoft AppSource
 
-The web part is available in the
+> **AppSource listing pending review** — The web part has been submitted to the
+> Microsoft commercial marketplace and is currently awaiting approval. The
+> installation steps below describe the process once the listing is live.
+
+The web part will be available in the
 [**Microsoft commercial marketplace (AppSource)**](https://appsource.microsoft.com/).
 Installing from there deploys it tenant-wide via the Tenant App Catalog — no
-Site Collection App Catalog or file upload required.
+file upload or manual deployment required.
 
 **Install via SharePoint Admin Center:**
 
@@ -29,8 +55,8 @@ Site Collection App Catalog or file upload required.
 
 The solution uses `skipFeatureDeployment: false` — the web part does **not**
 become available tenant-wide automatically. After the Tenant App Catalog
-installation, a Site Collection Administrator must add the app to each site
-explicitly: **Site Contents → Add an app → Guest Sponsor Info**.
+installation, a Site Collection Administrator must add the app to the landing
+page site explicitly: **Site Contents → Add an app → Guest Sponsor Info**.
 This is intentional and prevents accidental installation on unintended sites.
 
 The web part requests **no Microsoft Graph permissions** of its own — the
@@ -81,37 +107,14 @@ Connect-PnPOnline -Url "https://<tenant>-admin.sharepoint.com" `
 Set-PnPTenantCdnEnabled -CdnType Public -Enable $true
 ```
 
-> CDN propagation takes **15-30 minutes**. Once active, the bundle URL changes
+> CDN propagation takes **up to 15 minutes**. Once active, the bundle URL changes
 > to `publiccdn.sharepointonline.com` automatically — no reconfiguration needed.
 
-**Option B — Grant Everyone read access to the Tenant App Catalog**
-
-If enabling the Public CDN is not possible, grant the built-in **Everyone**
-group read access to the Tenant App Catalog site instead.
-
-**Required roles:** SharePoint Administrator and Site Collection Administrator
-on the Tenant App Catalog site
-(`https://<tenant>.sharepoint.com/sites/appcatalog`).
-
-```powershell
-# SharePoint Online Management Shell (Windows):
-Connect-SPOService -Url "https://<tenant>-admin.sharepoint.com"
-Add-SPOUser -Site "https://<tenant>.sharepoint.com/sites/appcatalog" `
-    -LoginName "c:0(.s|true" -Group "App Catalog Visitors"
-```
-
-```powershell
-# PnP PowerShell (connect to the App Catalog site directly):
-Connect-PnPOnline -Url "https://<tenant>.sharepoint.com/sites/appcatalog" `
-    -ClientId "<your-pnp-app-client-id>" -Interactive
-Add-PnPGroupMember -LoginName "c:0(.s|true" -Group "App Catalog Visitors"
-```
-
-> **Limitation:** Only covers guests who have already authenticated to the host
-> tenant. The Public CDN (Option A) does not have this limitation.
-
-For an advanced alternative (Site Collection App Catalog, no marketplace), see
-the full [setup guide on GitHub](https://github.com/workoho/spfx-guest-sponsor-info/blob/main/docs/deployment.md#option-c--use-a-site-collection-app-catalog).
+If enabling the Public CDN is not possible in your environment, or if you are
+deploying outside of AppSource, see the
+[full deployment guide on GitHub](https://github.com/workoho/spfx-guest-sponsor-info/blob/main/docs/deployment.md)
+for alternative options including direct Tenant App Catalog upload and Site
+Collection App Catalog deployments.
 
 ### Verify guest access to the landing page site
 
@@ -121,17 +124,16 @@ new members — use the built-in **Everyone** group. It covers every
 authenticated user including B2B guests who have accepted their invitation,
 and takes effect immediately.
 
-The *Everyone* group is controlled by the `ShowEveryoneClaim` tenant setting,
-which defaults to `$false` on tenants provisioned after March 2018. If
-*Everyone* does not appear in the People Picker, enable it first:
+The *Everyone* group is controlled by the `ShowEveryoneClaim` tenant setting.
+Since March 2018, external users no longer receive the Everyone claim by
+default — you must explicitly enable the setting. If *Everyone* does not
+appear in the People Picker, run:
 
 ```powershell
 # SharePoint Online Management Shell (Windows):
-(Get-SPOTenant).ShowEveryoneClaim   # check current value
 Set-SPOTenant -ShowEveryoneClaim $true
 
 # PnP PowerShell (cross-platform):
-(Get-PnPTenant).ShowEveryoneClaim
 Set-PnPTenant -ShowEveryoneClaim $true
 ```
 
@@ -158,13 +160,21 @@ site.
 
 ---
 
-## Guest Sponsor API
+## Phase 2 — Guest Sponsor API
 
-### Pre-step: create the App Registration
+The Guest Sponsor API is a companion Azure Function that proxies all Microsoft
+Graph calls on behalf of the web part. Guests authenticate against it using
+[EasyAuth](https://learn.microsoft.com/azure/app-service/overview-authentication-authorization),
+and the function queries Graph using its own Managed Identity — guests never
+need directory-level permissions in your tenant.
 
-The Azure Function uses
-[EasyAuth](https://learn.microsoft.com/azure/app-service/overview-authentication-authorization).
-EasyAuth needs an Entra App Registration as its identity provider.
+The Setup Wizard shows these three steps inline with copyable commands. The
+sections below are the full reference for each step.
+
+### Step 1: Create the App Registration
+
+EasyAuth requires an Entra App Registration as its identity provider for the
+Azure Function.
 
 **Option A — run directly from the web** (no clone required,
 [PowerShell 7+](https://learn.microsoft.com/powershell/scripting/install/installing-powershell)):
@@ -207,9 +217,10 @@ Get-Content setup-app-registration.ps1
 
 </details>
 
-Copy the **Client ID** printed at the end.
+Copy the **Client ID** printed at the end — you will need it in Step 3 and
+when configuring the web part.
 
-### Set up in Azure
+### Step 2: Deploy to Azure
 
 Click the button to start:
 
@@ -225,7 +236,7 @@ az deployment group create \
       tenantId=<your-tenant-id> \
       tenantName=<your-tenant-name> \
       functionAppName=<globally-unique-name> \
-      functionClientId=<client-id-from-pre-step>
+      functionClientId=<client-id-from-step-1>
 ```
 
 <details>
@@ -243,37 +254,37 @@ az stack group create \
       tenantId=<your-tenant-id> \
       tenantName=<your-tenant-name> \
       functionAppName=<globally-unique-name> \
-      functionClientId=<client-id-from-pre-step> \
+      functionClientId=<client-id-from-step-1> \
   --action-on-unmanage deleteResources \
   --deny-settings-mode none
 ```
 
 </details>
 
-### Required parameters
+#### Required parameters
 
 | Parameter | Description |
 |---|---|
 | `tenantId` | Your Entra tenant ID (GUID) |
 | `tenantName` | Tenant name without domain suffix, e.g. `contoso` |
 | `functionAppName` | Globally unique name for the Function App |
-| `functionClientId` | Client ID from the pre-step |
+| `functionClientId` | Client ID from Step 1 |
 | `appVersion` | `"latest"` (default) or pinned SemVer without `v` |
 | `location` | Azure region |
 
-### Hosting plan options
+#### Hosting plan options
 
 | | **Consumption** (default) | **Flex Consumption** |
 |---|---|---|
-| Free tier | 1M exec + 400K GB-s/month | None |
+| Free tier | 1M exec + 400K GB-s/month | 250K exec + 100K GB-s/month (on-demand) |
 | Cold starts | ~2-5 s after ~20 min idle | Eliminated with `alwaysReadyInstances=1` |
 | OS | Windows | Linux only |
 | Deploy to Azure button | Supported | Supported |
 | Cost guard | `dailyMemoryTimeQuota` | `maximumFlexInstances` |
 | Estimated cost | Free (within grant) | ~€2-5/month with 1 warm instance |
 
-Check [aka.ms/flex-region](https://aka.ms/flex-region) for Flex Consumption
-regional support. Additional parameters for Flex:
+Check the [supported regions list](https://learn.microsoft.com/en-us/azure/azure-functions/flex-consumption-how-to#view-currently-supported-regions)
+for Flex Consumption availability. Additional parameters for Flex:
 
 ```bash
 az deployment group create \
@@ -283,22 +294,22 @@ az deployment group create \
       tenantId=<your-tenant-id> \
       tenantName=<your-tenant-name> \
       functionAppName=<globally-unique-name> \
-      functionClientId=<client-id-from-pre-step> \
+      functionClientId=<client-id-from-step-1> \
       hostingPlan=FlexConsumption \
       maximumFlexInstances=10
 ```
 
-### Setup outputs
+#### Deployment outputs
 
-After setup, open **Resource Group → Deployments → Outputs**:
+After deployment, open **Resource Group → Deployments → Outputs**:
 
 | Output | Used for |
 |---|---|
-| `managedIdentityObjectId` | Required for `setup-graph-permissions.ps1` |
+| `managedIdentityObjectId` | Required for Step 3 |
 | `functionAppUrl` | Web part property pane → **Guest Sponsor API Base URL** |
 | `sponsorApiUrl` | Full endpoint URL (for health checks) |
 
-### Grant Graph permissions
+### Step 3: Grant Graph permissions
 
 **Option A — run directly from the web:**
 
@@ -326,14 +337,33 @@ This script:
    pre-authorizes *SharePoint Online Web Client Extensibility* so the web
    part can acquire tokens silently.
 
-### Configure the web part
+---
 
-In the property pane (**Guest Sponsor API** group):
+## Phase 3 — Configure the web part
 
-- **Guest Sponsor API Base URL** — e.g.
-  `https://guest-sponsor-info-xyz.azurewebsites.net`
-- **Guest Sponsor API Client ID (App Registration)** — the Client ID from
-  the App Registration created in the pre-step
+With Phases 1 and 2 complete, open the SharePoint landing page in edit mode
+and add the **Guest Sponsor Info** web part to the page.
+
+The **Setup Wizard** will open automatically (it appears whenever the API
+URL has not been configured yet). Select **Guest Sponsor API**, then advance
+through the wizard steps to the **Connect** screen and enter:
+
+- **Guest Sponsor API Base URL** — the `functionAppUrl` from the deployment
+  outputs (Phase 2, Step 2),
+  e.g. `https://guest-sponsor-info-xyz.azurewebsites.net`
+- **Guest Sponsor API Client ID** — the Client ID from Phase 2, Step 1
+
+The wizard validates the format of both values before saving. You can also
+skip the wizard and configure the web part manually: open the **property pane**
+(gear icon in edit mode) and fill in the **Guest Sponsor API** group directly.
+
+> **Guest Accessibility check**
+>
+> After saving, open the property pane and navigate to the
+> **Guest Accessibility** panel. It runs a series of checks (CDN status,
+> site permissions, external sharing) and shows the result of each with a
+> recommendation. Use this to confirm that the Phase 1 prerequisites are
+> working as expected.
 
 ---
 

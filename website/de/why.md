@@ -10,105 +10,92 @@ lead: >-
   Wenn ein Gast eine Einladung annimmt, kann er zwar in Entra existieren, aber
   noch nicht in Teams. Kontaktschaltflächen werden angezeigt — funktionieren
   jedoch lautlos nicht. Dieses Web Part macht das sichtbar.
-mermaid: false
+mermaid: true
 ---
 
-## Nach der Einladung {#nach-der-einladung}
+## Die Lücke, über die niemand spricht {#die-luecke}
 
-Wenn jemand außerhalb Ihrer Organisation eine Microsoft-365-Gasteinladung erhält
-und auf „Annehmen" klickt, passiert etwas Konkretes in Entra ID: Ein Gastkonto
-wird erstellt, die Einladung wird erfasst, und die Person ist technisch gesehen
-in Ihrem Mandanten.
+Ein Gast klickt auf „Annehmen" bei Ihrer Microsoft-365-Einladung. Ein Entra-Konto
+wird angelegt. Technisch gesehen ist diese Person jetzt in Ihrem Mandanten.
 
-Was nicht zwingend sofort passiert: eine Präsenz in Microsoft Teams und Microsoft
-Exchange für den Gast in Ihrem Mandanten.
+Was *nicht* garantiert ist: dass der Gast irgendjemanden erreichen kann.
+
+Ob Teams für diesen Gast funktioniert — und ob Kontaktbuttons auf einer Landingpage
+überhaupt etwas tun — hängt ausschließlich davon ab, *wie* die Person eingeladen
+wurde.
 
 ---
 
-## Zwei Wege, einen Gast einzuladen {#zwei-wege}
+## Zwei Einladungswege, zwei sehr verschiedene Ergebnisse {#zwei-wege}
 
-Wie ein Gast in Ihren Mandanten gelangt, bestimmt, was er direkt tun kann — und
-wie schnell.
+### Direkte Einladung in ein Teams-Team oder eine SharePoint-Site
 
-### Implizite Einladung
+Eine interne Person fügt einen externen Kontakt einem Team oder einer Site direkt
+hinzu. Microsoft sendet die Einladung im Hintergrund. Sobald der Gast annimmt,
+tritt er dem Team bei — Teams beginnt sofort, seine Präsenz aufzubauen.
 
-Eine interne Person fügt einen externen Kontakt direkt einem Teams-Team oder
-einer SharePoint-Website hinzu. Microsoft sendet automatisch eine
-Einladungsmail. Sobald der Gast annimmt, ist er dem Team hinzugefügt — und
-Teams beginnt sofort, dessen Präsenz aufzubauen. **Der Gast ist innerhalb
-weniger Minuten in Teams einsatzbereit.**
+**Der Gast ist innerhalb weniger Minuten in Teams einsatzbereit.**
 
-### Gesteuertes Lifecycle-Onboarding
+### Über einen Governance-Prozess oder das Entra Admin Center
 
-Ein Bereitstellungsprozess — eine Governance-Plattform, ein Skript oder ein
-Workflow im Entra Admin Center — legt das Gastkonto formal an. Das Konto
-existiert in Entra. Aber niemand hat diese Person bisher einem Teams-Team
-hinzugefügt. Teams hat für den Gast in Ihrem Mandanten noch keine Präsenz
-aufgebaut.
+Eine Lifecycle-Governance-Plattform, ein Skript oder ein Entra-Admin-Workflow legt
+das Gastkonto formal an. Das Konto existiert in Entra — aber noch kein Teams-Team
+wurde zugewiesen.
 
 **Der Gast existiert in Entra. Er existiert noch nicht in Teams.**
 
-Das ist die Lücke. Sie ist von außen nicht sichtbar — es sei denn, irgendetwas
-zeigt sie explizit an.
+```mermaid
+flowchart TD
+    A(["Gast nimmt Einladung an"])
+    A --> B["Direkte Einladung in\nTeams-Team oder Site"]
+    A --> C["Governance-Prozess oder\nEntra Admin Center"]
+    B --> D(["Teams-Präsenz: bereit\nChat & Anruf ✓"])
+    C --> E(["Nur Entra-Konto\nKeine Teams-Präsenz"])
+    E --> F(["Kontakt-Buttons erscheinen bereit\n— tun aber lautlos nichts ✗"])
+```
+
+Dieser Zustand ist für den Gast unsichtbar — und bleibt ohne explizites Feedback
+völlig verborgen.
 
 ---
 
-## Das Teams-Timing-Problem {#teams-timing-problem}
+## Was ein Gast sieht {#was-ein-gast-sieht}
 
-Wenn ein Gastkonto in Entra existiert, aber noch keinem Teams-Team hinzugefügt
-wurde, ist dessen Teams-Präsenz in Ihrem Mandanten noch nicht aufgebaut.
+Auf einer SharePoint-Landingpage könnte eine Sponsor-Visitenkarte folgendes zeigen:
 
-Auf einer SharePoint-Begrüßungsseite könnte eine Sponsor-Visitenkarte folgendes
-zeigen:
+| Feld | Status |
+|---|---|
+| Name und Profilfoto des Sponsors | ✓ Verfügbar über Entra |
+| E-Mail-Adresse | ✓ Verfügbar |
+| Teams-Chat-Button | Dargestellt — tut aber lautlos nichts |
+| Teams-Anruf-Button | Dargestellt — tut aber lautlos nichts |
 
-- Name und Profilfoto des Sponsors — ✓ verfügbar über Entra
-- E-Mail-Adresse — ✓ verfügbar
-- Chat-Schaltfläche — sichtbar angezeigt, aber **lautlos defekt**
-- Anruf-Schaltfläche — sichtbar angezeigt, aber **lautlos defekt**
-
-Der Gast sieht eine Visitenkarte, die funktionsbereit wirkt. Die Schaltflächen
-tun nichts oder führen an einen unerwarteten Ort. Es gibt keine Fehlermeldung.
-Keine Erklärung. Der Gast hat keine Möglichkeit zu erkennen, ob die Schaltfläche
-defekt ist, ob er etwas falsch gemacht hat, oder ob die Funktion für ihn einfach
-nicht vorgesehen ist.
-
-Das ist kein Teams-Fehler. Es ist das erwartete Verhalten, wenn noch keine
-Teams-Präsenz für den Gast aufgebaut wurde. Ohne etwas, das diesen Zustand
-erkennt und kommuniziert, ist die Erfahrung für den Gast lautlos kaputt.
+> Es gibt keinen Fehler. Keine Erklärung. Der Gast hat keine Möglichkeit zu
+> erkennen, ob der Button defekt ist, ob er etwas falsch gemacht hat, oder ob
+> die Funktion für ihn schlicht noch nicht bereit ist.
 
 ---
 
 ## Was dieses Web Part macht {#was-das-web-part-macht}
 
-Das **Guest Sponsor Info** Web Part wurde für das Szenario einer Gast-Landingpage
-entwickelt. Es wird im SharePoint Entrance Area platziert — der Seite, auf der
-Gäste nach der Einladungsannahme landen.
+**Guest Sponsor Info** liegt auf der SharePoint-Landingpage, auf der Gäste nach
+der Einladungsannahme landen. Es macht zwei Dinge:
 
-Es macht zwei Dinge:
-
-1. **Es zeigt die Sponsors des Gastes** — die internen Mitarbeiter, die in Entra
-   als verantwortlich für den Gastzugang eingetragen sind. Name, Foto, Titel und
+1. **Zeigt Sponsoren** — die internen Mitarbeiter, die in Microsoft Entra als
+   Verantwortliche für den Gastzugang eingetragen sind. Name, Foto, Titel und
    Kontaktmöglichkeiten. Keine Konfiguration pro Gast. Keine manuelle
-   Aktualisierung bei Personenwechsel.
+   Aktualisierung bei Sponsorwechsel.
 
-2. **Es erkennt den Teams-Status** — wenn der Gast noch keine Teams-Präsenz in
-   Ihrem Mandanten hat, erkennt das Web Part dies und passt die Visitenkarte
-   entsprechend an: Chat- und Anruf-Schaltflächen werden ausgegraut, und eine
-   klare Statusmeldung erklärt die Situation. Der Gast tappt nicht im Dunkeln.
-   Er sieht ein Gesicht, einen Namen und eine ehrliche Statusanzeige.
+2. **Erkennt den Teams-Status** — wenn die Teams-Präsenz noch nicht aufgebaut
+   wurde, erkennt das Web Part das und reagiert: Chat- und Anruf-Buttons werden
+   deaktiviert, und eine klare Statusmeldung erklärt die Situation. Der Gast
+   sieht ein Gesicht, einen Namen und eine ehrliche Statusanzeige — keinen
+   defekten Button.
 
-Das Ergebnis: Ein Gast, dessen Zugang noch bereitgestellt wird, kann seinen
-Sponsor trotzdem per E-Mail erreichen — und weiß, dass der Teams-Zugang in Kürze
-folgt. Keine Verwirrung. Kein lautloses Scheitern.
+Ein Gast, dessen Teams-Zugang noch bereitgestellt wird, kann seinen Sponsor per
+E-Mail erreichen und weiß, dass Teams in Kürze folgt. Keine Verwirrung. Kein
+lautloses Scheitern.
 
 ---
 
-## Was Sie benötigen {#voraussetzungen}
-
-1. Eine SharePoint-Website als Gast-Landingpage (der Entrance Area).
-2. Ein Azure-Function-Setup (die Guest Sponsor API) — darüber ruft das
-   Web Part die Sponsor-Daten ab.
-3. Gastkonten mit zugewiesenen Sponsors in Microsoft Entra ID.
-
-Eine Schritt-für-Schritt-Anleitung finden Sie in der
-[Installationsanleitung](/de/setup/).
+Bereit loszulegen? Zur [Installationsanleitung]({{ '/de/setup/' | relative_url }}).
