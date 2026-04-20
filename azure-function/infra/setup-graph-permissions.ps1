@@ -61,7 +61,17 @@ if ([Console]::OutputEncoding.CodePage -ne 65001) {
   catch { $null = $_ <# Non-interactive host; ignore — encoding failure is non-fatal. #> }
 }
 
-# ── Callout box helpers ──────────────────────────────────────────────────────
+# ── Unicode output capability ─────────────────────────────────────────────────
+# Hoist to script scope so all Write-Host calls share the same capability check.
+# ConsoleHost (Windows Terminal, pwsh.exe, etc.) can render Unicode box-drawing
+# chars and symbols; VS Code's PowerShell Extension host cannot.
+$_u = $false
+try { $_u = ($Host.Name -eq 'ConsoleHost') -and ([Console]::OutputEncoding.GetBytes([char]0x2500)).Length -gt 1 }
+catch { $_u = $false }
+$_chk = if ($_u) { [char]0x2713 } else { '[+]' }  # ✓
+$_wrn = if ($_u) { [char]0x26A0 } else { '[!]' }  # ⚠
+$_sep = '  ' + $(if ($_u) { [string][char]0x2500 * 53 } else { '-' * 53 })
+
 # Embedded directly so the script works on any machine without Write-Callout.ps1,
 # whether run from a local clone, via iwr, or on a bare system with no repo files.
 #
@@ -81,11 +91,7 @@ function Write-Box {
     [Parameter(Mandatory)][ConsoleColor]$Color,
     [Parameter(ValueFromRemainingArguments)][string[]]$Lines
   )
-  # Detect whether the console can render Unicode box-drawing characters.
-  # UTF-8 encodes U+2500 as 3 bytes; a legacy ANSI code page returns 1 byte.
-  $_u = $false
-  try { $_u = ([Console]::OutputEncoding.GetBytes([char]0x2500)).Length -gt 1 }
-  catch { $_u = $false }
+  # Use the script-scope Unicode capability flag set at startup.
   if ($_u) {
     $H = [char]0x2500; $TL = [char]0x256D; $V = [char]0x2502; $BL = [char]0x2570
   }
@@ -206,7 +212,7 @@ function Install-RequiredModule {
 
       if ($kfmActive) {
         Write-Host ''
-        Write-Host '  ⚠  OneDrive Folder Backup is active (Known Folder Move / KFM).' `
+        Write-Host "  $_wrn  OneDrive Folder Backup is active (Known Folder Move / KFM)." `
           -ForegroundColor Yellow
         Write-Host '     Your Documents folder is currently synced to OneDrive:' -ForegroundColor Yellow
         Write-Host "     $docsPath" -ForegroundColor DarkCyan
@@ -240,7 +246,7 @@ function Install-RequiredModule {
           -ForegroundColor Cyan
         Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 `
           -Scope $scope -Force | Out-Null
-        Write-Host '  ✓ NuGet provider installed.' -ForegroundColor Green
+        Write-Host "  $_chk NuGet provider installed." -ForegroundColor Green
       }
     }
   }
@@ -268,7 +274,7 @@ function Install-RequiredModule {
   }
 
   Import-Module -Name $Name
-  Write-Host "  ✓ '$Name' installed and imported." -ForegroundColor Green
+  Write-Host "  $_chk '$Name' installed and imported." -ForegroundColor Green
   Write-Host ''
 }
 
@@ -284,7 +290,7 @@ $_guidPattern = '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0
 if (-not $TenantId) {
   Write-Host ''
   Write-Host '  Required: Entra Tenant ID' -ForegroundColor Cyan
-  Write-Host '  ───────────────────────────────────────────────────────' -ForegroundColor DarkGray
+  Write-Host $_sep -ForegroundColor DarkGray
   Write-Host '  Your Microsoft Entra tenant ID (a GUID).'
   Write-Host '  Where to find it:'
   Write-Host '    Microsoft Entra admin center → Overview → Tenant ID'
@@ -293,10 +299,10 @@ if (-not $TenantId) {
   do {
     $TenantId = (Read-Host '  Tenant ID').Trim()
     if (-not $TenantId) {
-      Write-Host '  ⚠ Value is required.' -ForegroundColor Yellow
+      Write-Host "  $_wrn Value is required." -ForegroundColor Yellow
     }
     elseif ($TenantId -notmatch $_guidPattern) {
-      Write-Host '  ⚠ Expected a GUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' -ForegroundColor Yellow
+      Write-Host "  $_wrn Expected a GUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" -ForegroundColor Yellow
       $TenantId = ''
     }
   } while (-not $TenantId)
@@ -305,7 +311,7 @@ if (-not $TenantId) {
 
 if (-not $ManagedIdentityObjectId) {
   Write-Host '  Required: Function App Managed Identity — Object ID' -ForegroundColor Cyan
-  Write-Host '  ───────────────────────────────────────────────────────' -ForegroundColor DarkGray
+  Write-Host $_sep -ForegroundColor DarkGray
   Write-Host '  The Object ID of the system-assigned Managed Identity of the'
   Write-Host '  Azure Function App (a GUID). This is NOT the App Client ID.'
   Write-Host '  Where to find it:'
@@ -316,10 +322,10 @@ if (-not $ManagedIdentityObjectId) {
   do {
     $ManagedIdentityObjectId = (Read-Host '  Managed Identity Object ID').Trim()
     if (-not $ManagedIdentityObjectId) {
-      Write-Host '  ⚠ Value is required.' -ForegroundColor Yellow
+      Write-Host "  $_wrn Value is required." -ForegroundColor Yellow
     }
     elseif ($ManagedIdentityObjectId -notmatch $_guidPattern) {
-      Write-Host '  ⚠ Expected a GUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' -ForegroundColor Yellow
+      Write-Host "  $_wrn Expected a GUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" -ForegroundColor Yellow
       $ManagedIdentityObjectId = ''
     }
   } while (-not $ManagedIdentityObjectId)
@@ -328,7 +334,7 @@ if (-not $ManagedIdentityObjectId) {
 
 if (-not $FunctionAppClientId) {
   Write-Host '  Required: App Registration Client ID' -ForegroundColor Cyan
-  Write-Host '  ───────────────────────────────────────────────────────' -ForegroundColor DarkGray
+  Write-Host $_sep -ForegroundColor DarkGray
   Write-Host '  The Client ID (Application ID) of the App Registration created'
   Write-Host '  in the previous step (setup-app-registration.ps1). It was'
   Write-Host '  printed at the end of that script.'
@@ -340,10 +346,10 @@ if (-not $FunctionAppClientId) {
   do {
     $FunctionAppClientId = (Read-Host '  App Registration Client ID').Trim()
     if (-not $FunctionAppClientId) {
-      Write-Host '  ⚠ Value is required.' -ForegroundColor Yellow
+      Write-Host "  $_wrn Value is required." -ForegroundColor Yellow
     }
     elseif ($FunctionAppClientId -notmatch $_guidPattern) {
-      Write-Host '  ⚠ Expected a GUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' -ForegroundColor Yellow
+      Write-Host "  $_wrn Expected a GUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" -ForegroundColor Yellow
       $FunctionAppClientId = ''
     }
   } while (-not $FunctionAppClientId)
@@ -376,7 +382,7 @@ foreach ($role in $requiredRoles) {
   $appRole = $graphSp.AppRoles | Where-Object { $_.Value -eq $role.Name -and $_.AllowedMemberTypes -contains 'Application' }
   if (-not $appRole) {
     if ($role.Optional) {
-      Write-Host "  ⚠ $($role.Name) is not available as an Application permission in this tenant (Microsoft Teams may not be licensed). Skipping — sponsors will be shown without presence status." -ForegroundColor Yellow
+      Write-Host "  $_wrn $($role.Name) is not available as an Application permission in this tenant (Microsoft Teams may not be licensed). Skipping — sponsors will be shown without presence status." -ForegroundColor Yellow
       $skippedRoles += $role.Name
       continue
     }
@@ -392,12 +398,12 @@ foreach ($role in $requiredRoles) {
       -ResourceId $graphSp.Id `
       -AppRoleId $appRole.Id `
       -ErrorAction Stop
-    Write-Host "  ✓ $($role.Name) assigned." -ForegroundColor Green
+    Write-Host "  $_chk $($role.Name) assigned." -ForegroundColor Green
     $assignedRoles += $role.Name
   }
   catch {
     if ($_.Exception.Message -like "*Permission being assigned already exists*") {
-      Write-Host "  ✓ $($role.Name) already assigned — skipping." -ForegroundColor Yellow
+      Write-Host "  $_chk $($role.Name) already assigned — skipping." -ForegroundColor Yellow
       $assignedRoles += $role.Name
     }
     else {
@@ -424,7 +430,7 @@ if ($spWebClientSps) {
 else {
   # Fall back to the two well-known first-party Microsoft app IDs used across SharePoint Online environments.
   $spWebClientAppIds = @('57fb890c-0dab-4253-a5e0-7188c88b2bb4', '08e18876-6177-487e-b8b5-cf950c1e598c')
-  Write-Host "  ⚠ Could not resolve SP by display name — falling back to known app IDs: $($spWebClientAppIds -join ', ')" -ForegroundColor Yellow
+  Write-Host "  $_wrn Could not resolve SP by display name — falling back to known app IDs: $($spWebClientAppIds -join ', ')" -ForegroundColor Yellow
 }
 
 $app = Get-MgApplication -Filter "appId eq '$FunctionAppClientId'" -ErrorAction Stop
@@ -441,10 +447,10 @@ $expectedUri = "api://guest-sponsor-info-proxy/$FunctionAppClientId"
 if ($app.IdentifierUris -notcontains $expectedUri) {
   Write-Host "  Setting identifier URI to $expectedUri ..." -ForegroundColor Cyan
   Update-MgApplication -ApplicationId $app.Id -IdentifierUris @($expectedUri) -ErrorAction Stop
-  Write-Host "  ✓ Identifier URI set." -ForegroundColor Green
+  Write-Host "  $_chk Identifier URI set." -ForegroundColor Green
 }
 else {
-  Write-Host "  ✓ Identifier URI already set." -ForegroundColor Yellow
+  Write-Host "  $_chk Identifier URI already set." -ForegroundColor Yellow
 }
 
 # Expose a 'user_impersonation' OAuth2 scope if not already present.
@@ -467,10 +473,10 @@ if (-not $existingScope) {
   # Re-fetch to get the assigned scope ID (may differ from what we sent).
   $app = Get-MgApplication -Filter "appId eq '$FunctionAppClientId'" -ErrorAction Stop
   $existingScope = $app.Api.Oauth2PermissionScopes | Where-Object { $_.Value -eq 'user_impersonation' }
-  Write-Host "  ✓ 'user_impersonation' scope added (id: $($existingScope.Id))." -ForegroundColor Green
+  Write-Host "  $_chk 'user_impersonation' scope added (id: $($existingScope.Id))." -ForegroundColor Green
 }
 else {
-  Write-Host "  ✓ 'user_impersonation' scope already exists (id: $($existingScope.Id))." -ForegroundColor Yellow
+  Write-Host "  $_chk 'user_impersonation' scope already exists (id: $($existingScope.Id))." -ForegroundColor Yellow
 }
 
 # Pre-authorize the SharePoint Online Web Client Extensibility app(s) to call the scope.
@@ -492,11 +498,11 @@ foreach ($spAppId in $spWebClientAppIds) {
     $updatedPreAuthorized = @($otherPreAuthorized) + @($newPreAuth)
     try {
       Update-MgApplication -ApplicationId $app.Id -Api @{ PreAuthorizedApplications = $updatedPreAuthorized } -ErrorAction Stop
-      Write-Host "  ✓ $spAppId pre-authorized." -ForegroundColor Green
+      Write-Host "  $_chk $spAppId pre-authorized." -ForegroundColor Green
     }
     catch {
       if ($_.Exception.Message -like "*cannot be found*") {
-        Write-Host "  ⚠ $spAppId not found in Microsoft's app registry — skipping." -ForegroundColor Yellow
+        Write-Host "  $_wrn $spAppId not found in Microsoft's app registry — skipping." -ForegroundColor Yellow
       }
       else {
         throw
@@ -504,7 +510,7 @@ foreach ($spAppId in $spWebClientAppIds) {
     }
   }
   else {
-    Write-Host "  ✓ $spAppId already pre-authorized." -ForegroundColor Yellow
+    Write-Host "  $_chk $spAppId already pre-authorized." -ForegroundColor Yellow
   }
 }
 
@@ -515,10 +521,10 @@ $sp = Get-MgServicePrincipal -Filter "appId eq '$FunctionAppClientId'" -ErrorAct
 if (-not $sp) {
   Write-Host "  Service Principal not found — creating it now (no user has signed in yet)..." -ForegroundColor Cyan
   $sp = New-MgServicePrincipal -AppId $FunctionAppClientId -ErrorAction Stop
-  Write-Host "  ✓ Service Principal created (Object ID: $($sp.Id))." -ForegroundColor Green
+  Write-Host "  $_chk Service Principal created (Object ID: $($sp.Id))." -ForegroundColor Green
 }
 else {
-  Write-Host "  ✓ Service Principal already exists (Object ID: $($sp.Id))." -ForegroundColor Yellow
+  Write-Host "  $_chk Service Principal already exists (Object ID: $($sp.Id))." -ForegroundColor Yellow
 }
 
 # appRoleAssignmentRequired=false: all users (including guests) can acquire tokens without
@@ -526,10 +532,10 @@ else {
 if ($sp.AppRoleAssignmentRequired) {
   Write-Host "  Disabling appRoleAssignmentRequired on the Enterprise App (was: true) ..." -ForegroundColor Cyan
   Update-MgServicePrincipal -ServicePrincipalId $sp.Id -AppRoleAssignmentRequired:$false -ErrorAction Stop
-  Write-Host "  ✓ appRoleAssignmentRequired set to false." -ForegroundColor Green
+  Write-Host "  $_chk appRoleAssignmentRequired set to false." -ForegroundColor Green
 }
 else {
-  Write-Host "  ✓ appRoleAssignmentRequired is already false — no user assignment needed." -ForegroundColor Yellow
+  Write-Host "  $_chk appRoleAssignmentRequired is already false — no user assignment needed." -ForegroundColor Yellow
 }
 
 # Hide from My Apps portal (tags: HideApp). This is a backend auth proxy — it should not
@@ -539,10 +545,10 @@ if (-not $hasHideApp) {
   Write-Host "  Hiding Enterprise App from My Apps portal (visible to users: No) ..." -ForegroundColor Cyan
   $updatedTags = @($sp.Tags) + @('HideApp')
   Update-MgServicePrincipal -ServicePrincipalId $sp.Id -Tags $updatedTags -ErrorAction Stop
-  Write-Host "  ✓ Enterprise App hidden from My Apps portal." -ForegroundColor Green
+  Write-Host "  $_chk Enterprise App hidden from My Apps portal." -ForegroundColor Green
 }
 else {
-  Write-Host "  ✓ Enterprise App is already hidden from My Apps portal." -ForegroundColor Yellow
+  Write-Host "  $_chk Enterprise App is already hidden from My Apps portal." -ForegroundColor Yellow
 }
 
 # Service Principal description — mirrors the App Registration description so Ops
@@ -573,20 +579,20 @@ if ($sp.Description -ne $spDescription) {
   Write-Host "  Setting Enterprise App description ..." -ForegroundColor Cyan
   Update-MgServicePrincipal -ServicePrincipalId $sp.Id `
     -Description $spDescription -ErrorAction Stop
-  Write-Host "  ✓ Description set." -ForegroundColor Green
+  Write-Host "  $_chk Description set." -ForegroundColor Green
 }
 else {
-  Write-Host "  ✓ Enterprise App description already set." -ForegroundColor Yellow
+  Write-Host "  $_chk Enterprise App description already set." -ForegroundColor Yellow
 }
 
 if ($sp.Notes -ne $spNotes) {
   Write-Host "  Setting Enterprise App notes ..." -ForegroundColor Cyan
   Update-MgServicePrincipal -ServicePrincipalId $sp.Id `
     -Notes $spNotes -ErrorAction Stop
-  Write-Host "  ✓ Notes set." -ForegroundColor Green
+  Write-Host "  $_chk Notes set." -ForegroundColor Green
 }
 else {
-  Write-Host "  ✓ Enterprise App notes already set." -ForegroundColor Yellow
+  Write-Host "  $_chk Enterprise App notes already set." -ForegroundColor Yellow
 }
 # Service Management Reference — shown under Enterprise App → Properties.
 # Points to the GitHub Issues tracker so Ops teams know where to file tickets.
@@ -595,10 +601,10 @@ if ($sp.ServiceManagementReference -ne $desiredSmRef) {
   Write-Host "  Setting Service Management Reference ..." -ForegroundColor Cyan
   Update-MgServicePrincipal -ServicePrincipalId $sp.Id `
     -ServiceManagementReference $desiredSmRef -ErrorAction Stop
-  Write-Host "  ✓ Service Management Reference set." -ForegroundColor Green
+  Write-Host "  $_chk Service Management Reference set." -ForegroundColor Green
 }
 else {
-  Write-Host "  ✓ Service Management Reference already set." -ForegroundColor Yellow
+  Write-Host "  $_chk Service Management Reference already set." -ForegroundColor Yellow
 }
 
 # Homepage URL — visible under Enterprise App → Properties.
@@ -607,10 +613,10 @@ if ($sp.Homepage -ne $desiredHomepage) {
   Write-Host "  Setting Enterprise App homepage URL ..." -ForegroundColor Cyan
   Update-MgServicePrincipal -ServicePrincipalId $sp.Id `
     -Homepage $desiredHomepage -ErrorAction Stop
-  Write-Host "  ✓ Homepage URL set." -ForegroundColor Green
+  Write-Host "  $_chk Homepage URL set." -ForegroundColor Green
 }
 else {
-  Write-Host "  ✓ Enterprise App homepage URL already set." -ForegroundColor Yellow
+  Write-Host "  $_chk Enterprise App homepage URL already set." -ForegroundColor Yellow
 }
 # Build a summary of assigned and skipped roles for the callout box.
 $summaryLines = @('The Managed Identity can now call Microsoft Graph with:')

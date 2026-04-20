@@ -54,7 +54,17 @@ if ([Console]::OutputEncoding.CodePage -ne 65001) {
   catch { $null = $_ <# Non-interactive host; ignore — encoding failure is non-fatal. #> }
 }
 
-# ── Callout box helpers ───────────────────────────────────────────────────────
+# ── Unicode output capability ─────────────────────────────────────────────────
+# Hoist to script scope so all Write-Host calls share the same capability check.
+# ConsoleHost (Windows Terminal, pwsh.exe, etc.) can render Unicode box-drawing
+# chars and symbols; VS Code's PowerShell Extension host cannot.
+$_u = $false
+try { $_u = ($Host.Name -eq 'ConsoleHost') -and ([Console]::OutputEncoding.GetBytes([char]0x2500)).Length -gt 1 }
+catch { $_u = $false }
+$_chk = if ($_u) { [char]0x2713 } else { '[+]' }  # ✓
+$_wrn = if ($_u) { [char]0x26A0 } else { '[!]' }  # ⚠
+$_sep = '  ' + $(if ($_u) { [string][char]0x2500 * 53 } else { '-' * 53 })
+
 # Embedded directly so the script works on any machine without Write-Callout.ps1,
 # whether run from a local clone, via iwr, or on a bare system with no repo files.
 #
@@ -74,11 +84,7 @@ function Write-Box {
     [Parameter(Mandatory)][ConsoleColor]$Color,
     [Parameter(ValueFromRemainingArguments)][string[]]$Lines
   )
-  # Detect whether the console can render Unicode box-drawing characters.
-  # UTF-8 encodes U+2500 as 3 bytes; a legacy ANSI code page returns 1 byte.
-  $_u = $false
-  try { $_u = ([Console]::OutputEncoding.GetBytes([char]0x2500)).Length -gt 1 }
-  catch { $_u = $false }
+  # Use the script-scope Unicode capability flag set at startup.
   if ($_u) {
     $H = [char]0x2500; $TL = [char]0x256D; $V = [char]0x2502; $BL = [char]0x2570
   }
@@ -199,7 +205,7 @@ function Install-RequiredModule {
 
       if ($kfmActive) {
         Write-Host ''
-        Write-Host '  ⚠  OneDrive Folder Backup is active (Known Folder Move / KFM).' `
+        Write-Host "  $_wrn  OneDrive Folder Backup is active (Known Folder Move / KFM)." `
           -ForegroundColor Yellow
         Write-Host '     Your Documents folder is currently synced to OneDrive:' -ForegroundColor Yellow
         Write-Host "     $docsPath" -ForegroundColor DarkCyan
@@ -233,7 +239,7 @@ function Install-RequiredModule {
           -ForegroundColor Cyan
         Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 `
           -Scope $scope -Force | Out-Null
-        Write-Host '  ✓ NuGet provider installed.' -ForegroundColor Green
+        Write-Host "  $_chk NuGet provider installed." -ForegroundColor Green
       }
     }
   }
@@ -261,7 +267,7 @@ function Install-RequiredModule {
   }
 
   Import-Module -Name $Name
-  Write-Host "  ✓ '$Name' installed and imported." -ForegroundColor Green
+  Write-Host "  $_chk '$Name' installed and imported." -ForegroundColor Green
   Write-Host ''
 }
 
@@ -277,7 +283,7 @@ $_guidPattern = '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0
 if (-not $TenantId) {
   Write-Host ''
   Write-Host '  Required: Entra Tenant ID' -ForegroundColor Cyan
-  Write-Host '  ───────────────────────────────────────────────────────' -ForegroundColor DarkGray
+  Write-Host $_sep -ForegroundColor DarkGray
   Write-Host '  Your Microsoft Entra tenant ID (a GUID).'
   Write-Host '  Where to find it:'
   Write-Host '    Microsoft Entra admin center → Overview → Tenant ID'
@@ -286,10 +292,10 @@ if (-not $TenantId) {
   do {
     $TenantId = (Read-Host '  Tenant ID').Trim()
     if (-not $TenantId) {
-      Write-Host '  ⚠ Value is required.' -ForegroundColor Yellow
+      Write-Host "  $_wrn Value is required." -ForegroundColor Yellow
     }
     elseif ($TenantId -notmatch $_guidPattern) {
-      Write-Host '  ⚠ Expected a GUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' -ForegroundColor Yellow
+      Write-Host "  $_wrn Expected a GUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" -ForegroundColor Yellow
       $TenantId = ''
     }
   } while (-not $TenantId)
@@ -456,10 +462,10 @@ if (Test-Path $logoPath) {
     -ContentType 'image/png' `
     -Body $logoBytes `
     -ErrorAction Stop
-  Write-Host "  ✓ Logo uploaded." -ForegroundColor Green
+  Write-Host "  $_chk Logo uploaded." -ForegroundColor Green
 }
 else {
-  Write-Host "  ⚠ Logo file not found at $logoPath — skipping." `
+  Write-Host "  $_wrn Logo file not found at $logoPath — skipping." `
     -ForegroundColor Yellow
 }
 
