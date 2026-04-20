@@ -79,13 +79,14 @@ and lint to staged files only (not the full suite):
 | `src/**/*.{ts,tsx}` | `eslint --fix` |
 | `azure-function/src/**/*.ts` | `eslint --fix` |
 | `**/*.md` | `markdownlint-cli2 --fix` |
+| `src/**/loc/*.js` | `prettier --write` |
 | `.github/**/*.yml`, `website/**/*.{yml,yaml}` | `prettier --write` |
 | `**/*.{json,jsonc}` | `prettier --write` |
 | `**/*.sh` | `shfmt` |
 
-Note: `lint:bicep`, `lint:ps`, `lint:actions`, `lint:sh`, `lint:loc`, and the
-test suite are **not** run by the hook — run them manually before committing
-when relevant.
+Note: `lint:bicep`, `lint:ps`, `lint:actions`, `lint:sh`, the `lint:loc`
+consistency check, and the test suite are **not** run by the hook — run them
+manually before committing when relevant.
 
 **Do not** skip this hook (`--no-verify`) except for meta-changes (infrastructure-only commits).
 
@@ -114,10 +115,10 @@ docs: update README configuration section
 ### ✅ Use `npm` Scripts (Managed + Linted)
 
 ```bash
-npm run lint        # ESLint + Stylelint + Markdownlint + locale syntax
+npm run lint        # ESLint + Stylelint + Markdownlint + locale structure
 npm run fix         # Auto-correct formatting
 npm run lint:ts     # TypeScript only
-npm run lint:loc    # Locale .js files (node --check syntax only)
+npm run lint:loc    # Locale .js files (Prettier + syntax + key-order check)
 npm test            # Jest + coverage
 npm start           # Dev server with hot-reload
 npm run build       # Full production build + packaging

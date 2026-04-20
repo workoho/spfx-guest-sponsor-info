@@ -18,9 +18,9 @@ import {
 } from '@microsoft/sp-property-pane';
 import { PropertyPaneCustomField } from '@microsoft/sp-property-pane/lib/propertyPaneFields/propertyPaneCustomField/PropertyPaneCustomField';
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
-import { AadHttpClient, SPHttpClient } from '@microsoft/sp-http';
+import { AadHttpClient, SPHttpClient, type SPHttpClientResponse } from '@microsoft/sp-http';
 import { ThemeProvider, IReadonlyTheme, ThemeChangedEventArgs } from '@microsoft/sp-component-base';
-import { FluentProvider, IdPrefixProvider, MessageBar, MessageBarBody, Tooltip, webLightTheme, webDarkTheme, type Theme } from '@fluentui/react-components';
+import { Button, FluentProvider, IdPrefixProvider, MessageBar, MessageBarBody, Tooltip, webLightTheme, webDarkTheme, type Theme } from '@fluentui/react-components';
 import { createV9Theme } from '@fluentui/react-migration-v8-v9';
 import { RendererProvider } from '@griffel/react';
 import { InfoRegular } from '@fluentui/react-icons';
@@ -167,6 +167,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
   private _newVersionAvailable: { version: string; url: string } | false = false;
   private _githubCheckDone = false;
   private _diagnosticsCheckDone = false;
+  private _diagnosticsCheckInProgress = false;
   private _diagnosticsResult:
     | {
         assetSource:
@@ -180,6 +181,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
         siteEveryoneAccess: 'ok' | 'missing' | 'unknown';
       }
     | undefined;
+  private static readonly _DIAGNOSTICS_REQUEST_TIMEOUT_MS = 10_000;
 
   /**
    * sessionStorage key for the cached GitHub release check result.
@@ -212,7 +214,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
         mockSponsorCount: 5,
         mockSimulatedHint: this.properties.mockSimulatedHint ?? 'none',
         showTeamsAccessPendingHint: this.properties.showTeamsAccessPendingHint ?? true,
-        showVersionMismatchHint: this.properties.showVersionMismatchHint ?? false,
+          showVersionMismatchHint: this.properties.showVersionMismatchHint ?? false,
         showSponsorUnavailableHint: this.properties.showSponsorUnavailableHint ?? true,
         showNoSponsorsHint: this.properties.showNoSponsorsHint ?? true,
         cardLayout: this.properties.cardLayout ?? 'auto',
@@ -476,7 +478,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
     if (assetSource === 'tenantCatalog' && corporateCatalogUrl) {
       try {
         const url = `${corporateCatalogUrl}/_api/web/roleassignments?$expand=Member&$select=Member/LoginName`;
-        const resp = await this.context.spHttpClient.get(url, SPHttpClient.configurations.v1);
+        const resp = await this._spGetWithTimeout(url);
         if (resp.ok) {
           const data = await resp.json() as { value: Array<{ Member: { LoginName: string } }> };
           const hasEveryone = data.value.some(ra => ra.Member.LoginName === 'c:0(.s|true');
@@ -490,7 +492,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
     let siteEveryoneAccess: 'ok' | 'missing' | 'unknown' = 'unknown';
     try {
       const url = `${siteUrl}/_api/web/roleassignments?$expand=Member&$select=Member/LoginName`;
-      const resp = await this.context.spHttpClient.get(url, SPHttpClient.configurations.v1);
+      const resp = await this._spGetWithTimeout(url);
       if (resp.ok) {
         const data = await resp.json() as { value: Array<{ Member: { LoginName: string } }> };
         const hasEveryone = data.value.some(ra => ra.Member.LoginName === 'c:0(.s|true');
@@ -502,6 +504,59 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
     if (this.context.propertyPane.isPropertyPaneOpen()) {
       this.context.propertyPane.refresh();
     }
+  }
+
+  /**
+   * Issues a SharePoint REST GET with a hard timeout so diagnostics never stay
+   * in a perpetual "checking" state when a request hangs.
+   */
+  private async _spGetWithTimeout(url: string): Promise<SPHttpClientResponse> {
+    return await Promise.race([
+      this.context.spHttpClient.get(url, SPHttpClient.configurations.v1),
+      new Promise<never>((_resolve, reject) => {
+        setTimeout(() => reject(new Error('Diagnostics request timeout')), GuestSponsorInfoWebPart._DIAGNOSTICS_REQUEST_TIMEOUT_MS);
+      }),
+    ]);
+  }
+
+  /** Starts the diagnostics flow once or forces a manual re-run from the property pane. */
+  private _startDiagnosticsCheck(force = false): void {
+    if (this._diagnosticsCheckInProgress) return;
+    if (this._diagnosticsCheckDone && !force) return;
+
+    if (force) {
+      this._diagnosticsCheckDone = false;
+      this._diagnosticsResult = undefined;
+    }
+
+    this._diagnosticsCheckInProgress = true;
+    if (this.context.propertyPane.isPropertyPaneOpen()) {
+      this.context.propertyPane.refresh();
+    }
+
+    const finishDiagnosticsCheck = (): void => {
+      this._diagnosticsCheckDone = true;
+      this._diagnosticsCheckInProgress = false;
+      if (this.context.propertyPane.isPropertyPaneOpen()) {
+        this.context.propertyPane.refresh();
+      }
+    };
+
+    this._runDiagnostics().then(
+      () => {
+        finishDiagnosticsCheck();
+      },
+      () => {
+        // Ensure the UI always transitions out of "checking" even when an
+        // unexpected error escapes one of the local try/catch blocks.
+        this._diagnosticsResult = {
+          assetSource: 'unknown',
+          tenantCatalogEveryoneAccess: 'unknown',
+          siteEveryoneAccess: 'unknown',
+        };
+        finishDiagnosticsCheck();
+      }
+    );
   }
 
   /**
@@ -540,10 +595,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
     // Run the guest-accessibility diagnostics once per editing session.
     // Not gated on functionUrl — the check is about bundle delivery and site
     // permissions, which are independent of the proxy configuration.
-    if (!this._diagnosticsCheckDone) {
-      this._diagnosticsCheckDone = true;
-      this._runDiagnostics().catch(() => { /* informational only — silent on failure */ });
-    }
+    this._startDiagnosticsCheck();
 
     if (this._githubCheckDone) return;
     // Only perform the release check when a function URL is configured.
@@ -645,6 +697,37 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
             React.createElement(MessageBar,
               { intent, style: { marginBottom: 8 } },
               React.createElement(MessageBarBody, null, text)
+            )
+          )
+        )
+      ),
+      element
+    );
+  }
+
+  /** Renders the manual diagnostics re-run button in the property pane. */
+  private _renderDiagnosticsRetryButton(element: HTMLElement | undefined): void {
+    if (!element) return;
+    this._renderReactTree(
+      React.createElement(IdPrefixProvider, { value: `gsi-pp-diag-retry-${this.context.instanceId}-` },
+        React.createElement(RendererProvider, { renderer: griffelRenderer } as React.ComponentProps<typeof RendererProvider>,
+          React.createElement(FluentProvider,
+            {
+              theme: this._theme
+                ? createV9Theme(this._theme as unknown as Parameters<typeof createV9Theme>[0], this._theme.isInverted ? webDarkTheme : webLightTheme)
+                : undefined,
+              id: `gsi-pp-diag-retry-${this.context.instanceId}`,
+            },
+            React.createElement(Button,
+              {
+                appearance: 'secondary',
+                disabled: this._diagnosticsCheckInProgress,
+                onClick: () => {
+                  this._startDiagnosticsCheck(true);
+                },
+                style: { marginBottom: 8 },
+              },
+              strings.DiagnosticsRetryButtonLabel
             )
           )
         )
@@ -1680,6 +1763,15 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
               isCollapsed: true,
               groupFields: [
                 this._descriptionField('diagnosticsGroupHint', strings.DiagnosticsGroupHint),
+                PropertyPaneCustomField({
+                  key: 'diagRetryButtonField',
+                  onRender: (element: HTMLElement | undefined) => {
+                    this._renderDiagnosticsRetryButton(element);
+                  },
+                  onDispose: (element: HTMLElement | undefined) => {
+                    if (element) this._unmountReactTree(element);
+                  },
+                }) as unknown as IPropertyPaneField<unknown>,
                 // ── Check 1: Asset source / bundle delivery ─────────────────
                 PropertyPaneCustomField({
                   key: 'diagAssetSourceField',

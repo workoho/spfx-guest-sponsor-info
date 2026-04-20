@@ -3,8 +3,8 @@
 # Author: Julian Pawlowski <https://github.com/jpawlowski>
 # Licensed under PolyForm Shield License 1.0.0 <https://polyformproject.org/licenses/shield/1.0.0>
 #
-# Run all linters (TypeScript/ESLint, Markdown, YAML, GitHub Actions, Bicep, Shell, PowerShell) for both
-# the SPFx web part, website docs, and the Azure Function.
+# Run all linters (TypeScript/ESLint, Markdown, locale files, YAML, GitHub Actions, Bicep,
+# Shell, PowerShell) for both the SPFx web part, website docs, and the Azure Function.
 #
 # Usage:
 #   scripts/lint.sh
@@ -23,7 +23,7 @@ step() {
   echo "${C_BLD}[ $1 ] $2${C_RST}"
 }
 
-step "1/8" "ESLint (TypeScript — web part)…"
+step "1/9" "ESLint (TypeScript — web part)…"
 gha_group_start "ESLint (TypeScript — web part)"
 if npm run lint:ts; then
   echo "  ${C_GRN}✓${C_RST} ESLint passed"
@@ -35,7 +35,7 @@ fi
 gha_group_end
 
 echo ""
-step "2/8" "ESLint (TypeScript — Azure Function)…"
+step "2/9" "ESLint (TypeScript — Azure Function)…"
 gha_group_start "ESLint (TypeScript — Azure Function)"
 if npm run lint:ts:func; then
   echo "  ${C_GRN}✓${C_RST} ESLint passed"
@@ -47,7 +47,7 @@ fi
 gha_group_end
 
 echo ""
-step "3/8" "Markdownlint (Docs + Website)…"
+step "3/9" "Markdownlint (Docs + Website)…"
 gha_group_start "Markdownlint (Docs + Website)"
 if npm run lint:md; then
   echo "  ${C_GRN}✓${C_RST} Markdownlint passed"
@@ -59,7 +59,19 @@ fi
 gha_group_end
 
 echo ""
-step "4/8" "Prettier --check (YAML — all)…"
+step "4/9" "Prettier + consistency (Locale .js files)…"
+gha_group_start "Prettier + consistency (Locale .js files)"
+if npm run lint:loc; then
+  echo "  ${C_GRN}✓${C_RST} Locale file checks passed"
+else
+  echo "  ${C_RED}✗${C_RST} Locale file checks found issues"
+  gha_warning "Locale file formatting, syntax, or key-order checks found issues."
+  EXIT=1
+fi
+gha_group_end
+
+echo ""
+step "5/9" "Prettier --check (YAML — all)…"
 gha_group_start "Prettier --check (YAML — all)"
 if npm run lint:yml; then
   echo "  ${C_GRN}✓${C_RST} YAML formatting check passed"
@@ -71,7 +83,7 @@ fi
 gha_group_end
 
 echo ""
-step "5/8" "actionlint (GitHub Actions)…"
+step "6/9" "actionlint (GitHub Actions)…"
 gha_group_start "actionlint (GitHub Actions)"
 if npm run lint:actions; then
   echo "  ${C_GRN}✓${C_RST} actionlint passed"
@@ -83,7 +95,7 @@ fi
 gha_group_end
 
 echo ""
-step "6/8" "Bicep lint (Azure Function infra)…"
+step "7/9" "Bicep lint (Azure Function infra)…"
 gha_group_start "Bicep lint (Azure Function infra)"
 if npm run lint:bicep; then
   echo "  ${C_GRN}✓${C_RST} Bicep lint passed"
@@ -95,7 +107,7 @@ fi
 gha_group_end
 
 echo ""
-step "7/8" "shellcheck (Shell scripts)…"
+step "8/9" "shellcheck (Shell scripts)…"
 gha_group_start "shellcheck (Shell scripts)"
 if npm run lint:sh; then
   echo "  ${C_GRN}✓${C_RST} shellcheck passed"
@@ -107,7 +119,7 @@ fi
 gha_group_end
 
 echo ""
-step "8/8" "PSScriptAnalyzer (PowerShell)…"
+step "9/9" "PSScriptAnalyzer (PowerShell)…"
 gha_group_start "PSScriptAnalyzer (PowerShell)"
 if npm run lint:ps; then
   echo "  ${C_GRN}✓${C_RST} PSScriptAnalyzer passed"

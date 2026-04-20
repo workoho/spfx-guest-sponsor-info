@@ -146,6 +146,7 @@ declare interface IGuestSponsorInfoWebPartStrings {
   DiagnosticsGroupName: string;
   DiagnosticsGroupHint: string;
   DiagnosticsChecking: string;
+  DiagnosticsRetryButtonLabel: string;
   DiagPublicCdnOk: string;
   DiagPrivateCdnInfo: string;
   DiagSiteColCatalogOk: string;
