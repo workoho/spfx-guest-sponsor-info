@@ -62,14 +62,16 @@ if ([Console]::OutputEncoding.CodePage -ne 65001) {
 }
 
 # ── Unicode output capability ─────────────────────────────────────────────────
-# Hoist to script scope so all Write-Host calls share the same capability check.
-# ConsoleHost (Windows Terminal, pwsh.exe, etc.) can render Unicode box-drawing
-# chars and symbols; VS Code's PowerShell Extension host cannot.
+# After the UTF-8 encoding block above, [Console]::OutputEncoding is UTF-8 on
+# every host (ConsoleHost, VS Code Extension, ISE, …).  Verify by checking that
+# U+2500 (BOX DRAWINGS LIGHT HORIZONTAL) encodes to more than one byte — a
+# single byte would mean a legacy ANSI code page is still active.
 $_u = $false
-try { $_u = ($Host.Name -eq 'ConsoleHost') -and ([Console]::OutputEncoding.GetBytes([char]0x2500)).Length -gt 1 }
+try { $_u = ([Console]::OutputEncoding.GetBytes([char]0x2500)).Length -gt 1 }
 catch { $_u = $false }
 $_chk = if ($_u) { [char]0x2713 } else { '[+]' }  # ✓
 $_wrn = if ($_u) { [char]0x26A0 } else { '[!]' }  # ⚠
+$_arr = if ($_u) { [char]0x2192 } else { '>' }    # →
 $_sep = '  ' + $(if ($_u) { [string][char]0x2500 * 53 } else { '-' * 53 })
 
 # Embedded directly so the script works on any machine without Write-Callout.ps1,
@@ -293,7 +295,7 @@ if (-not $TenantId) {
   Write-Host $_sep -ForegroundColor DarkGray
   Write-Host '  Your Microsoft Entra tenant ID (a GUID).'
   Write-Host '  Where to find it:'
-  Write-Host '    Microsoft Entra admin center → Overview → Tenant ID'
+  Write-Host "    Microsoft Entra admin center $_arr Overview $_arr Tenant ID"
   Write-Host '    https://entra.microsoft.com' -ForegroundColor DarkCyan
   Write-Host ''
   do {
@@ -315,8 +317,8 @@ if (-not $ManagedIdentityObjectId) {
   Write-Host '  The Object ID of the system-assigned Managed Identity of the'
   Write-Host '  Azure Function App (a GUID). This is NOT the App Client ID.'
   Write-Host '  Where to find it:'
-  Write-Host '    Azure Portal → your Function App → Settings → Identity → Object (principal) ID'
-  Write-Host '    or: the deployment outputs → managedIdentityObjectId'
+  Write-Host "    Azure Portal $_arr your Function App $_arr Settings $_arr Identity $_arr Object (principal) ID"
+  Write-Host "    or: the deployment outputs $_arr managedIdentityObjectId"
   Write-Host '    https://portal.azure.com' -ForegroundColor DarkCyan
   Write-Host ''
   do {
@@ -339,8 +341,8 @@ if (-not $FunctionAppClientId) {
   Write-Host '  in the previous step (setup-app-registration.ps1). It was'
   Write-Host '  printed at the end of that script.'
   Write-Host '  Where to find it:'
-  Write-Host '    Entra admin center → App registrations →'
-  Write-Host '    "Guest Sponsor Info - SharePoint Web Part Auth" → Application (client) ID'
+  Write-Host "    Entra admin center $_arr App registrations $_arr"
+  Write-Host "    'Guest Sponsor Info - SharePoint Web Part Auth' $_arr Application (client) ID"
   Write-Host '    https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade' -ForegroundColor DarkCyan
   Write-Host ''
   do {

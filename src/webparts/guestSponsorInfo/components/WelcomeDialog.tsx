@@ -120,8 +120,8 @@ function tokenizePwsh(cmd: string): IPsToken[] {
     }
     // Call operator  &
     if (ch === '&') { result.push({ t: 'op', v: '&' }); i++; continue; }
-    // Parentheses
-    if (ch === '(' || ch === ')') { result.push({ t: 'punct', v: ch }); i++; continue; }
+    // Parentheses and dots
+    if (ch === '(' || ch === ')' || ch === '.') { result.push({ t: 'punct', v: ch }); i++; continue; }
     // Word boundary — cmdlet or plain identifier
     if (/\w/.test(ch)) {
       let j = i; while (j < cmd.length && /[\w-]/.test(cmd[j])) j++;
