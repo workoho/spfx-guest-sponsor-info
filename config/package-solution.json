@@ -75,11 +75,11 @@
         "zh-cn": "每张保荐人卡片均显示头像、职位和实时在线状态。点击后展开联系人面板，包含电子邮件、电话、办公室地址、可选地图预览及上级管理者摘要——每个字段可单独开关。若主要保荐人不可用，下一位活跃保荐人将自动接替；不可用的保荐人仍以只读磁贴显示。所有数据通过配套的 Azure Function（采用托管标识和 EasyAuth）传输——无需为访客分配 Entra 目录角色。非访客不可见；页面编辑者可看到逼真的示例卡片，无需实时数据。"
       },
       "screenshotPaths": [
-        "images/screenshots/screenshot-1-sponsor-card-full.jpg",
-        "images/screenshots/screenshot-2-view-variants.jpg",
-        "images/screenshots/screenshot-3-setup-wizard.jpg",
-        "images/screenshots/screenshot-4-property-pane.jpg",
-        "images/screenshots/screenshot-5-editor-preview.jpg"
+        "images/screenshots/screenshot-1-sponsor-card-full.png",
+        "images/screenshots/screenshot-2-view-variants.png",
+        "images/screenshots/screenshot-3-setup-wizard.png",
+        "images/screenshots/screenshot-4-property-pane.png",
+        "images/screenshots/screenshot-5-editor-preview.png"
       ],
       "videoUrl": "",
       "categories": ["Collaboration", "IT/admin", "Productivity"]
