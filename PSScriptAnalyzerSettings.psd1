@@ -9,6 +9,15 @@
     # [scriptblock]::Create() when scripts are fetched via iwr/irm from
     # raw.githubusercontent.com. PowerShell 7 parses UTF-8 without BOM
     # correctly. Non-ASCII characters in comments are accepted.
-    'PSUseBOMForUnicodeEncodedFile'
+    'PSUseBOMForUnicodeEncodedFile',
+
+    # The setup scripts use $Global:GsiSetup_* variables intentionally to
+    # cache interactive parameter inputs for the lifetime of the current
+    # PowerShell session.  This lets operators re-run the scripts without
+    # having to re-enter tenant ID and other GUIDs each time.  The namespace
+    # prefix 'GsiSetup' prevents collisions with other scripts.  This pattern
+    # is appropriate for standalone interactive scripts; it would be wrong
+    # inside a module (the PSAvoidGlobalVars rule's primary target).
+    'PSAvoidGlobalVars'
   )
 }

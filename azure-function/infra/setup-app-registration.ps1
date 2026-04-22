@@ -1,3 +1,5 @@
+#!/usr/bin/env -S pwsh -NoLogo -NoProfile
+
 <#
 .SYNOPSIS
     Creates or updates the Entra App Registration needed for the Azure Function
@@ -26,8 +28,26 @@
     Display name for the App Registration. Defaults to
     "Guest Sponsor Info - SharePoint Web Part Auth".
 
+.PARAMETER Confirm
+    -Confirm:$false skips all interactive confirmations and runs unattended.
+    When all parameters are supplied on the command line the script shows a
+    summary of planned changes and asks once before connecting; pass
+    -Confirm:$false together with all required parameters to bypass that
+    prompt completely.
+
+.PARAMETER WhatIf
+    Shows what the script would do without making any changes. All write
+    operations (POST / PATCH / PUT) are skipped; read operations still run
+    so resolved values are shown.
+
 .EXAMPLE
     ./setup-app-registration.ps1 -TenantId "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy"
+
+.EXAMPLE
+    # Fully unattended — no prompts, no confirmation summary
+    ./setup-app-registration.ps1 `
+      -TenantId "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy" `
+      -Confirm:$false
 
 .NOTES
     Copyright 2026 Workoho GmbH <https://workoho.com>
@@ -35,7 +55,10 @@
     Licensed under PolyForm Shield License 1.0.0
     <https://polyformproject.org/licenses/shield/1.0.0>
 #>
+
+#region Parameters
 #Requires -Version 5.1
+[CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Medium')]
 param(
   [string]$TenantId,
   [string]$DisplayName = 'Guest Sponsor Info - SharePoint Web Part Auth'
@@ -43,6 +66,15 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Track whether any interactive prompt was shown. When all parameters were
+# pre-supplied (via the command line or the session cache) we show a
+# confirmation summary so the operator can verify before the script runs.
+$_promptsShown = $false
+# Convenience bool used throughout for WhatIf-aware fallbacks.
+$_whatIf = $WhatIfPreference -eq [System.Management.Automation.SwitchParameter]$true
+#endregion
+
+#region Terminal initialization
 # ── Console output encoding ───────────────────────────────────────────────────
 # Switch to UTF-8 early so box-drawing characters and symbols (✓, ⚠) render
 # correctly on Windows PowerShell 5.1 which defaults to an ANSI code page.
@@ -67,6 +99,29 @@ $_wrn = if ($_u) { [char]0x26A0 } else { '[!]' }  # ⚠
 $_arr = if ($_u) { [char]0x2192 } else { '>' }    # →
 $_sep = '  ' + $(if ($_u) { [string][char]0x2500 * 53 } else { '-' * 53 })
 
+# ── OSC 8 hyperlink capability ─────────────────────────────────────────────────
+# OSC 8 clickable hyperlinks are supported by Windows Terminal, VS Code,
+# iTerm2, WezTerm, Kitty, Foot, GNOME Terminal, Konsole, and most modern
+# Linux terminals that advertise 24-bit colour support.
+# Disabled automatically when stdout is redirected (no attached console).
+$_osc8 = $false
+if (-not [Console]::IsOutputRedirected) {
+  $_osc8 = (
+    $env:WT_SESSION -or # Windows Terminal
+    $env:TERM_PROGRAM -eq 'vscode' -or # VS Code integrated terminal
+    $env:TERM_PROGRAM -eq 'iTerm.app' -or # iTerm2
+    $env:TERM_PROGRAM -eq 'WezTerm' -or # WezTerm
+    $env:TERM -eq 'xterm-kitty' -or # Kitty
+    $env:TERM -eq 'foot' -or # Foot (Wayland)
+    $env:COLORTERM -eq 'truecolor' -or # Most modern Linux/macOS terminals
+    $env:COLORTERM -eq '24bit' -or # Alternative truecolor flag
+    $env:VTE_VERSION -or # GNOME Terminal / VTE-based
+    $env:KONSOLE_VERSION                         # Konsole (KDE)
+  ) -as [bool]
+}
+#endregion
+
+#region Output helpers
 # Embedded directly so the script works on any machine without Write-Callout.ps1,
 # whether run from a local clone, via iwr, or on a bare system with no repo files.
 #
@@ -129,7 +184,33 @@ function Write-Failure {
   param([Parameter(ValueFromRemainingArguments)][string[]]$Lines)
   Write-Box -Title 'ERROR' -Color Red @Lines
 }
+function Write-Link {
+  # Print a deep link to a URL. In terminals that support OSC 8 escape
+  # sequences the link text is rendered as a clickable hyperlink, prefixed
+  # with a ↗ arrow (U+2197) in Cyan so the click intent is obvious even
+  # to users unfamiliar with terminal hyperlinks. In all other hosts the
+  # label and URL are printed on two lines so nothing is lost.
+  param(
+    [Parameter(Mandatory)][string]$Url,
+    [string]$Text,
+    [string]$Indent = '    '
+  )
+  if ([string]::IsNullOrEmpty($Text)) { $Text = $Url }
+  # ↗ (U+2197) signals "navigate / open link"; '>' on legacy hosts.
+  $linkArrow = if ($_u) { [string][char]0x2197 } else { '>' }
+  if ($_osc8) {
+    $esc = [char]27
+    Write-Host "$Indent$linkArrow " -NoNewline -ForegroundColor Cyan
+    Write-Host "$($esc)]8;;$($Url)$($esc)\$($Text)$($esc)]8;;$($esc)\" -ForegroundColor DarkCyan
+  }
+  else {
+    Write-Host "$Indent$linkArrow $Text"
+    Write-Host "$Indent  $Url" -ForegroundColor DarkCyan
+  }
+}
+#endregion
 
+#region Error handler
 # Script-level trap: on Graph authorization errors (401/403), print role
 # guidance instead of a raw HTTP exception. Other errors re-throw normally.
 trap {
@@ -139,22 +220,38 @@ trap {
     catch { $null = $_ <# cast may fail if StatusCode is not numeric — ignore #> }
   }
   $_errMsg = if ($_.Exception -and $_.Exception.Message) { $_.Exception.Message } else { [string]$_ }
+  # In WhatIf mode every error from a read/validate operation is non-fatal.
+  # PowerShell resumes after the failing statement with $null as its value;
+  # downstream ShouldProcess calls then print the "What if:" messages instead.
+  if ($_whatIf) {
+    $_shortMsg = ($_errMsg -replace '\r?\n.*', '').Trim()
+    if ($_shortMsg) {
+      Write-Host "  [WhatIf] $_shortMsg — treating object as non-existent." -ForegroundColor Yellow
+    }
+    continue
+  }
   if ($_httpCode -in @(401, 403) -or
     $_errMsg -match 'Authorization_RequestDenied|Forbidden|Unauthorized|insufficient.privilege') {
     Write-Failure -Lines @(
       'The request was denied — your account lacks the required permissions.'
       ''
-      'Required Entra role:  Application Administrator'
-      '  (or Cloud Application Administrator, or Global Administrator)'
+      'Required Entra role:  Cloud Application Administrator'
+      '  (or Application Administrator, or Global Administrator)'
       ''
-      'Entra admin center → Roles and administrators:'
-      '  https://entra.microsoft.com/#view/Microsoft_AAD_IAM/RolesManagementMenuBlade/~/AllRoles'
+      'If your role is eligible (PIM): activate it, then re-run.'
+      'If you do not have the role yet: request it from your admin.'
     )
+    Write-Link -Url 'https://entra.microsoft.com/#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/aadRoles' `
+      -Text 'PIM → My roles → Entra roles  (activate eligible role)'
+    Write-Link -Url 'https://entra.microsoft.com/#view/Microsoft_AAD_IAM/RolesManagementMenuBlade/~/AllRoles' `
+      -Text 'Entra admin center → Roles and administrators'
     break
   }
   # Not a permission error — let PowerShell display the raw error and exit.
 }
+#endregion
 
+#region Module management
 # ── Module prerequisite helper ────────────────────────────────────────────────
 # Checks whether a required PowerShell module is installed and, if not, offers
 # to install it from the PowerShell Gallery. Handles:
@@ -380,44 +477,177 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
 # Only Microsoft.Graph.Authentication is needed — all Graph API calls use
 # Invoke-MgGraphRequest directly (no higher-level SDK module required).
 Install-RequiredModule -Name 'Microsoft.Graph.Authentication'
+#endregion
 
+#region Parameter collection
 # ── Interactive parameter prompts ─────────────────────────────────────────────
 # Each prompt shows a title, a short description, and where to find the value,
 # then re-prompts until a valid GUID is entered.
 $_guidPattern = '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
 
 if (-not $TenantId) {
-  Write-Host ''
-  Write-Host '  Required: Entra Tenant ID' -ForegroundColor Cyan
-  Write-Host $_sep -ForegroundColor DarkGray
-  Write-Host '  Your Microsoft Entra tenant ID (a GUID).'
-  Write-Host '  Where to find it:'
-  Write-Host "    Microsoft Entra admin center $_arr Overview $_arr Tenant ID"
-  Write-Host '    https://entra.microsoft.com' -ForegroundColor DarkCyan
-  Write-Host ''
-  do {
-    $TenantId = (Read-Host '  Tenant ID').Trim()
-    if (-not $TenantId) {
-      Write-Host "  $_wrn Value is required." -ForegroundColor Yellow
+  # Session cache: skip the prompt if this script or setup-graph-permissions.ps1
+  # already stored a value in the $Global:GsiSetup_* namespace during this session.
+  if ($Global:GsiSetup_TenantId) {
+    $TenantId = $Global:GsiSetup_TenantId
+    Write-Host "  Using cached Tenant ID from this session: $TenantId" -ForegroundColor DarkGray
+  }
+  else {
+    # Check for an existing Graph session — offer the connected tenant as default
+    # so the user can just press Enter instead of looking the GUID up.
+    $_existingCtx = $null
+    try { $_existingCtx = Get-MgContext -ErrorAction SilentlyContinue } catch { $null = $_ }
+    $_defaultTenant = if ($_existingCtx -and $_existingCtx.TenantId) { $_existingCtx.TenantId } else { '' }
+    Write-Host ''
+    Write-Host '  Required: Entra Tenant ID' -ForegroundColor Cyan
+    Write-Host $_sep -ForegroundColor DarkGray
+    Write-Host '  Your Microsoft Entra tenant ID (a GUID).'
+    if ($_defaultTenant) {
+      Write-Host "  Active Graph session: $($_existingCtx.Account)" -ForegroundColor DarkGray
+      Write-Host "  Tenant: $_defaultTenant" -ForegroundColor DarkGray
+      Write-Host '  Press Enter to use this tenant.' -ForegroundColor DarkGray
     }
-    elseif ($TenantId -notmatch $_guidPattern) {
-      Write-Host "  $_wrn Expected a GUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" -ForegroundColor Yellow
-      $TenantId = ''
-    }
-  } while (-not $TenantId)
-  Write-Host ''
+    Write-Host '  Where to find it:'
+    Write-Link -Url 'https://entra.microsoft.com/#view/Microsoft_AAD_IAM/TenantOverview.ReactView' `
+      -Text "Microsoft Entra admin center $_arr Overview $_arr Tenant ID"
+    Write-Host ''
+    do {
+      $_prompt = if ($_defaultTenant) { "  Tenant ID [$_defaultTenant]" } else { '  Tenant ID' }
+      $TenantId = (Read-Host $_prompt).Trim()
+      if (-not $TenantId -and $_defaultTenant) {
+        $TenantId = $_defaultTenant
+      }
+      if (-not $TenantId) {
+        Write-Host "  $_wrn Value is required." -ForegroundColor Yellow
+      }
+      elseif ($TenantId -notmatch $_guidPattern) {
+        Write-Host "  $_wrn Expected a GUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" -ForegroundColor Yellow
+        $TenantId = ''
+      }
+    } while (-not $TenantId)
+    Write-Host ''
+    $_promptsShown = $true
+  }
 }
+# Save the resolved TenantId to the session cache — available to repeated runs
+# and to setup-graph-permissions.ps1 when run in the same PowerShell session.
+$Global:GsiSetup_TenantId = $TenantId
 
 Write-Hint -Lines @(
-  'Required Entra role:  Application Administrator'
-  '  (or Cloud Application Administrator, or Global Administrator)'
+  'Required Entra role:  Cloud Application Administrator'
+  '  (or Application Administrator, or Global Administrator)'
   ''
-  'Entra admin center → Roles and administrators:'
-  '  https://entra.microsoft.com/#view/Microsoft_AAD_IAM/RolesManagementMenuBlade/~/AllRoles'
+  'If your role is eligible (PIM): activate it, then re-run.'
+  'If you do not have the role yet: request it from your admin.'
 )
+Write-Link -Url "https://entra.microsoft.com/$TenantId/#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/aadRoles" `
+  -Text 'PIM → My roles → Entra roles  (activate eligible role)'
+Write-Link -Url "https://entra.microsoft.com/$TenantId/#view/Microsoft_AAD_IAM/RolesManagementMenuBlade/~/AllRoles" `
+  -Text 'Entra admin center → Roles and administrators'
 
-Connect-MgGraph -TenantId $TenantId -Scopes "Application.ReadWrite.All"
+# When no interactive prompts were shown (params from CLI or session cache),
+# show a summary of what the script is about to do and ask for confirmation
+# — unless the caller already passed -Confirm:$false or -WhatIf.
+if (-not $_promptsShown -and
+  $WhatIfPreference -ne [System.Management.Automation.SwitchParameter]$true -and
+  $ConfirmPreference -ne 'None') {
+  Write-Host ''
+  Write-Host '  Planned operations' -ForegroundColor Cyan
+  Write-Host $_sep -ForegroundColor DarkGray
+  Write-Host "  Tenant ID  : $TenantId"
+  Write-Host "  App Name   : $DisplayName"
+  Write-Host ''
+  Write-Host '  The script will create or update the App Registration and' -ForegroundColor DarkGray
+  Write-Host '  upload the logo.  All operations are idempotent.' -ForegroundColor DarkGray
+  Write-Host ''
+  $reply = (Read-Host '  Proceed? [Y/n]').Trim()
+  if ($reply -and $reply -notmatch '^[Yy]') {
+    Write-Host 'Aborted.' -ForegroundColor Yellow
+    exit 0
+  }
+  Write-Host ''
+}
+#endregion
 
+#region Graph connection
+# ── Connect to Microsoft Graph ────────────────────────────────────────────────────────
+# Skip Connect-MgGraph when the current session already covers the required
+# scopes for the right tenant — avoids unnecessary MFA / browser prompts.
+$_requiredScopes = if ($_whatIf) { @('Application.Read.All') } else { @('Application.ReadWrite.All') }
+$_mgCtx = $null
+try { $_mgCtx = Get-MgContext -ErrorAction SilentlyContinue } catch { $null = $_ }
+$_scopesOk = $false
+if ($_mgCtx -and $_mgCtx.TenantId -eq $TenantId) {
+  $_scopesOk = $true
+  foreach ($_s in $_requiredScopes) {
+    if ($_mgCtx.Scopes -notcontains $_s) { $_scopesOk = $false; break }
+  }
+}
+
+if ($_whatIf) {
+  if ($_scopesOk) {
+    Write-Host "  [WhatIf] Reusing existing Graph session — scopes sufficient." -ForegroundColor DarkGray
+  }
+  else {
+    # In WhatIf mode read-only scope is sufficient — write permissions are not
+    # needed for a dry run.  Fall back to offline simulation if sign-in fails.
+    Write-Host "  [WhatIf] Connecting with read-only scope (Application.Read.All)..." -ForegroundColor DarkGray
+    try {
+      Connect-MgGraph -TenantId $TenantId -Scopes 'Application.Read.All' -ErrorAction Stop
+      Write-Host "  [WhatIf] Connected — current state will be reflected where readable." -ForegroundColor DarkGray
+    }
+    catch {
+      Write-Host "  [WhatIf] Sign-in failed — simulating all operations as 'would create/update'." -ForegroundColor Yellow
+    }
+  }
+}
+else {
+  if ($_scopesOk) {
+    Write-Host "Reusing existing Graph session." -ForegroundColor DarkGray
+  }
+  else {
+    Connect-MgGraph -TenantId $TenantId -Scopes 'Application.ReadWrite.All'
+  }
+}
+
+# ── Verify active Entra role assignments ─────────────────────────────────────
+# Opportunistic: requires Directory.Read.All in the current token.
+# Silently skipped when the scope is absent or the session is a service
+# principal (workload identity).  The check is informational only — the
+# script will still fail later with a clear error if the role is missing.
+$_checkRoles = @(
+  'Cloud Application Administrator'
+  'Application Administrator'
+  'Global Administrator'
+)
+$_activeRoles = @()
+$_roleCheckOk = $false
+try {
+  $_roleResp = Invoke-MgGraphRequest -Method GET `
+    -Uri 'https://graph.microsoft.com/v1.0/me/transitiveMemberOf/microsoft.graph.directoryRole?$select=displayName' `
+    -OutputType PSObject -ErrorAction Stop
+  if ($_roleResp.value) {
+    # Keep only the roles relevant to this script so the output stays focused.
+    $_activeRoles = @($($_roleResp.value | Where-Object { $_checkRoles -contains $_.displayName } | ForEach-Object { $_.displayName }))
+  }
+  $_roleCheckOk = $true
+}
+catch { $null = $_ }
+
+if ($_roleCheckOk) {
+  if ($_activeRoles.Count -gt 0) {
+    $_chk = if ($_u) { [string][char]0x2713 } else { 'OK' }
+    Write-Host "  $_chk Active role(s): $($_activeRoles -join ', ')" -ForegroundColor Green
+  }
+  else {
+    # Connected successfully but none of the required roles are active.
+    Write-Host "  $_wrn No required Entra role is active for your account." -ForegroundColor Yellow
+    Write-Host '  Activate your role via PIM or request it from your admin.' -ForegroundColor Yellow
+  }
+}
+#endregion
+
+#region Desired state
 # ── Desired state ─────────────────────────────────────────────────────────────
 # We pin accessTokenAcceptedVersion to 2 (modern v2 tokens) so the aud
 # claim in access tokens equals the bare clientId GUID.  ALLOWED_AUDIENCE
@@ -473,7 +703,9 @@ $logoPath = if ($_localLogoPath -and (Test-Path $_localLogoPath)) {
 else { $null }
 $logoRawUrl = "$repoUrl" -replace 'https://github\.com', 'https://raw.githubusercontent.com'
 $logoRawUrl = "$logoRawUrl/main/sharepoint/images/icon-300.png"
+#endregion
 
+#region Find or create
 # ── Find or create ────────────────────────────────────────────────────────────
 Write-Host "Checking for existing App Registration '$DisplayName'..." `
   -ForegroundColor Cyan
@@ -491,41 +723,73 @@ if ($app) {
 else {
   Write-Host "Creating App Registration '$DisplayName'..." `
     -ForegroundColor Cyan
-  $app = Invoke-MgGraphRequest -Method POST `
-    -Uri 'https://graph.microsoft.com/v1.0/applications' `
-    -Body @{
-    displayName    = $DisplayName
-    signInAudience = 'AzureADMyOrg'
-    description    = $appDescription
-    notes          = $appNotes
-    info           = $desiredInfo
-    web            = @{ homePageUrl = $repoUrl }
-    api            = @{ requestedAccessTokenVersion = $desiredTokenVersion }
-  } `
-    -ErrorAction Stop
-  $clientId = $app.appId
-  $objectId = $app.id
-  Write-Host "  Created — Client ID: $clientId" -ForegroundColor Green
+  if ($PSCmdlet.ShouldProcess($DisplayName, 'Create App Registration')) {
+    $app = Invoke-MgGraphRequest -Method POST `
+      -Uri 'https://graph.microsoft.com/v1.0/applications' `
+      -Body @{
+      displayName    = $DisplayName
+      signInAudience = 'AzureADMyOrg'
+      description    = $appDescription
+      notes          = $appNotes
+      info           = $desiredInfo
+      web            = @{ homePageUrl = $repoUrl }
+      api            = @{ requestedAccessTokenVersion = $desiredTokenVersion }
+    } `
+      -ErrorAction Stop
+    $clientId = $app.appId
+    $objectId = $app.id
+    Write-Host "  Created — Client ID: $clientId" -ForegroundColor Green
+  }
+  else {
+    $clientId = '<not-created-in-WhatIf-mode>'
+    $objectId = '<not-created-in-WhatIf-mode>'
+  }
 }
 
+# In WhatIf mode, if read access was unavailable the GET returned null and
+# creation was only simulated.  Inject a stub so every downstream PATCH check
+# evaluates and emits its own "What if:" message.
+if ($_whatIf -and -not $app) {
+  $app = [PSCustomObject]@{
+    description    = $null
+    notes          = $null
+    info           = [PSCustomObject]@{
+      termsOfServiceUrl   = $null
+      privacyStatementUrl = $null
+      supportUrl          = $null
+      marketingUrl        = $null
+    }
+    web            = [PSCustomObject]@{ homePageUrl = $null }
+    signInAudience = 'AzureADMyOrg'
+    identifierUris = @()
+    api            = [PSCustomObject]@{ requestedAccessTokenVersion = $null }
+  }
+}
+#endregion
+
+#region Converge to desired state
 # ── Converge to desired state (idempotent) ────────────────────────────────────
 $changes = @()
 
 # 1. Description
 if ($app.description -ne $appDescription) {
   Write-Host "  Fixing Description" -ForegroundColor Yellow
-  Invoke-MgGraphRequest -Method PATCH `
-    -Uri "https://graph.microsoft.com/v1.0/applications/$objectId" `
-    -Body @{ description = $appDescription } -ErrorAction Stop
+  if ($PSCmdlet.ShouldProcess($DisplayName, 'PATCH description')) {
+    Invoke-MgGraphRequest -Method PATCH `
+      -Uri "https://graph.microsoft.com/v1.0/applications/$objectId" `
+      -Body @{ description = $appDescription } -ErrorAction Stop
+  }
   $changes += 'Description'
 }
 
 # 2. Notes
 if ($app.notes -ne $appNotes) {
   Write-Host "  Fixing Notes" -ForegroundColor Yellow
-  Invoke-MgGraphRequest -Method PATCH `
-    -Uri "https://graph.microsoft.com/v1.0/applications/$objectId" `
-    -Body @{ notes = $appNotes } -ErrorAction Stop
+  if ($PSCmdlet.ShouldProcess($DisplayName, 'PATCH notes')) {
+    Invoke-MgGraphRequest -Method PATCH `
+      -Uri "https://graph.microsoft.com/v1.0/applications/$objectId" `
+      -Body @{ notes = $appNotes } -ErrorAction Stop
+  }
   $changes += 'Notes'
 }
 
@@ -537,18 +801,22 @@ if ($app.info.supportUrl -ne $desiredInfo.supportUrl) { $infoChanged = $true }
 if ($app.info.marketingUrl -ne $desiredInfo.marketingUrl) { $infoChanged = $true }
 if ($infoChanged) {
   Write-Host "  Fixing Info URLs" -ForegroundColor Yellow
-  Invoke-MgGraphRequest -Method PATCH `
-    -Uri "https://graph.microsoft.com/v1.0/applications/$objectId" `
-    -Body @{ info = $desiredInfo } -ErrorAction Stop
+  if ($PSCmdlet.ShouldProcess($DisplayName, 'PATCH info URLs')) {
+    Invoke-MgGraphRequest -Method PATCH `
+      -Uri "https://graph.microsoft.com/v1.0/applications/$objectId" `
+      -Body @{ info = $desiredInfo } -ErrorAction Stop
+  }
   $changes += 'Info'
 }
 
 # 4. Homepage URL (Web section)
 if ($app.web.homePageUrl -ne $repoUrl) {
   Write-Host "  Fixing HomePageUrl" -ForegroundColor Yellow
-  Invoke-MgGraphRequest -Method PATCH `
-    -Uri "https://graph.microsoft.com/v1.0/applications/$objectId" `
-    -Body @{ web = @{ homePageUrl = $repoUrl } } -ErrorAction Stop
+  if ($PSCmdlet.ShouldProcess($DisplayName, 'PATCH web.homePageUrl')) {
+    Invoke-MgGraphRequest -Method PATCH `
+      -Uri "https://graph.microsoft.com/v1.0/applications/$objectId" `
+      -Body @{ web = @{ homePageUrl = $repoUrl } } -ErrorAction Stop
+  }
   $changes += 'HomePageUrl'
 }
 
@@ -566,9 +834,11 @@ $currentUris = if ($null -eq $app.identifierUris) { @() } else { @($app.identifi
 if ($currentUris -notcontains $expectedUri) {
   Write-Host "  Fixing IdentifierUris: adding $expectedUri" `
     -ForegroundColor Yellow
-  Invoke-MgGraphRequest -Method PATCH `
-    -Uri "https://graph.microsoft.com/v1.0/applications/$objectId" `
-    -Body @{ identifierUris = @($expectedUri) } -ErrorAction Stop
+  if ($PSCmdlet.ShouldProcess($DisplayName, "PATCH identifierUris: $expectedUri")) {
+    Invoke-MgGraphRequest -Method PATCH `
+      -Uri "https://graph.microsoft.com/v1.0/applications/$objectId" `
+      -Body @{ identifierUris = @($expectedUri) } -ErrorAction Stop
+  }
   $changes += 'IdentifierUris'
 }
 
@@ -577,12 +847,16 @@ $currentVersion = $app.api.requestedAccessTokenVersion
 if ($currentVersion -ne $desiredTokenVersion) {
   Write-Host ("  Fixing RequestedAccessTokenVersion: " +
     "$currentVersion -> $desiredTokenVersion") -ForegroundColor Yellow
-  Invoke-MgGraphRequest -Method PATCH `
-    -Uri "https://graph.microsoft.com/v1.0/applications/$objectId" `
-    -Body @{ api = @{ requestedAccessTokenVersion = $desiredTokenVersion } } -ErrorAction Stop
+  if ($PSCmdlet.ShouldProcess($DisplayName, "PATCH api.requestedAccessTokenVersion: $desiredTokenVersion")) {
+    Invoke-MgGraphRequest -Method PATCH `
+      -Uri "https://graph.microsoft.com/v1.0/applications/$objectId" `
+      -Body @{ api = @{ requestedAccessTokenVersion = $desiredTokenVersion } } -ErrorAction Stop
+  }
   $changes += 'RequestedAccessTokenVersion'
 }
+#endregion
 
+#region Summary and output
 # ── Summary ───────────────────────────────────────────────────────────────────
 if ($changes.Count -eq 0) {
   Write-Host "  All settings are correct — nothing to update." `
@@ -598,19 +872,8 @@ else {
 # Use Invoke-MgGraphRequest to PUT the image bytes directly.
 if ($logoPath) {
   Write-Host "  Uploading logo from $logoPath ..." -ForegroundColor Cyan
-  $logoBytes = [System.IO.File]::ReadAllBytes((Resolve-Path $logoPath))
-  Invoke-MgGraphRequest -Method PUT `
-    -Uri "https://graph.microsoft.com/v1.0/applications/$objectId/logo" `
-    -ContentType 'image/png' `
-    -Body $logoBytes `
-    -ErrorAction Stop
-  Write-Host "  $_chk Logo uploaded." -ForegroundColor Green
-}
-else {
-  # Local file not available (e.g. script run via iwr) — download from GitHub.
-  Write-Host "  Downloading logo from $logoRawUrl ..." -ForegroundColor Cyan
-  try {
-    $logoBytes = (Invoke-WebRequest -Uri $logoRawUrl -UseBasicParsing -ErrorAction Stop).Content
+  if ($PSCmdlet.ShouldProcess($DisplayName, 'PUT logo')) {
+    $logoBytes = [System.IO.File]::ReadAllBytes((Resolve-Path $logoPath))
     Invoke-MgGraphRequest -Method PUT `
       -Uri "https://graph.microsoft.com/v1.0/applications/$objectId/logo" `
       -ContentType 'image/png' `
@@ -618,17 +881,39 @@ else {
       -ErrorAction Stop
     Write-Host "  $_chk Logo uploaded." -ForegroundColor Green
   }
+}
+else {
+  # Local file not available (e.g. script run via iwr) — download from GitHub.
+  Write-Host "  Downloading logo from $logoRawUrl ..." -ForegroundColor Cyan
+  try {
+    $logoBytes = (Invoke-WebRequest -Uri $logoRawUrl -UseBasicParsing -ErrorAction Stop).Content
+    if ($PSCmdlet.ShouldProcess($DisplayName, 'PUT logo (downloaded from GitHub)')) {
+      Invoke-MgGraphRequest -Method PUT `
+        -Uri "https://graph.microsoft.com/v1.0/applications/$objectId/logo" `
+        -ContentType 'image/png' `
+        -Body $logoBytes `
+        -ErrorAction Stop
+      Write-Host "  $_chk Logo uploaded." -ForegroundColor Green
+    }
+  }
   catch {
     Write-Host "  $_wrn Logo download failed — skipping. ($_)" `
       -ForegroundColor Yellow
   }
 }
 
+# Cache the Client ID so setup-graph-permissions.ps1 can reuse it without
+# prompting when run later in the same PowerShell session.
+if ($clientId -ne '<not-created-in-WhatIf-mode>') {
+  $Global:GsiSetup_FunctionAppClientId = $clientId
+}
+
 Write-Important -Lines @(
   'Copy this Client ID and use it as the ''functionClientId'''
   'parameter when deploying the ARM template. In the SPFx web part,'
-  'paste it into the ''Guest Sponsor API Client ID (App Registration)'''
+  'paste it into the ''Application (client) ID'''
   'field (property pane → Guest Sponsor API).'
   ''
-  "  Guest Sponsor API Client ID (App Registration): $clientId"
+  "  Guest Sponsor API Application (client) ID: $clientId"
 )
+#endregion
