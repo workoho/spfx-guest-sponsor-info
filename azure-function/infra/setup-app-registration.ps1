@@ -245,7 +245,7 @@ trap {
       -Text 'PIM → My roles → Entra roles  (activate eligible role)'
     Write-Link -Url 'https://entra.microsoft.com/#view/Microsoft_AAD_IAM/RolesManagementMenuBlade/~/AllRoles' `
       -Text 'Entra admin center → Roles and administrators'
-    break
+    return
   }
   # Not a permission error — let PowerShell display the raw error and exit.
 }
