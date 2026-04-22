@@ -144,6 +144,7 @@ define([], function () {
     FunctionGroupName: "Guest Sponsor API",
     FunctionUrlFieldLabel: "Základní URL",
     WebPartClientIdFieldLabel: "ID aplikace (klienta)",
+    SessionCacheTtlMinutesFieldLabel: "Doba trvání mezipaměti relace (minuty)",
     PpClientIdHintLabel: "Kde najdu ID klienta?",
     PpClientIdHintBody: "Zkopírujte ID klienta (ID aplikace) z registrace aplikace vytvořené při nastavení.",
     FunctionEntraLinkLabel: "Najít v Microsoft Entra →",

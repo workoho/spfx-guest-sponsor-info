@@ -143,6 +143,7 @@ define([], function () {
     FunctionGroupName: "Guest Sponsor API",
     FunctionUrlFieldLabel: "ベース URL",
     WebPartClientIdFieldLabel: "アプリケーション (クライアント) ID",
+    SessionCacheTtlMinutesFieldLabel: "セッション キャッシュの保持時間 (分)",
     PpClientIdHintLabel: "クライアント ID の確認方法",
     PpClientIdHintBody:
       "セットアップ時に作成したアプリ登録からクライアント ID（アプリケーション ID）をコピーしてください。",

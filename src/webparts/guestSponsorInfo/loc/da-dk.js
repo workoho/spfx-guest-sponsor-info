@@ -142,6 +142,7 @@ define([], function () {
     FunctionGroupName: "Guest Sponsor API",
     FunctionUrlFieldLabel: "Basis-URL",
     WebPartClientIdFieldLabel: "Program-id (klient)",
+    SessionCacheTtlMinutesFieldLabel: "Varighed af sessionscache (minutter)",
     PpClientIdHintLabel: "Hvor finder jeg klient-ID?",
     PpClientIdHintBody:
       "Kopi\u00e9r klient-ID (program-ID) fra den appregistrering, der blev oprettet under ops\u00e6tningen.",

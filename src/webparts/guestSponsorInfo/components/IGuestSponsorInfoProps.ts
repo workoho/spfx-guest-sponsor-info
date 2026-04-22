@@ -116,6 +116,8 @@ export interface IGuestSponsorInfoProps {
    * When false, an active Exchange Online license is used as a mailbox proxy instead.
    */
   requireUserMailbox: boolean;
+  /** Session-scoped sponsor cache duration in minutes (2-480). Default: 30. */
+  sessionCacheTtlMinutes: number;
   /** Optional Azure Maps key used for inline map preview. */
   azureMapsSubscriptionKey: string | undefined;
   /** External map provider used for fallback links. */

@@ -142,6 +142,7 @@ define([], function () {
     FunctionGroupName: "Guest Sponsor API",
     FunctionUrlFieldLabel: "Perus-URL",
     WebPartClientIdFieldLabel: "Sovelluksen (asiakas-) tunnus",
+    SessionCacheTtlMinutesFieldLabel: "Istuntovälimuistin kesto (minuuttia)",
     PpClientIdHintLabel: "Mistä löydän asiakas-ID:n?",
     PpClientIdHintBody:
       "Kopioi asiakas-ID (sovelluksen tunnus) asennuksen aikana luodusta sovelluksen rekisteröinnistä.",

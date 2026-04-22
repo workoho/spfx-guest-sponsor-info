@@ -143,6 +143,7 @@ define([], function () {
     FunctionGroupName: "Guest Sponsor API",
     FunctionUrlFieldLabel: "Basis-URL",
     WebPartClientIdFieldLabel: "Program-ID (klient)",
+    SessionCacheTtlMinutesFieldLabel: "Varighet for øktbuffer (minutter)",
     PpClientIdHintLabel: "Hvor finner jeg klient-ID?",
     PpClientIdHintBody: "Kopier klient-ID (applikasjons-ID) fra appregistreringen som ble opprettet under oppsett.",
     FunctionEntraLinkLabel: "Finn i Microsoft Entra →",

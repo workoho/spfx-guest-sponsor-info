@@ -87,6 +87,8 @@ export interface IGuestSponsorInfoWebPartProps {
   cardLayoutAutoThreshold: number;
   functionUrl: string;
   webPartClientId: string;
+  /** Session-scoped sponsor cache duration in minutes (2-480). Default: 30. */
+  sessionCacheTtlMinutes?: number;
   /** Show business phone numbers in the contact card. Default: true. */
   showBusinessPhones: boolean;
   /** Show the mobile phone number in the contact card. Default: true. */
@@ -247,6 +249,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
         showState: this.properties.showState ?? false,
         sponsorFilter: this.properties.sponsorFilter ?? 'teams',
         requireUserMailbox: this.properties.requireUserMailbox ?? true,
+        sessionCacheTtlMinutes: Math.min(480, Math.max(2, this.properties.sessionCacheTtlMinutes ?? 30)),
         azureMapsSubscriptionKey: this.properties.azureMapsSubscriptionKey || undefined,
         externalMapProvider: getEffectiveMapProvider(
           navigator.userAgent,
@@ -1567,6 +1570,13 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
               groupName: strings.FunctionGroupName,
               isCollapsed: true,
               groupFields: [
+                PropertyPaneSlider('sessionCacheTtlMinutes', {
+                  label: strings.SessionCacheTtlMinutesFieldLabel,
+                  min: 2,
+                  max: 480,
+                  step: 1,
+                  value: this.properties.sessionCacheTtlMinutes ?? 30,
+                }),
                 PropertyPaneTextField('functionUrl', {
                   label: strings.FunctionUrlFieldLabel
                 }),

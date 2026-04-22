@@ -152,6 +152,7 @@ define([], function () {
     FunctionGroupName: "Guest Sponsor API",
     FunctionUrlFieldLabel: "Base URL",
     WebPartClientIdFieldLabel: "Application (client) ID",
+    SessionCacheTtlMinutesFieldLabel: "Session cache duration (minutes)",
     PpClientIdHintLabel: "Where do I find the Client ID?",
     PpClientIdHintBody: "Copy the Client ID (Application ID) from the App Registration created during setup.",
     FunctionEntraLinkLabel: "Find in Microsoft Entra →",

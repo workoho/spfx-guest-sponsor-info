@@ -112,6 +112,7 @@ declare interface IGuestSponsorInfoWebPartStrings {
   FunctionGroupName: string;
   FunctionUrlFieldLabel: string;
   WebPartClientIdFieldLabel: string;
+  SessionCacheTtlMinutesFieldLabel: string;
   /** Short trigger label for the Client ID tooltip. */
   PpClientIdHintLabel: string;
   /** Body text inside the Client ID hover popup. */

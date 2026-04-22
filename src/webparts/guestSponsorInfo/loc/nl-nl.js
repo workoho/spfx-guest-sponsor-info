@@ -142,6 +142,7 @@ define([], function () {
     FunctionGroupName: "Guest Sponsor API",
     FunctionUrlFieldLabel: "Basis-URL",
     WebPartClientIdFieldLabel: "Toepassings-id (client)",
+    SessionCacheTtlMinutesFieldLabel: "Duur van sessiecache (minuten)",
     PpClientIdHintLabel: "Waar vind ik de client-ID?",
     PpClientIdHintBody:
       "Kopieer de client-ID (toepassings-ID) van de app-registratie die tijdens de configuratie is aangemaakt.",
