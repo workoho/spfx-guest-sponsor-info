@@ -908,12 +908,49 @@ if ($clientId -ne '<not-created-in-WhatIf-mode>') {
   $Global:GsiSetup_FunctionAppClientId = $clientId
 }
 
-Write-Important -Lines @(
-  'Copy this Client ID and use it as the ''functionClientId'''
-  'parameter when deploying the ARM template. In the SPFx web part,'
-  'paste it into the ''Application (client) ID'''
-  'field (property pane → Guest Sponsor API).'
+# Detect whether setup-graph-permissions.ps1 lives next to this script.
+# $PSScriptRoot is empty when the script was run via iwr (scriptblock
+# execution) and non-empty when run from a saved local file — use this to
+# show the right command to the operator.
+$_graphPermScript = $null
+if ($PSScriptRoot) {
+  $_candidate = Join-Path $PSScriptRoot 'setup-graph-permissions.ps1'
+  if (Test-Path $_candidate) {
+    $_graphPermScript = $_candidate
+  }
+}
+if ($_graphPermScript) {
+  # Local file found — run it directly.
+  $_graphPermCmd = "& '$_graphPermScript'"
+}
+else {
+  # Not available locally — provide the iwr one-liner from GitHub.
+  $_graphPermCmd = "& ([scriptblock]::Create((iwr 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/main/azure-function/infra/setup-graph-permissions.ps1').Content))"
+}
+
+$_importantLines = @(
+  'Use this Client ID as the ''functionClientId'' parameter in the'
+  'ARM template deployment, and in the web part property pane'
+  '(Guest Sponsor API → Application (client) ID).'
   ''
   "  Guest Sponsor API Application (client) ID: $clientId"
+)
+if ($clientId -ne '<not-created-in-WhatIf-mode>') {
+  $_importantLines += ''
+  $_importantLines += 'It is also cached for this PowerShell session —'
+  $_importantLines += 'setup-graph-permissions.ps1 will reuse it automatically.'
+}
+Write-Important -Lines $_importantLines
+
+# "Deploy to Azure" deep link — opens the ARM template in the Azure portal.
+Write-Link `
+  -Url 'https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fworkoho%2Fspfx-guest-sponsor-info%2Fmain%2Fazure-function%2Finfra%2Fazuredeploy.json' `
+  -Text 'Deploy to Azure — provision the Function App (ARM template)'
+
+Write-NextStep @(
+  'After the Azure deployment completes, run the next setup script'
+  'to grant Graph permissions to the Function''s Managed Identity:'
+  ''
+  "  $_graphPermCmd"
 )
 #endregion
