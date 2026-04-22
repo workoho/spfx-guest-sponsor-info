@@ -14,8 +14,81 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+cd "${REPO_ROOT}"
+
 APP_DISPLAY_NAME="Guest Sponsor Info - SharePoint Web Part Auth"
 APP_DESCRIPTION="EasyAuth identity provider for the \"Guest Sponsor Info\" SharePoint Online web part (SPFx). Authenticates requests from the web part to the Azure Function proxy, which calls Microsoft Graph on behalf of signed-in guest users to retrieve their Entra sponsor information. Tokens are acquired silently via pre-authorized SharePoint Online Web Client Extensibility. Source: https://github.com/workoho/spfx-guest-sponsor-info"
+
+# ── 0. Validate required Azure resource providers ───────────────────────────
+# Keep these defaults aligned with azure-function/infra/main.parameters.json.
+HOSTING_PLAN='Consumption'
+DEPLOY_AZURE_MAPS='true'
+REQUIRED_PROVIDERS=(
+  'Microsoft.AlertsManagement'
+  'Microsoft.Authorization'
+  'Microsoft.Insights'
+  'Microsoft.ManagedIdentity'
+  'Microsoft.OperationalInsights'
+  'Microsoft.Resources'
+  'Microsoft.Storage'
+  'Microsoft.Web'
+)
+
+if [[ "${HOSTING_PLAN}" == 'FlexConsumption' ]]; then
+  REQUIRED_PROVIDERS+=(
+    'Microsoft.ContainerInstance'
+  )
+fi
+
+if [[ "${DEPLOY_AZURE_MAPS,,}" == 'true' ]]; then
+  REQUIRED_PROVIDERS+=(
+    'Microsoft.Maps'
+  )
+fi
+
+mapfile -t REQUIRED_PROVIDERS < <(printf '%s\n' "${REQUIRED_PROVIDERS[@]}" | sort -u)
+
+echo 'Checking required Azure resource providers...'
+MISSING_PROVIDERS=()
+for provider in "${REQUIRED_PROVIDERS[@]}"; do
+  state="$(az provider show --namespace "${provider}" --query registrationState -o tsv 2>/dev/null || true)"
+
+  case "${state}" in
+    Registered)
+      echo "  ✓ ${provider} is registered."
+      ;;
+    Registering)
+      echo "  ! ${provider} is still registering. Deployment can usually continue."
+      ;;
+    NotRegistered | Unregistered | '')
+      echo "  ! ${provider} is not registered."
+      MISSING_PROVIDERS+=("${provider}")
+      ;;
+    *)
+      echo "  ! ${provider} returned state: ${state}"
+      MISSING_PROVIDERS+=("${provider}")
+      ;;
+  esac
+done
+
+if [[ ${#MISSING_PROVIDERS[@]} -gt 0 ]]; then
+  echo 'Registering missing Azure resource providers...'
+  for provider in "${MISSING_PROVIDERS[@]}"; do
+    echo "  -> az provider register --namespace ${provider} --wait"
+    if az provider register --namespace "${provider}" --wait >/dev/null; then
+      echo "  ✓ ${provider} registered."
+    else
+      echo "ERROR: Could not register ${provider}." >&2
+      echo 'This usually means your account lacks subscription-level register permission.' >&2
+      echo 'Minimum built-in role: Contributor. Owner also works.' >&2
+      exit 1
+    fi
+  done
+else
+  echo '  ✓ All required resource providers are ready.'
+fi
 
 # ── 1. Derive a default Function App name ────────────────────────────────────
 if ! azd env get-values | grep -q "^AZURE_FUNCTION_APP_NAME="; then

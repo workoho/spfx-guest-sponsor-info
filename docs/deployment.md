@@ -426,6 +426,63 @@ Copy the **Client ID** printed at the end.
 
 </details>
 
+### Provider preflight and guided deployment
+
+If a deployment fails with errors like `MissingSubscriptionRegistration` or
+`NoRegisteredProviderFound`, run the guided wrapper first. It checks the
+resource providers required by this deployment, tries to register missing ones,
+and then lets you continue directly from the console.
+
+Local clone / PowerShell:
+
+```powershell
+./azure-function/infra/deploy-azure.ps1
+```
+
+PowerShell directly from the web (no clone required):
+
+```powershell
+& ([scriptblock]::Create((iwr 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/main/azure-function/infra/deploy-azure.ps1').Content))
+```
+
+What the wrapper does:
+
+1. Detects which deployment tools are already available locally.
+2. Suggests a default path that balances the preferred modern workflow with the
+  tools already installed on the machine.
+3. Offers three console-based options: `azd provision`, direct **Bicep** via
+  Azure CLI, or direct **ARM JSON** via Azure CLI.
+4. Validates the required Azure resource providers and registers missing ones
+  automatically when your account has the needed subscription permission.
+5. Downloads any required repo assets temporarily from GitHub when the script
+  is run via `iwr` instead of from a local clone.
+
+The template now manages the Application Insights `Failure Anomalies` smart
+detector explicitly. It is deployed in **Disabled** state by default. To enable
+it, set `enableFailureAnomaliesAlert=true` explicitly.
+
+The broader monitoring stack is also **opt-in** now. Set
+`enableMonitoring=true` when you want Log Analytics, Application Insights, and
+the alert resources. Leaving it at the default `false` avoids the
+`Microsoft.AlertsManagement` / smart-detector path entirely.
+
+How the default suggestion is chosen:
+
+- `azd provision` is preferred when both `azd` and Azure CLI are already
+  available, because this repository already contains an `azure.yaml` workflow
+  with pre- and post-provision hooks.
+- Direct **Bicep** is preferred when Azure CLI and Bicep are already ready.
+- Direct **ARM JSON** becomes the default fast path when Azure CLI is already
+  installed but Bicep or `azd` would still need extra setup.
+- If nothing is installed yet, the script guides the user to the smallest
+  modern install path first: Azure CLI, then `az bicep install` when Bicep is
+  selected.
+
+Minimum built-in role for provider registration: **Contributor**.
+**Owner** also works, but isn't required solely for provider registration.
+If you only have resource-group-scoped access, the wrapper can detect the
+problem early but can't repair subscription-level provider registration for you.
+
 ### Deploy to Azure
 
 Click the button to start the deployment:

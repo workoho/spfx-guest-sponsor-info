@@ -14,6 +14,9 @@
     "webPartClientId": {
       "value": "${AZURE_WEB_PART_CLIENT_ID}"
     },
+    "enableMonitoring": {
+      "value": false
+    },
     "deployAzureMaps": {
       "value": true
     },
@@ -22,6 +25,9 @@
     },
     "defaultAlertNotificationEmail": {
       "value": ""
+    },
+    "enableFailureAnomaliesAlert": {
+      "value": false
     },
     "defaultOperationalActionGroupShortName": {
       "value": "GSIOps"

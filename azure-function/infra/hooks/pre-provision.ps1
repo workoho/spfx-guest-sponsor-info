@@ -14,6 +14,8 @@
 
 $ErrorActionPreference = 'Stop'
 
+Set-Location -Path (Resolve-Path -Path (Join-Path -Path $PSScriptRoot -ChildPath '../../..')).Path
+
 $APP_DISPLAY_NAME = 'Guest Sponsor Info - SharePoint Web Part Auth'
 $APP_DESCRIPTION = @(
   'EasyAuth identity provider for the "Guest Sponsor Info"',
@@ -25,6 +27,83 @@ $APP_DESCRIPTION = @(
   'Source: https://github.com/workoho/spfx-guest-sponsor-info'
 ) -join ' '
 $envValues = azd env get-values
+
+# ── 0. Validate required Azure resource providers ───────────────────────────
+# Keep these defaults aligned with azure-function/infra/main.parameters.json.
+$hostingPlan = 'Consumption'
+$deployAzureMaps = $true
+$requiredProviders = @(
+  'Microsoft.AlertsManagement',
+  'Microsoft.Authorization',
+  'Microsoft.Insights',
+  'Microsoft.ManagedIdentity',
+  'Microsoft.OperationalInsights',
+  'Microsoft.Resources',
+  'Microsoft.Storage',
+  'Microsoft.Web'
+)
+
+if ($hostingPlan -eq 'FlexConsumption') {
+  $requiredProviders += 'Microsoft.ContainerInstance'
+}
+
+if ($deployAzureMaps) {
+  $requiredProviders += 'Microsoft.Maps'
+}
+
+$requiredProviders = $requiredProviders | Sort-Object -Unique
+$missingProviders = @()
+
+Write-Host 'Checking required Azure resource providers...'
+foreach ($provider in $requiredProviders) {
+  $state = az provider show --namespace $provider --query registrationState -o tsv 2>$null
+
+  switch ($state) {
+    'Registered' {
+      Write-Host "  + $provider is registered."
+    }
+    'Registering' {
+      Write-Host "  ! $provider is still registering. Deployment can usually continue."
+    }
+    'NotRegistered' {
+      Write-Host "  ! $provider is not registered."
+      $missingProviders += $provider
+    }
+    'Unregistered' {
+      Write-Host "  ! $provider is not registered."
+      $missingProviders += $provider
+    }
+    '' {
+      Write-Host "  ! $provider returned no state."
+      $missingProviders += $provider
+    }
+    default {
+      Write-Host "  ! $provider returned state: $state"
+      $missingProviders += $provider
+    }
+  }
+}
+
+if ($missingProviders.Count -gt 0) {
+  Write-Host 'Registering missing Azure resource providers...'
+  foreach ($provider in $missingProviders) {
+    Write-Host "  -> az provider register --namespace $provider --wait"
+    try {
+      az provider register --namespace $provider --wait | Out-Null
+      Write-Host "  + $provider registered."
+    }
+    catch {
+      throw @(
+        "Could not register $provider.",
+        'This usually means your account lacks subscription-level register permission.',
+        'Minimum built-in role: Contributor. Owner also works.'
+      ) -join ' '
+    }
+  }
+}
+else {
+  Write-Host '  + All required resource providers are ready.'
+}
 
 # ── 1. Derive a default Function App name ────────────────────────────────────
 if ($envValues -notmatch 'AZURE_FUNCTION_APP_NAME=') {

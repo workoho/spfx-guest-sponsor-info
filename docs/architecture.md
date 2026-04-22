@@ -204,7 +204,9 @@ Timeout app settings: `SPONSOR_LOOKUP_TIMEOUT_MS`, `BATCH_TIMEOUT_MS`,
 
 ### Deployment (`azd up`)
 
-1. **Pre-provision** — creates/reuses EasyAuth App Registration, detects SharePoint tenant.
+1. **Pre-provision** — validates required subscription resource providers,
+   registers missing ones when the caller has subscription-level register
+   permission, creates/reuses EasyAuth App Registration, detects SharePoint tenant.
 2. **Bicep** — provisions storage (RBAC, no keys), Function App with MI + EasyAuth,
    Log Analytics, App Insights.
 3. **Post-provision** — grants Graph permissions to MI, prints API URL + Client ID.

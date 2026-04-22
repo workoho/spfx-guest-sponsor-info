@@ -1,4 +1,6 @@
-﻿# Verify-DeploymentGuid.ps1
+﻿#!/usr/bin/env -S pwsh -NoLogo -NoProfile
+
+# Verify-DeploymentGuid.ps1
 #
 # Source: https://gist.github.com/bmoore-msft/ae6b8226311014d6e7177c5127c7eba1
 # Author: Brian Moore (Microsoft, Partner Center team)

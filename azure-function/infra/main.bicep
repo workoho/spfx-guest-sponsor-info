@@ -89,6 +89,10 @@ param azureMapsLocation string = 'westeurope'
 param enableServiceOutageAlert bool = true
 
 @metadata({ category: 'Monitoring' })
+@description('Deploy the monitoring stack (Log Analytics, Application Insights, action groups, KQL alerts, and managed Failure Anomalies rule). Default: false so infrastructure-only deployments can succeed without Azure Monitor provider registration.')
+param enableMonitoring bool = false
+
+@metadata({ category: 'Monitoring' })
 @description('Enable operational email alert for auth/config regressions (AUTH_CONFIG_* reason codes).')
 param enableAuthConfigRegressionAlert bool = true
 
@@ -155,6 +159,10 @@ param enableNewReleaseAlert bool = true
 @metadata({ category: 'Monitoring' })
 @description('Enable operational alert when a hard-deleted Entra object remains referenced as a sponsor (Graph 404).')
 param enableBrokenSponsorAlert bool = false
+
+@metadata({ category: 'Monitoring' })
+@description('Enable the Application Insights Failure Anomalies smart detector alert rule. Default: false, so the rule stays disabled unless explicitly activated.')
+param enableFailureAnomaliesAlert bool = false
 
 @metadata({ category: 'Monitoring' })
 @description('KQL evaluation frequency for the new-release alert in minutes.')
@@ -243,7 +251,7 @@ resource partnerAttribution 'Microsoft.Resources/deployments@2021-04-01' = if (e
 // ── Monitoring module ────────────────────────────────────────────────────────
 // Log Analytics, Application Insights, Action Groups, and KQL alert rules are
 // managed in a dedicated module to keep this orchestration template focused.
-module monitoring './modules/monitoring.bicep' = {
+module monitoring './modules/monitoring.bicep' = if (enableMonitoring) {
   name: 'monitoring'
   params: {
     location: location
@@ -266,6 +274,7 @@ module monitoring './modules/monitoring.bicep' = {
     newReleaseAlertEvaluationFrequencyInMinutes: newReleaseAlertEvaluationFrequencyInMinutes
     newReleaseAlertWindowInMinutes: newReleaseAlertWindowInMinutes
     enableBrokenSponsorAlert: enableBrokenSponsorAlert
+    enableFailureAnomaliesAlert: enableFailureAnomaliesAlert
     operationalActionGroupResourceIds: operationalActionGroupResourceIds
     infoActionGroupResourceIds: infoActionGroupResourceIds
     defaultAlertNotificationEmail: defaultAlertNotificationEmail
@@ -439,6 +448,20 @@ resource azureMapsAccount 'Microsoft.Maps/accounts@2023-06-01' = if (deployAzure
 // Only ONE of the two resources below is deployed, depending on hostingPlan.
 
 // App settings shared by both Consumption and Flex Consumption plans.
+// Safe: this value is only used when enableMonitoring=true.
+#disable-next-line BCP318
+var monitoringConnectionString = enableMonitoring ? monitoring.outputs.appInsightsConnectionString : ''
+
+var monitoringAppSettings = enableMonitoring
+  ? [
+      {
+        // Automatic instrumentation — no code changes required.
+        name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+        value: monitoringConnectionString
+      }
+    ]
+  : []
+
 var sharedAppSettings = [
   // Identity-based storage connection — no account key stored anywhere.
   // The role assignments below grant the Managed Identity the minimum
@@ -480,16 +503,13 @@ var sharedAppSettings = [
     value: 'production'
   }
   {
-    // Automatic instrumentation — no code changes required.
-    name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
-    value: monitoring.outputs.appInsightsConnectionString
-  }
-  {
     // Visible in Application Insights telemetry and Azure Portal tags.
     name: 'APP_VERSION'
     value: appVersion
   }
 ]
+
+var effectiveSharedAppSettings = concat(sharedAppSettings, monitoringAppSettings)
 
 // Additional app settings only needed on the Consumption (Y1) plan.
 // Flex Consumption configures runtime, version, and deployment via functionAppConfig.
@@ -529,7 +549,7 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = if (!isFlexConsumption) 
     // Set dailyMemoryTimeQuotaGBs=0 to disable (not recommended).
     dailyMemoryTimeQuota: dailyMemoryTimeQuotaGBs
     siteConfig: {
-      appSettings: concat(sharedAppSettings, consumptionOnlyAppSettings)
+      appSettings: concat(effectiveSharedAppSettings, consumptionOnlyAppSettings)
       cors: {
         allowedOrigins: [
           'https://${tenantName}.sharepoint.com'
@@ -583,7 +603,7 @@ resource functionAppFlex 'Microsoft.Web/sites@2023-12-01' = if (isFlexConsumptio
       }
     }
     siteConfig: {
-      appSettings: sharedAppSettings
+      appSettings: effectiveSharedAppSettings
       cors: {
         allowedOrigins: [
           'https://${tenantName}.sharepoint.com'
@@ -745,8 +765,9 @@ var consumptionPrincipalId = functionApp.identity.principalId
 @description('Object ID of the system-assigned Managed Identity — needed for setup-graph-permissions.ps1.')
 output managedIdentityObjectId string = isFlexConsumption ? flexPrincipalId : consumptionPrincipalId
 
-@description('Name of the Application Insights component — open in the Azure Portal for live telemetry.')
-output appInsightsName string = monitoring.outputs.appInsightsName
+@description('Name of the Application Insights component (empty when enableMonitoring=false).')
+#disable-next-line BCP318
+output appInsightsName string = enableMonitoring ? monitoring.outputs.appInsightsName : ''
 
 @description('The selected hosting plan — included in outputs for operational visibility.')
 output hostingPlan string = hostingPlan
