@@ -752,6 +752,7 @@ $requiredRoles = @(
 
 $assignedRoles = @()
 $skippedRoles = @()
+$newlyAssignedRoles = @()   # tracks roles actually POSTed this run (not pre-existing)
 
 # Fetch all existing app role assignments for the Managed Identity once so
 # the loop can skip roles that are already present without posting a duplicate
@@ -804,6 +805,7 @@ foreach ($role in $requiredRoles) {
   }
   Write-Host "  $_chk $($role.Name) assigned." -ForegroundColor Green
   $assignedRoles += $role.Name
+  $newlyAssignedRoles += $role.Name
 }
 #endregion
 
@@ -1108,6 +1110,37 @@ else {
 #endregion
 
 #region Summary
+# Try to resolve the Function App URL from the Managed Identity's resource ID.
+# A system-assigned MI stores the Azure resource ID in its SP's alternativeNames:
+#   /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/sites/{name}
+# This lets us show a portal deep link without the Azure CLI or Az PowerShell module.
+$_functionAppUrl = $null
+$_functionAppPortalUrl = $null
+if (-not $_whatIf) {
+  try {
+    $_miSpResp = Invoke-MgGraphRequest -Method GET `
+      -Uri "https://graph.microsoft.com/v1.0/servicePrincipals/$ManagedIdentityObjectId`?`$select=alternativeNames" `
+      -OutputType PSObject -ErrorAction Stop
+    if ($_miSpResp -and $_miSpResp.alternativeNames) {
+      # System-assigned MI: one entry in alternativeNames begins with /subscriptions/
+      $_resourceId = $_miSpResp.alternativeNames |
+        Where-Object { $_ -match '^/subscriptions/' } |
+        Select-Object -First 1
+      if ($_resourceId -match
+        '^/subscriptions/([^/]+)/resourceGroups/([^/]+)/providers/Microsoft\.Web/sites/([^/]+)') {
+        $_appName = $Matches[3]
+        $_functionAppUrl = "https://$_appName.azurewebsites.net"
+        # Portal deep link to the Function App Overview (Restart button is in the toolbar)
+        $_functionAppPortalUrl = "https://portal.azure.com/#@$TenantId/resource$_resourceId/appServices"
+      }
+    }
+  }
+  catch {
+    # Non-fatal — just omit the portal deep link from the output
+    Write-Verbose "Could not resolve Function App URL from Managed Identity: $_"
+  }
+}
+
 # Build a summary of assigned and skipped roles for the callout box.
 $summaryLines = @('The Managed Identity can now call Microsoft Graph with:')
 foreach ($r in $assignedRoles) {
@@ -1125,7 +1158,28 @@ $summaryLines += 'The App Registration is configured for silent token acquisitio
 $summaryLines += "  - Identifier URI: $expectedUri"
 $summaryLines += "  - Scope 'user_impersonation' exposed and SharePoint pre-authorized."
 $summaryLines += ''
-$summaryLines += 'The SharePoint web part can now acquire tokens silently.'
-$summaryLines += 'No page reloads or consent prompts.'
+$summaryLines += 'Configure the web part (property pane → Guest Sponsor API):'
+$summaryLines += "  Application (client) ID: $FunctionAppClientId"
+if ($_functionAppUrl) {
+  $summaryLines += "  Azure Function URL:      $_functionAppUrl"
+}
 Write-NextStep @summaryLines
+
+# New Graph permissions require a Function App restart so the managed identity
+# picks them up — the MSAL token cache must be cleared.  Skip this notice when
+# all roles were already present (nothing changed, no restart needed) or when
+# running in WhatIf mode (no real changes were made).
+if ($newlyAssignedRoles.Count -gt 0 -and -not $_whatIf) {
+  Write-Important -Lines @(
+    'New Graph permissions were granted. Restart the Azure Function'
+    'to activate them — its managed identity token must be refreshed.'
+  )
+  if ($_functionAppPortalUrl) {
+    Write-Link -Url $_functionAppPortalUrl `
+               -Text 'Azure portal — Function App (use Restart in the toolbar)'
+  }
+  if ($_functionAppUrl) {
+    Write-Link -Url $_functionAppUrl -Text "Function App: $_functionAppUrl"
+  }
+}
 #endregion
