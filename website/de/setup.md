@@ -216,7 +216,7 @@ az deployment group create \
       tenantId=<ihre-tenant-id> \
       tenantName=<ihr-tenant-name> \
       functionAppName=<global-eindeutiger-name> \
-      easyAuthClientId=<client-id-aus-schritt-1>
+      webPartClientId=<client-id-aus-schritt-1>
 ```
 
 <details>
@@ -235,7 +235,7 @@ az stack group create \
       tenantId=<ihre-tenant-id> \
       tenantName=<ihr-tenant-name> \
       functionAppName=<global-eindeutiger-name> \
-      easyAuthClientId=<client-id-aus-schritt-1> \
+      webPartClientId=<client-id-aus-schritt-1> \
   --action-on-unmanage deleteResources \
   --deny-settings-mode none
 ```
@@ -249,7 +249,7 @@ az stack group create \
 | `tenantId` | Ihre Entra-Mandanten-ID (GUID) |
 | `tenantName` | Mandantenname ohne Domain-Suffix, z.B. `contoso` |
 | `functionAppName` | Global eindeutiger Name für die Function App |
-| `easyAuthClientId` | Client ID aus Schritt 1 |
+| `webPartClientId` | Client ID aus Schritt 1 |
 | `appVersion` | `"latest"` (Standard) oder feste SemVer ohne `v` |
 | `location` | Azure-Region |
 
@@ -275,7 +275,7 @@ az deployment group create \
       tenantId=<ihre-tenant-id> \
       tenantName=<ihr-tenant-name> \
       functionAppName=<global-eindeutiger-name> \
-      easyAuthClientId=<client-id-aus-schritt-1> \
+      webPartClientId=<client-id-aus-schritt-1> \
       hostingPlan=FlexConsumption \
       maximumFlexInstances=10
 ```

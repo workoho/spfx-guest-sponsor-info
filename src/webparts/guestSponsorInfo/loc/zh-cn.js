@@ -136,7 +136,7 @@ define([], function () {
     AdvancedDisplayGroupName: "高级显示选项",
     FunctionGroupName: "Guest Sponsor API",
     FunctionUrlFieldLabel: "基础 URL",
-    EasyAuthClientIdFieldLabel: "应用程序（客户端）ID",
+    WebPartClientIdFieldLabel: "应用程序（客户端）ID",
     PpClientIdHintLabel: "在哪里找到客户端 ID？",
     PpClientIdHintBody: "从设置时创建的应用注册中复制客户端 ID（应用程序 ID）。",
     FunctionEntraLinkLabel: "在 Microsoft Entra 中查找 →",

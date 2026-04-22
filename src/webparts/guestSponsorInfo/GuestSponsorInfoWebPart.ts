@@ -86,7 +86,7 @@ export interface IGuestSponsorInfoWebPartProps {
   /** Number of sponsors at which 'auto' switches to compact layout. Default: 3. */
   cardLayoutAutoThreshold: number;
   functionUrl: string;
-  easyAuthClientId: string;
+  webPartClientId: string;
   /** Show business phone numbers in the contact card. Default: true. */
   showBusinessPhones: boolean;
   /** Show the mobile phone number in the contact card. Default: true. */
@@ -235,7 +235,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
         photoUrl: this.properties.functionUrl
           ? `https://${this.properties.functionUrl.replace(/^https?:\/\//i, '').replace(/\/$/, '')}/api/getPhoto`
           : undefined,
-        easyAuthClientId: this.properties.easyAuthClientId || undefined,
+        webPartClientId: this.properties.webPartClientId || undefined,
         aadHttpClient: this._aadHttpClient,
         showBusinessPhones: this.properties.showBusinessPhones ?? true,
         showMobilePhone: this.properties.showMobilePhone ?? true,
@@ -268,7 +268,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
             this.properties.welcomeSeen = true;
             // Strip protocol and trailing slash to match the stored URL format.
             this.properties.functionUrl = (apiUrl ?? '').replace(/^https?:\/\//i, '').replace(/\/$/, '');
-            this.properties.easyAuthClientId = clientId ?? '';
+            this.properties.webPartClientId = clientId ?? '';
             this.properties.mockMode = false;
           } else if (chosenPath === 'demo') {
             this.properties.welcomeSeen = true;
@@ -599,7 +599,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
    * is safe to use here without needing Promise.allSettled (ES2020).
    */
   private _acquireClientsInBackground(): void {
-    const clientId = this.properties.easyAuthClientId;
+    const clientId = this.properties.webPartClientId;
     const aadPromise = clientId
       ? this.context.aadHttpClientFactory.getClient(clientId)
           .then(client => { this._aadHttpClient = client; })
@@ -662,7 +662,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
     if (oldValue === newValue) return;
     if (
       propertyPath === 'functionUrl' ||
-      propertyPath === 'easyAuthClientId'
+      propertyPath === 'webPartClientId'
     ) {
       this._proxyStatus = 'checking';
       // Allow the release check to re-run after the function URL changes so the
@@ -1638,13 +1638,13 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                     if (element) element.innerHTML = '';
                   },
                 }) as unknown as IPropertyPaneField<unknown>,
-                PropertyPaneTextField('easyAuthClientId', {
-                  label: strings.EasyAuthClientIdFieldLabel
+                PropertyPaneTextField('webPartClientId', {
+                  label: strings.WebPartClientIdFieldLabel
                 }),
                 // Validation error — shown immediately below the Client ID field
                 // when the stored value is not a valid GUID.
-                ...(this.properties.easyAuthClientId && !isValidGuid(this.properties.easyAuthClientId)
-                  ? [this._infoBoxField('easyAuthClientIdValidationError', strings.InvalidGuidFormat, 'error')]
+                ...(this.properties.webPartClientId && !isValidGuid(this.properties.webPartClientId)
+                  ? [this._infoBoxField('webPartClientIdValidationError', strings.InvalidGuidFormat, 'error')]
                   : []),
                 // Inline Entra hint — hoverable info icon next to a short label
                 // that reveals the exact App Registration name + a direct Entra
@@ -1749,7 +1749,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                     const setupGuideHref =
                       'https://guest-sponsor-info.workoho.cloud/setup';
 
-                    const isConfigured = !!(this.properties.functionUrl && this.properties.easyAuthClientId);
+                    const isConfigured = !!(this.properties.functionUrl && this.properties.webPartClientId);
                     const isOk = isConfigured && this._proxyStatus === 'ok';
                     const isError = isConfigured && this._proxyStatus === 'error';
 
@@ -1813,7 +1813,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                     if (element) element.innerHTML = '';
                   },
                 }) as unknown as IPropertyPaneField<unknown>,
-                ...(this.properties.functionUrl && this.properties.easyAuthClientId ? [
+                ...(this.properties.functionUrl && this.properties.webPartClientId ? [
                   PropertyPaneCustomField({
                     key: 'proxyStatusField',
                     onRender: (element: HTMLElement | undefined) => {

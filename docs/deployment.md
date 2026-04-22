@@ -443,7 +443,7 @@ az deployment group create \
       tenantId=<your-tenant-id> \
       tenantName=<your-tenant-name> \
       functionAppName=<globally-unique-name> \
-      easyAuthClientId=<client-id-from-pre-step>
+      webPartClientId=<client-id-from-pre-step>
 ```
 
 <details>
@@ -463,7 +463,7 @@ az stack group create \
       tenantId=<your-tenant-id> \
       tenantName=<your-tenant-name> \
       functionAppName=<globally-unique-name> \
-      easyAuthClientId=<client-id-from-pre-step> \
+      webPartClientId=<client-id-from-pre-step> \
   --action-on-unmanage deleteResources \
   --deny-settings-mode none
 ```
@@ -480,7 +480,7 @@ deployment.
 | `tenantId` | Your Entra tenant ID (GUID) |
 | `tenantName` | Tenant name without domain suffix, e.g. `contoso` |
 | `functionAppName` | Globally unique name for the Function App |
-| `easyAuthClientId` | Client ID from the pre-step |
+| `webPartClientId` | Client ID from the pre-step |
 | `appVersion` | `"latest"` (default) or pinned SemVer without `v`, e.g. `"1.4.2"` |
 | `location` | Azure region |
 
@@ -507,7 +507,7 @@ az deployment group create \
       tenantId=<your-tenant-id> \
       tenantName=<your-tenant-name> \
       functionAppName=<globally-unique-name> \
-      easyAuthClientId=<client-id-from-pre-step> \
+      webPartClientId=<client-id-from-pre-step> \
       hostingPlan=FlexConsumption \
       maximumFlexInstances=10
 ```

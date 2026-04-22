@@ -87,7 +87,7 @@ function renderWebPart(overrides: Partial<IGuestSponsorInfoProps> = {}): void {
     presenceUrl: undefined,
     pingUrl: undefined,
     photoUrl: undefined,
-    easyAuthClientId: undefined,
+    webPartClientId: undefined,
     aadHttpClient: {} as never,
     showBusinessPhones: true,
     showMobilePhone: true,

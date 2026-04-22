@@ -27,7 +27,7 @@
 .PARAMETER TenantId
     The Entra tenant ID (GUID).
 
-.PARAMETER EasyAuthClientId
+.PARAMETER WebPartClientId
     The client ID (application ID) of the EasyAuth App Registration created in the pre-step.
     Required to expose the API scope and pre-authorize the SharePoint client.
 
@@ -47,14 +47,14 @@
     ./setup-graph-permissions.ps1 `
       -ManagedIdentityObjectId "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" `
       -TenantId "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy" `
-      -EasyAuthClientId "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"
+      -WebPartClientId "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"
 
 .EXAMPLE
     # Fully unattended — no prompts, no confirmation summary
     ./setup-graph-permissions.ps1 `
       -ManagedIdentityObjectId "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" `
       -TenantId "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy" `
-      -EasyAuthClientId "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz" `
+      -WebPartClientId "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz" `
       -Confirm:$false
 
 .NOTES
@@ -70,7 +70,7 @@
 param(
   [string]$ManagedIdentityObjectId,
   [string]$TenantId,
-  [string]$EasyAuthClientId
+  [string]$WebPartClientId
 )
 
 $ErrorActionPreference = 'Stop'
@@ -575,10 +575,10 @@ if (-not $ManagedIdentityObjectId) {
 }
 $Global:GsiSetup_ManagedIdentityObjectId = $ManagedIdentityObjectId
 
-if (-not $EasyAuthClientId) {
-  if ($Global:GsiSetup_EasyAuthClientId) {
-    $EasyAuthClientId = $Global:GsiSetup_EasyAuthClientId
-    Write-Host "  Using cached App Registration Client ID from this session: $EasyAuthClientId" -ForegroundColor DarkGray
+if (-not $WebPartClientId) {
+  if ($Global:GsiSetup_WebPartClientId) {
+    $WebPartClientId = $Global:GsiSetup_WebPartClientId
+    Write-Host "  Using cached App Registration Client ID from this session: $WebPartClientId" -ForegroundColor DarkGray
   }
   else {
     Write-Host '  Required: App Registration Client ID' -ForegroundColor Cyan
@@ -592,20 +592,20 @@ if (-not $EasyAuthClientId) {
     Write-Host "    'Guest Sponsor Info - SharePoint Web Part Auth' $_arr Application (client) ID"
     Write-Host ''
     do {
-      $EasyAuthClientId = (Read-Host '  App Registration Client ID').Trim()
-      if (-not $EasyAuthClientId) {
+      $WebPartClientId = (Read-Host '  App Registration Client ID').Trim()
+      if (-not $WebPartClientId) {
         Write-Host "  $_wrn Value is required." -ForegroundColor Yellow
       }
-      elseif ($EasyAuthClientId -notmatch $_guidPattern) {
+      elseif ($WebPartClientId -notmatch $_guidPattern) {
         Write-Host "  $_wrn Expected a GUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" -ForegroundColor Yellow
-        $EasyAuthClientId = ''
+        $WebPartClientId = ''
       }
-    } while (-not $EasyAuthClientId)
+    } while (-not $WebPartClientId)
     Write-Host ''
     $_promptsShown = $true
   }
 }
-$Global:GsiSetup_EasyAuthClientId = $EasyAuthClientId
+$Global:GsiSetup_WebPartClientId = $WebPartClientId
 
 Write-Hint -Lines @(
   'Required Entra roles:'
@@ -632,7 +632,7 @@ if (-not $_promptsShown -and
   Write-Host $_sep -ForegroundColor DarkGray
   Write-Host "  Tenant ID                  : $TenantId"
   Write-Host "  Managed Identity Object ID : $ManagedIdentityObjectId"
-  Write-Host "  App Registration Client ID : $EasyAuthClientId"
+  Write-Host "  App Registration Client ID : $WebPartClientId"
   Write-Host ''
   Write-Host '  The script will assign Graph app roles to the Managed Identity' -ForegroundColor DarkGray
   Write-Host '  and configure the App Registration for silent token acquisition.' -ForegroundColor DarkGray
@@ -835,11 +835,11 @@ else {
 }
 
 $appResp = Invoke-MgGraphRequest -Method GET `
-  -Uri "https://graph.microsoft.com/v1.0/applications?`$filter=appId eq '$EasyAuthClientId'" `
+  -Uri "https://graph.microsoft.com/v1.0/applications?`$filter=appId eq '$WebPartClientId'" `
   -OutputType PSObject -ErrorAction Stop
 $app = if ($appResp.value) { $appResp.value[0] } else { $null }
 if (-not $app) {
-  throw "Could not find App Registration with client ID '$EasyAuthClientId'. Verify the -EasyAuthClientId parameter."
+  throw "Could not find App Registration with client ID '$WebPartClientId'. Verify the -WebPartClientId parameter."
 }
 
 # WhatIf stub: if $app is still null (offline simulation), inject a minimal object
@@ -859,14 +859,14 @@ if ($_whatIf -and -not $app) {
 }
 
 if ($app.signInAudience -ne 'AzureADMyOrg') {
-  throw "App Registration '$EasyAuthClientId' is not single-tenant (SignInAudience=$($app.signInAudience)). Set it to AzureADMyOrg before continuing."
+  throw "App Registration '$WebPartClientId' is not single-tenant (SignInAudience=$($app.signInAudience)). Set it to AzureADMyOrg before continuing."
 }
 
 # Ensure the identifier URI is set — required for the api:// audience used by EasyAuth.
-$expectedUri = "api://guest-sponsor-info-proxy/$EasyAuthClientId"
+$expectedUri = "api://guest-sponsor-info-proxy/$WebPartClientId"
 if ($app.identifierUris -notcontains $expectedUri) {
   Write-Host "  Setting identifier URI to $expectedUri ..." -ForegroundColor Cyan
-  if ($PSCmdlet.ShouldProcess($EasyAuthClientId, "PATCH identifierUris: $expectedUri")) {
+  if ($PSCmdlet.ShouldProcess($WebPartClientId, "PATCH identifierUris: $expectedUri")) {
     Invoke-MgGraphRequest -Method PATCH `
       -Uri "https://graph.microsoft.com/v1.0/applications/$($app.id)" `
       -Body @{ identifierUris = @($expectedUri) } -ErrorAction Stop
@@ -892,7 +892,7 @@ if (-not $existingScope) {
     userConsentDescription  = 'Allows the app to call the Azure Function proxy on your behalf.'
     isEnabled               = $true
   }
-  if ($PSCmdlet.ShouldProcess($EasyAuthClientId, "PATCH api.oauth2PermissionScopes: add user_impersonation")) {
+  if ($PSCmdlet.ShouldProcess($WebPartClientId, "PATCH api.oauth2PermissionScopes: add user_impersonation")) {
     Invoke-MgGraphRequest -Method PATCH `
       -Uri "https://graph.microsoft.com/v1.0/applications/$($app.id)" `
       -Body @{ api = @{ oauth2PermissionScopes = @($newScope) } } -ErrorAction Stop
@@ -928,7 +928,7 @@ foreach ($spAppId in $spWebClientAppIds) {
     }
     $updatedPreAuthorized = @($otherPreAuthorized) + @($newPreAuth)
     try {
-      if ($PSCmdlet.ShouldProcess($EasyAuthClientId, "PATCH api.preAuthorizedApplications: $spAppId")) {
+      if ($PSCmdlet.ShouldProcess($WebPartClientId, "PATCH api.preAuthorizedApplications: $spAppId")) {
         Invoke-MgGraphRequest -Method PATCH `
           -Uri "https://graph.microsoft.com/v1.0/applications/$($app.id)" `
           -Body @{ api = @{ preAuthorizedApplications = $updatedPreAuthorized } } -ErrorAction Stop
@@ -955,15 +955,15 @@ foreach ($spAppId in $spWebClientAppIds) {
 # Normally created on first user sign-in, but since we run this script before any user
 # has consented, we create it explicitly here.
 $spResp = Invoke-MgGraphRequest -Method GET `
-  -Uri "https://graph.microsoft.com/v1.0/servicePrincipals?`$filter=appId eq '$EasyAuthClientId'&`$select=id,appRoleAssignmentRequired,tags,description,notes" `
+  -Uri "https://graph.microsoft.com/v1.0/servicePrincipals?`$filter=appId eq '$WebPartClientId'&`$select=id,appRoleAssignmentRequired,tags,description,notes" `
   -OutputType PSObject -ErrorAction SilentlyContinue
 $sp = if ($spResp -and $spResp.value) { $spResp.value[0] } else { $null }
 if (-not $sp) {
   Write-Host "  Service Principal not found — creating it now (no user has signed in yet)..." -ForegroundColor Cyan
-  if ($PSCmdlet.ShouldProcess($EasyAuthClientId, 'POST servicePrincipal')) {
+  if ($PSCmdlet.ShouldProcess($WebPartClientId, 'POST servicePrincipal')) {
     $sp = Invoke-MgGraphRequest -Method POST `
       -Uri "https://graph.microsoft.com/v1.0/servicePrincipals" `
-      -Body @{ appId = $EasyAuthClientId } `
+      -Body @{ appId = $WebPartClientId } `
       -OutputType PSObject -ErrorAction Stop
     Write-Host "  $_chk Service Principal created (Object ID: $($sp.id))." -ForegroundColor Green
   }
@@ -989,7 +989,7 @@ if ($_whatIf -and -not $sp) {
 # individual assignment — even with pre-authorization in place.
 if ($sp.appRoleAssignmentRequired) {
   Write-Host "  Disabling appRoleAssignmentRequired on the Enterprise App (was: true) ..." -ForegroundColor Cyan
-  if ($PSCmdlet.ShouldProcess($EasyAuthClientId, 'PATCH servicePrincipal appRoleAssignmentRequired=false')) {
+  if ($PSCmdlet.ShouldProcess($WebPartClientId, 'PATCH servicePrincipal appRoleAssignmentRequired=false')) {
     Invoke-MgGraphRequest -Method PATCH `
       -Uri "https://graph.microsoft.com/v1.0/servicePrincipals/$($sp.id)" `
       -Body @{ appRoleAssignmentRequired = $false } -ErrorAction Stop
@@ -1006,7 +1006,7 @@ $hasHideApp = $sp.tags -contains 'HideApp'
 if (-not $hasHideApp) {
   Write-Host "  Hiding Enterprise App from My Apps portal (visible to users: No) ..." -ForegroundColor Cyan
   $updatedTags = @($sp.tags) + @('HideApp')
-  if ($PSCmdlet.ShouldProcess($EasyAuthClientId, 'PATCH servicePrincipal tags: add HideApp')) {
+  if ($PSCmdlet.ShouldProcess($WebPartClientId, 'PATCH servicePrincipal tags: add HideApp')) {
     Invoke-MgGraphRequest -Method PATCH `
       -Uri "https://graph.microsoft.com/v1.0/servicePrincipals/$($sp.id)" `
       -Body @{ tags = $updatedTags } -ErrorAction Stop
@@ -1038,14 +1038,14 @@ $spNotes = @(
   'The associated Azure Function uses a system-assigned Managed',
   'Identity for Graph API calls (User.Read.All, Presence.Read.All,',
   'MailboxSettings.Read, TeamMember.Read.All).',
-  "EasyAuth App Registration: $($app.displayName) (Client ID: $EasyAuthClientId).",
+  "EasyAuth App Registration: $($app.displayName) (Client ID: $WebPartClientId).",
   "Managed Identity Object ID: $ManagedIdentityObjectId.",
   'Docs: https://guest-sponsor-info.workoho.cloud'
 ) -join ' '
 
 if ($sp.description -ne $spDescription) {
   Write-Host "  Setting Enterprise App description ..." -ForegroundColor Cyan
-  if ($PSCmdlet.ShouldProcess($EasyAuthClientId, 'PATCH servicePrincipal description')) {
+  if ($PSCmdlet.ShouldProcess($WebPartClientId, 'PATCH servicePrincipal description')) {
     Invoke-MgGraphRequest -Method PATCH `
       -Uri "https://graph.microsoft.com/v1.0/servicePrincipals/$($sp.id)" `
       -Body @{ description = $spDescription } -ErrorAction Stop
@@ -1058,7 +1058,7 @@ else {
 
 if ($sp.notes -ne $spNotes) {
   Write-Host "  Setting Enterprise App notes ..." -ForegroundColor Cyan
-  if ($PSCmdlet.ShouldProcess($EasyAuthClientId, 'PATCH servicePrincipal notes')) {
+  if ($PSCmdlet.ShouldProcess($WebPartClientId, 'PATCH servicePrincipal notes')) {
     Invoke-MgGraphRequest -Method PATCH `
       -Uri "https://graph.microsoft.com/v1.0/servicePrincipals/$($sp.id)" `
       -Body @{ notes = $spNotes } -ErrorAction Stop
@@ -1079,7 +1079,7 @@ $currentSmRef = (Invoke-MgGraphRequest -Method GET `
     -ErrorAction Stop).serviceManagementReference
 if ($currentSmRef -ne $desiredSmRef) {
   Write-Host "  Setting Service Management Reference ..." -ForegroundColor Cyan
-  if ($PSCmdlet.ShouldProcess($EasyAuthClientId, 'PATCH application serviceManagementReference')) {
+  if ($PSCmdlet.ShouldProcess($WebPartClientId, 'PATCH application serviceManagementReference')) {
     Invoke-MgGraphRequest -Method PATCH `
       -Uri "https://graph.microsoft.com/v1.0/applications/$($app.id)" `
       -Body @{ serviceManagementReference = $desiredSmRef } -ErrorAction Stop
@@ -1097,7 +1097,7 @@ else {
 $desiredHomepage = 'https://github.com/workoho/spfx-guest-sponsor-info'
 if ($app.web.homePageUrl -ne $desiredHomepage) {
   Write-Host "  Setting App Registration homepage URL ..." -ForegroundColor Cyan
-  if ($PSCmdlet.ShouldProcess($EasyAuthClientId, 'PATCH application web.homePageUrl')) {
+  if ($PSCmdlet.ShouldProcess($WebPartClientId, 'PATCH application web.homePageUrl')) {
     Invoke-MgGraphRequest -Method PATCH `
       -Uri "https://graph.microsoft.com/v1.0/applications/$($app.id)" `
       -Body @{ web = @{ homePageUrl = $desiredHomepage } } -ErrorAction Stop
@@ -1162,7 +1162,7 @@ $summaryLines += 'Configure the web part (property pane → Guest Sponsor API):'
 if ($_functionAppUrl) {
   $summaryLines += "  Base URL               :      $_functionAppUrl"
 }
-$summaryLines += "  Application (client) ID: $EasyAuthClientId"
+$summaryLines += "  Application (client) ID: $WebPartClientId"
 Write-NextStep @summaryLines
 
 # New Graph permissions require a Function App restart so the managed identity

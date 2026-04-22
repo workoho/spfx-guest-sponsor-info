@@ -11,8 +11,8 @@
     "tenantName": {
       "value": "${AZURE_SHAREPOINT_TENANT_NAME}"
     },
-    "easyAuthClientId": {
-      "value": "${AZURE_EASY_AUTH_CLIENT_ID}"
+    "webPartClientId": {
+      "value": "${AZURE_WEB_PART_CLIENT_ID}"
     },
     "deployAzureMaps": {
       "value": true

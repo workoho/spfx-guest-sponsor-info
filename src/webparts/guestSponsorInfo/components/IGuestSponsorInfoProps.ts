@@ -83,7 +83,7 @@ export interface IGuestSponsorInfoProps {
    */
   pingUrl: string | undefined;
   /** Client ID of the App Registration used by the Azure Function proxy. Undefined when not configured. */
-  easyAuthClientId: string | undefined;
+  webPartClientId: string | undefined;
   /** Pre-acquired AAD HTTP client scoped to the function App Registration. Undefined when not configured. */
   aadHttpClient: AadHttpClient | undefined;
   /** Show business phone numbers in the contact card. */

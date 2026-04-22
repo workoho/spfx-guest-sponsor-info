@@ -142,7 +142,7 @@ define([], function () {
     AdvancedDisplayGroupName: "Avanserte visningsalternativer",
     FunctionGroupName: "Guest Sponsor API",
     FunctionUrlFieldLabel: "Basis-URL",
-    EasyAuthClientIdFieldLabel: "Program-ID (klient)",
+    WebPartClientIdFieldLabel: "Program-ID (klient)",
     PpClientIdHintLabel: "Hvor finner jeg klient-ID?",
     PpClientIdHintBody: "Kopier klient-ID (applikasjons-ID) fra appregistreringen som ble opprettet under oppsett.",
     FunctionEntraLinkLabel: "Finn i Microsoft Entra →",

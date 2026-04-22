@@ -86,7 +86,7 @@ Write-Host 'Paste these values into the SPFx web part property pane'
 Write-Host '(Edit web part → Guest Sponsor API):'
 Write-Host ''
 Write-Host "  Guest Sponsor API Base URL              : $($env:SPONSOR_API_URL)"
-Write-Host "  Guest Sponsor API Client ID (App Reg.)  : $($env:AZURE_EASY_AUTH_CLIENT_ID)"
+Write-Host "  Guest Sponsor API Client ID (App Reg.)  : $($env:AZURE_WEB_PART_CLIENT_ID)"
 Write-Host ''
 Write-Host 'Note: Storage role assignment propagation can take 1-2 minutes.'
 Write-Host 'If the function returns errors immediately after deployment,'

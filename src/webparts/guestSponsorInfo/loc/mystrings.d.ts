@@ -111,7 +111,7 @@ declare interface IGuestSponsorInfoWebPartStrings {
   // Azure Function proxy
   FunctionGroupName: string;
   FunctionUrlFieldLabel: string;
-  EasyAuthClientIdFieldLabel: string;
+  WebPartClientIdFieldLabel: string;
   /** Short trigger label for the Client ID tooltip. */
   PpClientIdHintLabel: string;
   /** Body text inside the Client ID hover popup. */

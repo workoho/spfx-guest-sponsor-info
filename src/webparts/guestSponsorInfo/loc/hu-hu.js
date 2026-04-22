@@ -146,7 +146,7 @@ define([], function () {
     AdvancedDisplayGroupName: "Speciális megjelenítési beállítások",
     FunctionGroupName: "Guest Sponsor API",
     FunctionUrlFieldLabel: "Alap URL",
-    EasyAuthClientIdFieldLabel: "Alkalmazás (ügyfél) azonosítója",
+    WebPartClientIdFieldLabel: "Alkalmazás (ügyfél) azonosítója",
     PpClientIdHintLabel: "Hol találom az ügyfélazonosítót?",
     PpClientIdHintBody:
       "Másolja ki az ügyfélazonosítót (alkalmazásazonosítót) a telepítés során létrehozott alkalmazásregisztrációból.",

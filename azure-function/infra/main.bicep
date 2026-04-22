@@ -27,7 +27,7 @@ param functionAppName string
 @metadata({ category: 'Basics' })
 @description('Client ID of the EasyAuth App Registration. The web part acquires delegated tokens
 against this audience on behalf of the signed-in guest user.')
-param easyAuthClientId string
+param webPartClientId string
 
 @metadata({ category: 'Hosting' })
 @description('Hosting plan for the Function App. "Consumption" = Y1/Dynamic (free tier included, cold starts after ~20 min idle, ZIP served directly from GitHub package URL). "FlexConsumption" = FC1/Linux-only (no free tier, cold starts greatly reduced — alwaysReadyInstances=1 eliminates them; ZIP is uploaded to blob storage by the provisioning script automatically during ARM deployment; "Deploy to Azure" button is supported). Not all Azure regions support Flex Consumption — check https://aka.ms/flex-region before choosing.')
@@ -458,7 +458,7 @@ var sharedAppSettings = [
   }
   {
     name: 'ALLOWED_AUDIENCE'
-    value: easyAuthClientId
+    value: webPartClientId
   }
   {
     name: 'CORS_ALLOWED_ORIGIN'
@@ -606,12 +606,12 @@ var easyAuthProperties = {
     azureActiveDirectory: {
       enabled: true
       registration: {
-        clientId: easyAuthClientId
+        clientId: webPartClientId
         openIdIssuer: 'https://sts.windows.net/${tenantId}/'
       }
       validation: {
         allowedAudiences: [
-          easyAuthClientId
+          webPartClientId
         ]
       }
     }

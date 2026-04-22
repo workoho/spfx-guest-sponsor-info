@@ -67,7 +67,7 @@ az deployment group create \
       tenantId=<ihre-tenant-id> \
       tenantName=<ihr-tenant-name> \
       functionAppName=<global-eindeutiger-name> \
-      easyAuthClientId=<client-id-aus-vorbereitung> \
+      webPartClientId=<client-id-aus-vorbereitung> \
       enableTelemetry=false
 ```
 

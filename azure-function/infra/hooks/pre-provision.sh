@@ -8,7 +8,7 @@
 #   1. Derive a default Function App name from the azd environment name.
 #   2. Detect or prompt for the SharePoint tenant name.
 #   3. Create (or reuse) the Entra App Registration required for EasyAuth,
-#      and store its client ID as AZURE_EASY_AUTH_CLIENT_ID in the azd environment.
+#      and store its client ID as AZURE_WEB_PART_CLIENT_ID in the azd environment.
 #
 # All operations are idempotent — safe to re-run on 'azd provision' or 'azd up'.
 
@@ -83,5 +83,5 @@ if [ "${CURRENT_VERSION:-}" != "2" ]; then
     --body '{"api":{"requestedAccessTokenVersion":2}}'
 fi
 
-azd env set AZURE_EASY_AUTH_CLIENT_ID "${CLIENT_ID}"
-echo "AZURE_EASY_AUTH_CLIENT_ID set to ${CLIENT_ID}"
+azd env set AZURE_WEB_PART_CLIENT_ID "${CLIENT_ID}"
+echo "AZURE_WEB_PART_CLIENT_ID set to ${CLIENT_ID}"

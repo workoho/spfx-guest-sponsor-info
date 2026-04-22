@@ -142,7 +142,7 @@ define([], function () {
     AdvancedDisplayGroupName: "Options d'affichage avancées",
     FunctionGroupName: "Guest Sponsor API",
     FunctionUrlFieldLabel: "URL de base",
-    EasyAuthClientIdFieldLabel: "ID d'application (client)",
+    WebPartClientIdFieldLabel: "ID d'application (client)",
     PpClientIdHintLabel: "O\u00f9 trouver l'ID de client ?",
     PpClientIdHintBody:
       "Copiez l'ID de client (ID d'application) depuis l'inscription d'application cr\u00e9\u00e9e lors de la configuration.",

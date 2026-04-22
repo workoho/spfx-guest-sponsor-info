@@ -141,7 +141,7 @@ define([], function () {
     AdvancedDisplayGroupName: "Avancerede visningsindstillinger",
     FunctionGroupName: "Guest Sponsor API",
     FunctionUrlFieldLabel: "Basis-URL",
-    EasyAuthClientIdFieldLabel: "Program-id (klient)",
+    WebPartClientIdFieldLabel: "Program-id (klient)",
     PpClientIdHintLabel: "Hvor finder jeg klient-ID?",
     PpClientIdHintBody:
       "Kopi\u00e9r klient-ID (program-ID) fra den appregistrering, der blev oprettet under ops\u00e6tningen.",

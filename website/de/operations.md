@@ -109,7 +109,7 @@ az deployment group create \
       tenantId=<ihre-tenant-id> \
       tenantName=<ihr-tenant-name> \
       functionAppName=<ihr-function-app-name> \
-      easyAuthClientId=<ihre-client-id> \
+      webPartClientId=<ihre-client-id> \
       hostingPlan=FlexConsumption \
       maximumFlexInstances=10 \
       appVersion=1.x.y
@@ -157,7 +157,7 @@ az deployment group create \
       tenantId=<ihre-tenant-id> \
       tenantName=<ihr-tenant-name> \
       functionAppName=<ihr-function-app-name> \
-      easyAuthClientId=<ihre-client-id>
+      webPartClientId=<ihre-client-id>
 ```
 
 Für Deployment Stacks verwenden Sie `az stack group create` mit denselben
