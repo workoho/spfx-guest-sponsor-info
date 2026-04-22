@@ -24,7 +24,7 @@ param tenantName string
 @maxLength(58)
 param functionAppName string
 
-@metadata({ category: 'Basics', displayName: 'App Registration Client ID' })
+@metadata({ category: 'Basics' })
 @description('Client ID of the EasyAuth App Registration. The web part acquires delegated tokens
 against this audience on behalf of the signed-in guest user.')
 param easyAuthClientId string

@@ -50,7 +50,6 @@
       "type": "string",
       "metadata": {
         "category": "Basics",
-        "displayName": "App Registration Client ID",
         "description": "Client ID of the EasyAuth App Registration. The web part acquires delegated tokens against this audience on behalf of the signed-in guest user."
       }
     },

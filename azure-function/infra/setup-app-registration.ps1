@@ -931,14 +931,15 @@ else {
 # The Deploy to Azure portal URL does not support pre-filled parameters —
 # the standard ARM portal form always shows all input fields regardless of
 # what is appended to the URL.  Show the Client ID prominently so the user
-# can copy-paste it into the 'App Registration Client ID' field during deployment.
-# (Portal displays the 'displayName' from the parameter metadata, not the key name.)
+# can copy-paste it into the correct field during deployment.
+# The portal auto-generates the field label from the camelCase parameter name:
+# easyAuthClientId → "Easy Auth Client Id" (no createUIDefinition needed).
 $_deployUrl = 'https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fworkoho%2Fspfx-guest-sponsor-info%2Fmain%2Fazure-function%2Finfra%2Fazuredeploy.json'
 
 $_importantLines = @(
   'Copy this Client ID — you will need it in the next step:'
   ''
-  "  App Registration Client ID:  $clientId"
+  "  Easy Auth Client Id:  $clientId"
 )
 if ($clientId -ne '<not-created-in-WhatIf-mode>') {
   $_importantLines += ''
@@ -949,7 +950,7 @@ Write-Important -Lines $_importantLines
 
 Write-NextStep @(
   'Step 1 — Deploy the Function App to Azure (link below).'
-  "         Paste the Client ID above into the 'App Registration Client ID' field."
+  "         Paste the Client ID above into the 'Easy Auth Client Id' field."
   ''
   'Step 2 — After deployment completes, return here and run:'
   ''
