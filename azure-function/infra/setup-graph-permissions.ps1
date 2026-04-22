@@ -1160,7 +1160,7 @@ $summaryLines += "  - Scope 'user_impersonation' exposed and SharePoint pre-auth
 $summaryLines += ''
 $summaryLines += 'Configure the web part (property pane → Guest Sponsor API):'
 if ($_functionAppUrl) {
-  $summaryLines += "  Base URL               :      $_functionAppUrl"
+  $summaryLines += "  Base URL               : $_functionAppUrl"
 }
 $summaryLines += "  Application (client) ID: $WebPartClientId"
 Write-NextStep @summaryLines

@@ -956,5 +956,5 @@ Write-NextStep @(
   ''
   "  $_graphPermCmd"
 )
-Write-Link -Url $_deployUrl -Text '[Deploy to Azure] Guest Sponsor Info API'
+Write-Link -Url $_deployUrl -Text '[Deploy to Azure] Guest Sponsor API'
 #endregion
