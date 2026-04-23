@@ -16,8 +16,8 @@ For security and telemetry details, see
 ## Table of Contents
 
 - [SharePoint Deployment](#sharepoint-deployment)
-  - [Install from Microsoft AppSource](#install-from-microsoft-appsource)
-  - [Make the web part accessible to guest users](#make-the-web-part-accessible-to-guest-users)
+  - [Install the Webpart](#step-1--Installation)
+  - [Make the web part accessible to guest users](#step-2--make-the-web-part-accessible-to-guest-users)
   - [Verify guest access to the landing page site](#verify-guest-access-to-the-landing-page-site)
   - [External sharing](#external-sharing)
 - [Guest Sponsor API](#guest-sponsor-api)
@@ -27,7 +27,9 @@ For security and telemetry details, see
 
 ## SharePoint Deployment
 
-### Install from Microsoft AppSource
+### Step 1 - Installation
+
+#### Option A - Install from Microsoft AppSource
 
 The web part is available in the
 [**Microsoft commercial marketplace (AppSource)**](https://appsource.microsoft.com/).
@@ -53,101 +55,40 @@ All Graph data is fetched server-side by the companion Azure Function using
 its Managed Identity.
 
 ---
+#### Option B — Use a Tenant App Catalog
+**This option does not use the Microsoft commercial marketplace.** Download the
+`.sppkg` from
+[GitHub Releases](https://github.com/workoho/spfx-guest-sponsor-info/releases)
+instead.
 
-### Make the web part accessible to guest users
+> A tenant App Catalog is *not* provisioned automatically on a fresh Microsoft
+> 365 tenant. If it has not been created, open
+> **SharePoint Admin Center → More features → Apps → Open** — this triggers
+> automatic creation
+> ([Manage apps using the Apps site](https://learn.microsoft.com/sharepoint/use-app-catalog)).
 
-When installed via AppSource or the Tenant App Catalog, the web part JavaScript
-bundle is served from the Tenant App Catalog's `ClientSideAssets` library by
-default. B2B guest users cannot access this library before authenticating to
-the host tenant — which is not guaranteed before the page load. If guests
-cannot load the bundle, the web part silently fails to render.
+**Upload and install:**
 
-The web part's built-in **Guest Accessibility** diagnostics panel (property
-pane) detects the current scenario and shows the result of each check with
-a recommendation.
+1. Download the latest `guest-sponsor-info.sppkg` from
+   [GitHub Releases](https://github.com/workoho/spfx-guest-sponsor-info/releases).
+2. Open the Tenant App Catalog, upload the `.sppkg` file, and click
+   **Deploy** in the dialog that appears.
+3. Go to your landing site and open **Site Contents → Add an app**, find **Guest Sponsor Info** in the
+   list, and click it to install the app on the site. The web part then
+   appears in the page editor.
 
-Choose **one** of the following options:
+   Because this solution uses `skipFeatureDeployment: false`, the app must be
+   explicitly added to each site where the web part is needed — even when
+   using a Site Collection App Catalog.
 
-#### Option A — Enable the Office 365 Public CDN (recommended)
+   > **Updating to a new version:** Re-upload the `.sppkg` to
+   > **Apps for SharePoint** and click **Deploy**. SharePoint will then show
+   > an **Update** banner on the installed app in **Site Contents** — click it
+   > to apply the update. If the banner does not appear, remove the app
+   > (**Site Contents** → hover the app → **Remove**) and add it again via
+   > **Add an app**.
 
-When the Office 365 Public CDN is enabled, SharePoint automatically replicates
-web part bundles to Microsoft's edge CDN network
-(`publiccdn.sharepointonline.com`), which is accessible anonymously without
-any SharePoint authentication. This is the most reliable approach for guest
-users and requires no per-site configuration.
-
-**Required role:** SharePoint Administrator.
-
-```powershell
-# SharePoint Online Management Shell (Windows):
-# Install once: Install-Module Microsoft.Online.SharePoint.PowerShell -Scope CurrentUser
-Connect-SPOService -Url "https://<tenant>-admin.sharepoint.com"
-
-# Enable the Public CDN:
-Set-SPOTenantCdnEnabled -CdnType Public -Enable $true
-
-# Verify the ClientSideAssets origin is included (added by default):
-Get-SPOTenantCdnOrigins -CdnType Public
-# Expected output includes: */CLIENTSIDEASSETS
-```
-
-If `*/CLIENTSIDEASSETS` is not listed, add it:
-
-```powershell
-Add-SPOTenantCdnOrigin -CdnType Public -OriginUrl "*/CLIENTSIDEASSETS"
-```
-
-```powershell
-# PnP PowerShell (cross-platform):
-# Install once (PowerShell 7+): Install-Module PnP.PowerShell -Scope CurrentUser
-Connect-PnPOnline -Url "https://<tenant>-admin.sharepoint.com" `
-    -ClientId "<your-pnp-app-client-id>" -Interactive
-Set-PnPTenantCdnEnabled -CdnType Public -Enable $true
-```
-
-*Cmdlet references:
-[`Set-SPOTenantCdnEnabled`](https://learn.microsoft.com/powershell/module/sharepoint-online/set-spotenantcdnenabled) ·
-[`Get-SPOTenantCdnOrigins`](https://learn.microsoft.com/powershell/module/sharepoint-online/get-spotenantcdnorigins) ·
-[`Add-SPOTenantCdnOrigin`](https://learn.microsoft.com/powershell/module/sharepoint-online/add-spotenantcdnorigin) ·
-[Office 365 CDN documentation](https://learn.microsoft.com/sharepoint/dev/general-development/office-365-cdn-with-spo-ps)*
-
-> CDN propagation typically takes **15-30 minutes** after enabling. Once active,
-> the bundle URL changes from the Tenant App Catalog to
-> `publiccdn.sharepointonline.com` automatically — no reconfiguration is needed.
-
-#### Option B — Grant Everyone read access to the Tenant App Catalog
-
-If enabling the Public CDN is not possible in your environment, grant the
-built-in **Everyone** group (`c:0(.s|true`) read access to the Tenant App
-Catalog site. This allows B2B guests who have already accepted their invitation
-to load the bundle directly from the App Catalog.
-
-**Required roles:** SharePoint Administrator and Site Collection Administrator
-on the Tenant App Catalog site (typically
-`https://<tenant>.sharepoint.com/sites/appcatalog`).
-
-```powershell
-# SharePoint Online Management Shell (Windows):
-Connect-SPOService -Url "https://<tenant>-admin.sharepoint.com"
-Add-SPOUser -Site "https://<tenant>.sharepoint.com/sites/appcatalog" `
-    -LoginName "c:0(.s|true" -Group "App Catalog Visitors"
-```
-
-```powershell
-# PnP PowerShell (cross-platform; connect to the App Catalog site directly):
-Connect-PnPOnline -Url "https://<tenant>.sharepoint.com/sites/appcatalog" `
-    -ClientId "<your-pnp-app-client-id>" -Interactive
-Add-PnPGroupMember -LoginName "c:0(.s|true" -Group "App Catalog Visitors"
-```
-
-*Cmdlet references:
-[`Add-SPOUser`](https://learn.microsoft.com/powershell/module/sharepoint-online/add-spouser) ·
-[`Add-PnPGroupMember`](https://pnp.github.io/powershell/cmdlets/Add-PnPGroupMember.html)*
-
-> **Limitation:** This covers only guests who have already authenticated to the
-> host tenant. Guests who have never visited the tenant (e.g. before accepting a
-> full invitation) cannot load the bundle. The Public CDN (Option A) does not
-> have this limitation.
+---
 
 #### Option C — Use a Site Collection App Catalog
 
@@ -262,7 +203,105 @@ Add-PnPSiteCollectionAppCatalog -Site "https://<tenant>.sharepoint.com/sites/<la
    > (**Site Contents** → hover the app → **Remove**) and add it again via
    > **Add an app**.
 
-### Verify guest access to the landing page site
+---
+
+### Step 2 - Make the web part accessible to guest users
+
+When installed via AppSource or the Tenant App Catalog, the web part JavaScript
+bundle is served from the Tenant App Catalog's `ClientSideAssets` library by
+default. B2B guest users cannot access this library before authenticating to
+the host tenant — which is not guaranteed before the page load. If guests
+cannot load the bundle, the web part silently fails to render.
+
+The web part's built-in **Guest Accessibility** diagnostics panel (property
+pane) detects the current scenario and shows the result of each check with
+a recommendation.
+
+Choose **one** of the following options:
+
+#### Option A — Enable the Office 365 Public CDN (recommended)
+
+When the Office 365 Public CDN is enabled, SharePoint automatically replicates
+web part bundles to Microsoft's edge CDN network
+(`publiccdn.sharepointonline.com`), which is accessible anonymously without
+any SharePoint authentication. This is the most reliable approach for guest
+users and requires no per-site configuration.
+
+**Required role:** SharePoint Administrator.
+
+```powershell
+# SharePoint Online Management Shell (Windows):
+# Install once: Install-Module Microsoft.Online.SharePoint.PowerShell -Scope CurrentUser
+Connect-SPOService -Url "https://<tenant>-admin.sharepoint.com"
+
+# Enable the Public CDN:
+Set-SPOTenantCdnEnabled -CdnType Public -Enable $true
+
+# Verify the ClientSideAssets origin is included (added by default):
+Get-SPOTenantCdnOrigins -CdnType Public
+# Expected output includes: */CLIENTSIDEASSETS
+```
+
+If `*/CLIENTSIDEASSETS` is not listed, add it:
+
+```powershell
+Add-SPOTenantCdnOrigin -CdnType Public -OriginUrl "*/CLIENTSIDEASSETS"
+```
+
+```powershell
+# PnP PowerShell (cross-platform):
+# Install once (PowerShell 7+): Install-Module PnP.PowerShell -Scope CurrentUser
+Connect-PnPOnline -Url "https://<tenant>-admin.sharepoint.com" `
+    -ClientId "<your-pnp-app-client-id>" -Interactive
+Set-PnPTenantCdnEnabled -CdnType Public -Enable $true
+```
+
+*Cmdlet references:
+[`Set-SPOTenantCdnEnabled`](https://learn.microsoft.com/powershell/module/sharepoint-online/set-spotenantcdnenabled) ·
+[`Get-SPOTenantCdnOrigins`](https://learn.microsoft.com/powershell/module/sharepoint-online/get-spotenantcdnorigins) ·
+[`Add-SPOTenantCdnOrigin`](https://learn.microsoft.com/powershell/module/sharepoint-online/add-spotenantcdnorigin) ·
+[Office 365 CDN documentation](https://learn.microsoft.com/sharepoint/dev/general-development/office-365-cdn-with-spo-ps)*
+
+> CDN propagation typically takes **15-30 minutes** after enabling. Once active,
+> the bundle URL changes from the Tenant App Catalog to
+> `publiccdn.sharepointonline.com` automatically — no reconfiguration is needed.
+
+#### Option B — Grant Everyone read access to the Tenant App Catalog
+
+If enabling the Public CDN is not possible in your environment, grant the
+built-in **Everyone** group (`c:0(.s|true`) read access to the Tenant App
+Catalog site. This allows B2B guests who have already accepted their invitation
+to load the bundle directly from the App Catalog.
+
+**Required roles:** SharePoint Administrator and Site Collection Administrator
+on the Tenant App Catalog site (typically
+`https://<tenant>.sharepoint.com/sites/appcatalog`).
+
+```powershell
+# SharePoint Online Management Shell (Windows):
+Connect-SPOService -Url "https://<tenant>-admin.sharepoint.com"
+Add-SPOUser -Site "https://<tenant>.sharepoint.com/sites/appcatalog" `
+    -LoginName "c:0(.s|true" -Group "App Catalog Visitors"
+```
+
+```powershell
+# PnP PowerShell (cross-platform; connect to the App Catalog site directly):
+Connect-PnPOnline -Url "https://<tenant>.sharepoint.com/sites/appcatalog" `
+    -ClientId "<your-pnp-app-client-id>" -Interactive
+Add-PnPGroupMember -LoginName "c:0(.s|true" -Group "App Catalog Visitors"
+```
+
+*Cmdlet references:
+[`Add-SPOUser`](https://learn.microsoft.com/powershell/module/sharepoint-online/add-spouser) ·
+[`Add-PnPGroupMember`](https://pnp.github.io/powershell/cmdlets/Add-PnPGroupMember.html)*
+
+> **Limitation:** This covers only guests who have already authenticated to the
+> host tenant. Guests who have never visited the tenant (e.g. before accepting a
+> full invitation) cannot load the bundle. The Public CDN (Option A) does not
+> have this limitation.
+
+
+### Step 3 - Verify guest access to the landing page site
 
 If your landing page site is already in use, Visitor access for guests is most
 likely already configured — but it's worth checking that the approach works
@@ -350,7 +389,7 @@ dependency on that resolution path even though it is normally fast.
 > the author of this web part, is a Platinum
 > implementation partner of EasyLife 365.
 
-### External sharing
+### Step 4 - Ensure External sharing is enabled
 
 SharePoint's tenant-level sharing setting acts as a **ceiling**: individual
 sites cannot be more permissive than the tenant allows, but they can be
@@ -426,7 +465,7 @@ Copy the **Client ID** printed at the end.
 
 </details>
 
-### Deploy to Azure
+### Step 1 - Deploy to Azure
 
 Click the button to start the deployment:
 
@@ -473,7 +512,7 @@ deployment.
 
 </details>
 
-### Required parameters
+#### Required parameters
 
 | Parameter | Description |
 |---|---|
@@ -484,7 +523,7 @@ deployment.
 | `appVersion` | `"latest"` (default) or pinned SemVer without `v`, e.g. `"1.4.2"` |
 | `location` | Azure region |
 
-### Optional hosting plan parameters
+#### Optional hosting plan parameters
 
 | Parameter | Description |
 |---|---|
@@ -494,7 +533,7 @@ deployment.
 | `instanceMemoryMB` | `512` or `2048` (Flex only). Default: `2048`. |
 | `dailyMemoryTimeQuotaGBs` | Daily GB-s budget (Consumption only). Default: `10000`. |
 
-### Flex Consumption plan
+#### Flex Consumption plan
 
 Check [aka.ms/flex-region](https://aka.ms/flex-region) first to confirm
 regional support. Add the extra parameters:
@@ -525,9 +564,9 @@ troubleshooting, then removed automatically.
 | Cost guard | `dailyMemoryTimeQuota` | `maximumFlexInstances` |
 | Estimated cost | Free (within grant) | ~€2-5/month with 1 warm instance |
 
-### Deployment outputs
+### Step 3 - Note Deployment outputs
 
-After deployment, open **Resource Group → Deployments → select deployment →
+After deployment, open **Resource Group → Deployments → select deployment template →
 Outputs**:
 
 | Output | Used for |
@@ -536,7 +575,7 @@ Outputs**:
 | `functionAppUrl` | Web part property pane → **Guest Sponsor API Base URL** |
 | `sponsorApiUrl` | Full endpoint URL (for curl/Postman health checks) |
 
-### Grant Graph permissions and configure the App Registration
+### Step 4 - Grant Graph permissions and configure the App Registration
 
 **Option A — run directly from the web** (no clone required,
 [PowerShell 7+](https://learn.microsoft.com/powershell/scripting/install/installing-powershell)):
@@ -564,7 +603,7 @@ This script:
    [Silent Token Acquisition and Pre-Authorization](architecture.md#silent-token-acquisition-and-pre-authorization)
    in the architecture guide for the full explanation.
 
-### Configure the web part
+### Step 5 - Configure the web part
 
 In the property pane (**Guest Sponsor API** group):
 
