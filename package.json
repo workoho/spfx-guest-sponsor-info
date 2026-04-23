@@ -1,6 +1,6 @@
 {
   "name": "guest-sponsor-info",
-  "version": "0.25.0",
+  "version": "0.26.0",
   "description": "SharePoint Online web part that shows the Microsoft Entra sponsors of the signed-in guest user",
   "license": "LicenseRef-PolyForm-Shield-1.0.0",
   "author": {

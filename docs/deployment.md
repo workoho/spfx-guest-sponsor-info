@@ -486,7 +486,7 @@ az deployment group create \
       tenantId=<your-tenant-id> \
       tenantName=<your-tenant-name> \
       functionAppName=<globally-unique-name> \
-      functionClientId=<client-id-from-pre-step>
+      webPartClientId=<client-id-from-pre-step>
 ```
 
 <details>
@@ -506,7 +506,7 @@ az stack group create \
       tenantId=<your-tenant-id> \
       tenantName=<your-tenant-name> \
       functionAppName=<globally-unique-name> \
-      functionClientId=<client-id-from-pre-step> \
+      webPartClientId=<client-id-from-pre-step> \
   --action-on-unmanage deleteResources \
   --deny-settings-mode none
 ```
@@ -523,7 +523,7 @@ deployment.
 | `tenantId` | Your Entra tenant ID (GUID) |
 | `tenantName` | Tenant name without domain suffix, e.g. `contoso` |
 | `functionAppName` | Globally unique name for the Function App |
-| `functionClientId` | Client ID from the pre-step |
+| `webPartClientId` | Client ID from the pre-step |
 | `appVersion` | `"latest"` (default) or pinned SemVer without `v`, e.g. `"1.4.2"` |
 | `location` | Azure region |
 
@@ -550,7 +550,7 @@ az deployment group create \
       tenantId=<your-tenant-id> \
       tenantName=<your-tenant-name> \
       functionAppName=<globally-unique-name> \
-      functionClientId=<client-id-from-pre-step> \
+      webPartClientId=<client-id-from-pre-step> \
       hostingPlan=FlexConsumption \
       maximumFlexInstances=10
 ```
@@ -611,9 +611,9 @@ This script:
 
 In the property pane (**Guest Sponsor API** group):
 
-- **Guest Sponsor API Base URL** — e.g.
+- **Base URL** — e.g.
   `https://guest-sponsor-info-xyz.azurewebsites.net`
-- **Guest Sponsor API Client ID (App Registration)** — the Client ID from the
+- **Application (client) ID** — the Client ID from the
   App Registration named **"Guest Sponsor Info - SharePoint Web Part Auth"**
   in your Entra tenant (created in the pre-step)
 

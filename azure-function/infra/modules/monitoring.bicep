@@ -27,6 +27,9 @@ param enableNewReleaseAlert bool = true
 @description('Enable operational alert when a hard-deleted Entra object remains referenced as a sponsor (Graph 404).')
 param enableBrokenSponsorAlert bool = false
 
+@description('Deploy and enable the Application Insights Failure Anomalies smart detector rule. Default: false, so this AlertsManagement resource is only created when explicitly requested.')
+param enableFailureAnomaliesAlert bool = false
+
 // ── Alert timing ─────────────────────────────────────────────────────────────
 
 @description('KQL alert evaluation frequency in minutes.')
@@ -314,6 +317,27 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
     IngestionMode: 'LogAnalytics'
     publicNetworkAccessForIngestion: 'Enabled'
     publicNetworkAccessForQuery: 'Enabled'
+  }
+}
+
+resource failureAnomaliesAlert 'microsoft.alertsManagement/smartDetectorAlertRules@2021-04-01' = if (enableFailureAnomaliesAlert) {
+  name: 'Failure Anomalies - ${appInsights.name}'
+  location: 'global'
+  tags: tags
+  properties: {
+    actionGroups: {
+      groupIds: effectiveOperationalActionGroupIds
+    }
+    description: 'Application Insights Failure Anomalies smart detector. Created only when explicitly requested.'
+    detector: {
+      id: 'FailureAnomaliesDetector'
+    }
+    frequency: 'PT1M'
+    scope: [
+      appInsights.id
+    ]
+    severity: 'Sev2'
+    state: 'Enabled'
   }
 }
 

@@ -105,7 +105,7 @@ az deployment group create \
       tenantId=<your-tenant-id> \
       tenantName=<your-tenant-name> \
       functionAppName=<your-function-app-name> \
-      functionClientId=<your-client-id> \
+      webPartClientId=<your-client-id> \
       hostingPlan=FlexConsumption \
       maximumFlexInstances=10 \
       appVersion=1.x.y
@@ -153,7 +153,7 @@ az deployment group create \
       tenantId=<your-tenant-id> \
       tenantName=<your-tenant-name> \
       functionAppName=<your-function-app-name> \
-      functionClientId=<your-client-id>
+      webPartClientId=<your-client-id>
 ```
 
 For Deployment Stacks, use `az stack group create` with the same parameters.

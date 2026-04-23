@@ -1,3 +1,5 @@
+#!/usr/bin/env -S pwsh -NoLogo -NoProfile
+
 <#
 .SYNOPSIS
     Grants the Function App's Managed Identity the required Microsoft Graph application roles
@@ -25,15 +27,35 @@
 .PARAMETER TenantId
     The Entra tenant ID (GUID).
 
-.PARAMETER FunctionAppClientId
+.PARAMETER WebPartClientId
     The client ID (application ID) of the EasyAuth App Registration created in the pre-step.
     Required to expose the API scope and pre-authorize the SharePoint client.
+
+.PARAMETER Confirm
+    -Confirm:$false skips all interactive confirmations and runs unattended.
+    When all three parameters are supplied on the command line the script shows
+    a summary of planned changes and asks once before connecting; pass
+    -Confirm:$false together with all required parameters to bypass that
+    prompt completely.
+
+.PARAMETER WhatIf
+    Shows what the script would do without making any changes. All write
+    operations (POST / PATCH) are skipped; read operations still run so
+    resolved values are shown.
 
 .EXAMPLE
     ./setup-graph-permissions.ps1 `
       -ManagedIdentityObjectId "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" `
       -TenantId "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy" `
-      -FunctionAppClientId "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"
+      -WebPartClientId "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"
+
+.EXAMPLE
+    # Fully unattended — no prompts, no confirmation summary
+    ./setup-graph-permissions.ps1 `
+      -ManagedIdentityObjectId "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" `
+      -TenantId "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy" `
+      -WebPartClientId "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz" `
+      -Confirm:$false
 
 .NOTES
     Copyright 2026 Workoho GmbH <https://workoho.com>
@@ -41,15 +63,27 @@
     Licensed under PolyForm Shield License 1.0.0
     <https://polyformproject.org/licenses/shield/1.0.0>
 #>
+
+#region Parameters
 #Requires -Version 5.1
+[CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Medium')]
 param(
   [string]$ManagedIdentityObjectId,
   [string]$TenantId,
-  [string]$FunctionAppClientId
+  [string]$WebPartClientId
 )
 
 $ErrorActionPreference = 'Stop'
 
+# Track whether any interactive prompt was shown. When all parameters were
+# pre-supplied (via the command line or the session cache) we show a
+# confirmation summary so the operator can verify before the script runs.
+$_promptsShown = $false
+# Convenience bool used throughout for WhatIf-aware fallbacks.
+$_whatIf = $WhatIfPreference -eq [System.Management.Automation.SwitchParameter]$true
+#endregion
+
+#region Terminal initialization
 # ── Console output encoding ───────────────────────────────────────────────────
 # Switch to UTF-8 early so box-drawing characters and symbols (✓, ⚠) render
 # correctly on Windows PowerShell 5.1 which defaults to an ANSI code page.
@@ -74,6 +108,29 @@ $_wrn = if ($_u) { [char]0x26A0 } else { '[!]' }  # ⚠
 $_arr = if ($_u) { [char]0x2192 } else { '>' }    # →
 $_sep = '  ' + $(if ($_u) { [string][char]0x2500 * 53 } else { '-' * 53 })
 
+# ── OSC 8 hyperlink capability ─────────────────────────────────────────────────
+# OSC 8 clickable hyperlinks are supported by Windows Terminal, VS Code,
+# iTerm2, WezTerm, Kitty, Foot, GNOME Terminal, Konsole, and most modern
+# Linux terminals that advertise 24-bit colour support.
+# Disabled automatically when stdout is redirected (no attached console).
+$_osc8 = $false
+if (-not [Console]::IsOutputRedirected) {
+  $_osc8 = (
+    $env:WT_SESSION -or # Windows Terminal
+    $env:TERM_PROGRAM -eq 'vscode' -or # VS Code integrated terminal
+    $env:TERM_PROGRAM -eq 'iTerm.app' -or # iTerm2
+    $env:TERM_PROGRAM -eq 'WezTerm' -or # WezTerm
+    $env:TERM -eq 'xterm-kitty' -or # Kitty
+    $env:TERM -eq 'foot' -or # Foot (Wayland)
+    $env:COLORTERM -eq 'truecolor' -or # Most modern Linux/macOS terminals
+    $env:COLORTERM -eq '24bit' -or # Alternative truecolor flag
+    $env:VTE_VERSION -or # GNOME Terminal / VTE-based
+    $env:KONSOLE_VERSION                         # Konsole (KDE)
+  ) -as [bool]
+}
+#endregion
+
+#region Output helpers
 # Embedded directly so the script works on any machine without Write-Callout.ps1,
 # whether run from a local clone, via iwr, or on a bare system with no repo files.
 #
@@ -136,7 +193,33 @@ function Write-Failure {
   param([Parameter(ValueFromRemainingArguments)][string[]]$Lines)
   Write-Box -Title 'ERROR' -Color Red @Lines
 }
+function Write-Link {
+  # Print a deep link to a URL. In terminals that support OSC 8 escape
+  # sequences the link text is rendered as a clickable hyperlink, prefixed
+  # with a ↗ arrow (U+2197) in Cyan so the click intent is obvious even
+  # to users unfamiliar with terminal hyperlinks. In all other hosts the
+  # label and URL are printed on two lines so nothing is lost.
+  param(
+    [Parameter(Mandatory)][string]$Url,
+    [string]$Text,
+    [string]$Indent = '    '
+  )
+  if ([string]::IsNullOrEmpty($Text)) { $Text = $Url }
+  # ↗ (U+2197) signals "navigate / open link"; '>' on legacy hosts.
+  $linkArrow = if ($_u) { [string][char]0x2197 } else { '>' }
+  if ($_osc8) {
+    $esc = [char]27
+    Write-Host "$Indent$linkArrow " -NoNewline -ForegroundColor Cyan
+    Write-Host "$($esc)]8;;$($Url)$($esc)\$($Text)$($esc)]8;;$($esc)\" -ForegroundColor DarkCyan
+  }
+  else {
+    Write-Host "$Indent$linkArrow $Text"
+    Write-Host "$Indent  $Url" -ForegroundColor DarkCyan
+  }
+}
+#endregion
 
+#region Error handler
 # Script-level trap: on Graph authorization errors (401/403), print role
 # guidance instead of a raw HTTP exception. Other errors re-throw normally.
 trap {
@@ -146,24 +229,40 @@ trap {
     catch { $null = $_ <# cast may fail if StatusCode is not numeric — ignore #> }
   }
   $_errMsg = if ($_.Exception -and $_.Exception.Message) { $_.Exception.Message } else { [string]$_ }
+  # In WhatIf mode every error from a read/validate operation is non-fatal.
+  # PowerShell resumes after the failing statement with $null as its value;
+  # downstream ShouldProcess calls then print the "What if:" messages instead.
+  if ($_whatIf) {
+    $_shortMsg = ($_errMsg -replace '\r?\n.*', '').Trim()
+    if ($_shortMsg) {
+      Write-Host "  [WhatIf] $_shortMsg — treating object as non-existent." -ForegroundColor Yellow
+    }
+    continue
+  }
   if ($_httpCode -in @(401, 403) -or
     $_errMsg -match 'Authorization_RequestDenied|Forbidden|Unauthorized|insufficient.privilege') {
     Write-Failure -Lines @(
       'The request was denied — your account lacks the required permissions.'
       ''
       'Required Entra roles:'
-      '  - Privileged Role Administrator  (to assign Graph app roles to the Managed Identity)'
-      '  - Application Administrator       (to configure the App Registration)'
-      '  Global Administrator covers both.'
+      '  - Privileged Role Administrator      (to assign Graph app roles to the Managed Identity)'
+      '  - Cloud Application Administrator    (to configure the App Registration)'
+      '    (or Application Administrator, or Global Administrator)'
       ''
-      'Entra admin center → Roles and administrators:'
-      '  https://entra.microsoft.com/#view/Microsoft_AAD_IAM/RolesManagementMenuBlade/~/AllRoles'
+      'If your roles are eligible (PIM): activate them, then re-run.'
+      'If you do not have the roles yet: request them from your admin.'
     )
-    break
+    Write-Link -Url 'https://entra.microsoft.com/#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/aadRoles' `
+      -Text 'PIM → My roles → Entra roles  (activate eligible roles)'
+    Write-Link -Url 'https://entra.microsoft.com/#view/Microsoft_AAD_IAM/RolesManagementMenuBlade/~/AllRoles' `
+      -Text 'Entra admin center → Roles and administrators'
+    return
   }
   # Not a permission error — let PowerShell display the raw error and exit.
 }
+#endregion
 
+#region Module management
 # ── Module prerequisite helper ────────────────────────────────────────────────
 # Checks whether a required PowerShell module is installed and, if not, offers
 # to install it from the PowerShell Gallery. Handles:
@@ -389,6 +488,19 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
 # Only Microsoft.Graph.Authentication is required — all Graph operations
 # go through Invoke-MgGraphRequest, which ships in that module.
 Install-RequiredModule -Name 'Microsoft.Graph.Authentication'
+#endregion
+
+#region Parameter collection
+Write-Host ''
+# Show "Step 3 of 3" only when both previous steps were completed in this
+# session. Otherwise the script may be running standalone (re-run, repair,
+# or first-time without the other scripts) — in that case no step label
+# is shown so we don't make a wrong claim about the overall flow.
+$_step1Done = [bool]$Global:GsiSetup_AppRegistrationDone
+$_step2Done = [bool]$Global:GsiSetup_ManagedIdentityObjectId
+$_stepLabel = if ($_step1Done -and $_step2Done) { 'Step 3 of 3: Graph Permissions' } else { 'Graph Permissions' }
+Write-Host "  Guest Sponsor Info  $(if ($_u) { [string][char]0x00B7 } else { '|' })  $_stepLabel" -ForegroundColor DarkCyan
+Write-Host $_sep -ForegroundColor DarkGray
 
 # ── Interactive parameter prompts ─────────────────────────────────────────────
 # Each prompt shows a title, a short description, and where to find the value,
@@ -396,86 +508,241 @@ Install-RequiredModule -Name 'Microsoft.Graph.Authentication'
 $_guidPattern = '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
 
 if (-not $TenantId) {
-  Write-Host ''
-  Write-Host '  Required: Entra Tenant ID' -ForegroundColor Cyan
-  Write-Host $_sep -ForegroundColor DarkGray
-  Write-Host '  Your Microsoft Entra tenant ID (a GUID).'
-  Write-Host '  Where to find it:'
-  Write-Host "    Microsoft Entra admin center $_arr Overview $_arr Tenant ID"
-  Write-Host '    https://entra.microsoft.com' -ForegroundColor DarkCyan
-  Write-Host ''
-  do {
-    $TenantId = (Read-Host '  Tenant ID').Trim()
-    if (-not $TenantId) {
-      Write-Host "  $_wrn Value is required." -ForegroundColor Yellow
+  # Session cache: skip the prompt if this script or setup-app-registration.ps1
+  # already stored a value in the $Global:GsiSetup_* namespace during this session.
+  if ($Global:GsiSetup_TenantId) {
+    $TenantId = $Global:GsiSetup_TenantId
+    Write-Host "  Using cached Tenant ID from this session: $TenantId" -ForegroundColor DarkGray
+  }
+  else {
+    # Check for an existing Graph session — offer the connected tenant as default
+    # so the user can just press Enter instead of looking the GUID up.
+    $_existingCtx = $null
+    try { $_existingCtx = Get-MgContext -ErrorAction SilentlyContinue } catch { $null = $_ }
+    $_defaultTenant = if ($_existingCtx -and $_existingCtx.TenantId) { $_existingCtx.TenantId } else { '' }
+    Write-Host ''
+    Write-Host '  Required: Entra Tenant ID' -ForegroundColor Cyan
+    Write-Host $_sep -ForegroundColor DarkGray
+    Write-Host '  Your Microsoft Entra tenant ID (a GUID).'
+    if ($_defaultTenant) {
+      Write-Host "  Active Graph session: $($_existingCtx.Account)" -ForegroundColor DarkGray
+      Write-Host "  Tenant: $_defaultTenant" -ForegroundColor DarkGray
+      Write-Host '  Press Enter to use this tenant.' -ForegroundColor DarkGray
     }
-    elseif ($TenantId -notmatch $_guidPattern) {
-      Write-Host "  $_wrn Expected a GUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" -ForegroundColor Yellow
-      $TenantId = ''
-    }
-  } while (-not $TenantId)
-  Write-Host ''
+    Write-Host '  Where to find it:'
+    Write-Link -Url 'https://entra.microsoft.com/#view/Microsoft_AAD_IAM/TenantOverview.ReactView' `
+      -Text "Microsoft Entra admin center $_arr Overview $_arr Tenant ID"
+    Write-Host ''
+    do {
+      $_prompt = if ($_defaultTenant) { "  Tenant ID [$_defaultTenant]" } else { '  Tenant ID' }
+      $TenantId = (Read-Host $_prompt).Trim()
+      if (-not $TenantId -and $_defaultTenant) {
+        $TenantId = $_defaultTenant
+      }
+      if (-not $TenantId) {
+        Write-Host "  $_wrn Value is required." -ForegroundColor Yellow
+      }
+      elseif ($TenantId -notmatch $_guidPattern) {
+        Write-Host "  $_wrn Expected a GUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" -ForegroundColor Yellow
+        $TenantId = ''
+      }
+    } while (-not $TenantId)
+    Write-Host ''
+    $_promptsShown = $true
+  }
 }
+# Save to session cache — available to repeated runs and to
+# setup-app-registration.ps1 when run in the same PowerShell session.
+$Global:GsiSetup_TenantId = $TenantId
 
 if (-not $ManagedIdentityObjectId) {
-  Write-Host '  Required: Function App Managed Identity — Object ID' -ForegroundColor Cyan
-  Write-Host $_sep -ForegroundColor DarkGray
-  Write-Host '  The Object ID of the system-assigned Managed Identity of the'
-  Write-Host '  Azure Function App (a GUID). This is NOT the App Client ID.'
-  Write-Host '  Where to find it:'
-  Write-Host "    Azure Portal $_arr your Function App $_arr Settings $_arr Identity $_arr Object (principal) ID"
-  Write-Host "    or: the deployment outputs $_arr managedIdentityObjectId"
-  Write-Host '    https://portal.azure.com' -ForegroundColor DarkCyan
-  Write-Host ''
-  do {
-    $ManagedIdentityObjectId = (Read-Host '  Managed Identity Object ID').Trim()
-    if (-not $ManagedIdentityObjectId) {
-      Write-Host "  $_wrn Value is required." -ForegroundColor Yellow
-    }
-    elseif ($ManagedIdentityObjectId -notmatch $_guidPattern) {
-      Write-Host "  $_wrn Expected a GUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" -ForegroundColor Yellow
-      $ManagedIdentityObjectId = ''
-    }
-  } while (-not $ManagedIdentityObjectId)
-  Write-Host ''
+  if ($Global:GsiSetup_ManagedIdentityObjectId) {
+    $ManagedIdentityObjectId = $Global:GsiSetup_ManagedIdentityObjectId
+    Write-Host "  Using cached Managed Identity Object ID from this session: $ManagedIdentityObjectId" -ForegroundColor DarkGray
+  }
+  else {
+    Write-Host '  Required: Function App Managed Identity — Object ID' -ForegroundColor Cyan
+    Write-Host $_sep -ForegroundColor DarkGray
+    Write-Host '  The Object ID of the system-assigned Managed Identity of the'
+    Write-Host '  Azure Function App (a GUID). This is NOT the App Client ID.'
+    Write-Host '  Where to find it:'
+    Write-Link -Url "https://portal.azure.com/#@$TenantId/blade/HubsExtension/BrowseResource/resourceType/Microsoft.Web%2Fsites" `
+      -Text "Azure Portal $_arr Function Apps $_arr [your app] $_arr Settings $_arr Identity"
+    Write-Host "    or: deployment outputs $_arr managedIdentityObjectId"
+    Write-Host ''
+    do {
+      $ManagedIdentityObjectId = (Read-Host '  Managed Identity Object ID').Trim()
+      if (-not $ManagedIdentityObjectId) {
+        Write-Host "  $_wrn Value is required." -ForegroundColor Yellow
+      }
+      elseif ($ManagedIdentityObjectId -notmatch $_guidPattern) {
+        Write-Host "  $_wrn Expected a GUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" -ForegroundColor Yellow
+        $ManagedIdentityObjectId = ''
+      }
+    } while (-not $ManagedIdentityObjectId)
+    Write-Host ''
+    $_promptsShown = $true
+  }
 }
+$Global:GsiSetup_ManagedIdentityObjectId = $ManagedIdentityObjectId
 
-if (-not $FunctionAppClientId) {
-  Write-Host '  Required: App Registration Client ID' -ForegroundColor Cyan
-  Write-Host $_sep -ForegroundColor DarkGray
-  Write-Host '  The Client ID (Application ID) of the App Registration created'
-  Write-Host '  in the previous step (setup-app-registration.ps1). It was'
-  Write-Host '  printed at the end of that script.'
-  Write-Host '  Where to find it:'
-  Write-Host "    Entra admin center $_arr App registrations $_arr"
-  Write-Host "    'Guest Sponsor Info - SharePoint Web Part Auth' $_arr Application (client) ID"
-  Write-Host '    https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade' -ForegroundColor DarkCyan
-  Write-Host ''
-  do {
-    $FunctionAppClientId = (Read-Host '  App Registration Client ID').Trim()
-    if (-not $FunctionAppClientId) {
-      Write-Host "  $_wrn Value is required." -ForegroundColor Yellow
-    }
-    elseif ($FunctionAppClientId -notmatch $_guidPattern) {
-      Write-Host "  $_wrn Expected a GUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" -ForegroundColor Yellow
-      $FunctionAppClientId = ''
-    }
-  } while (-not $FunctionAppClientId)
-  Write-Host ''
+if (-not $WebPartClientId) {
+  if ($Global:GsiSetup_WebPartClientId) {
+    $WebPartClientId = $Global:GsiSetup_WebPartClientId
+    Write-Host "  Using cached App Registration Client ID from this session: $WebPartClientId" -ForegroundColor DarkGray
+  }
+  else {
+    Write-Host '  Required: App Registration Client ID' -ForegroundColor Cyan
+    Write-Host $_sep -ForegroundColor DarkGray
+    Write-Host '  The Client ID (Application ID) of the App Registration created'
+    Write-Host '  in the previous step (setup-app-registration.ps1). It was'
+    Write-Host '  printed at the end of that script.'
+    Write-Host '  Where to find it:'
+    Write-Link -Url "https://entra.microsoft.com/$TenantId/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" `
+      -Text "Entra admin center $_arr App registrations"
+    Write-Host "    'Guest Sponsor Info - SharePoint Web Part Auth' $_arr Application (client) ID"
+    Write-Host ''
+    do {
+      $WebPartClientId = (Read-Host '  App Registration Client ID').Trim()
+      if (-not $WebPartClientId) {
+        Write-Host "  $_wrn Value is required." -ForegroundColor Yellow
+      }
+      elseif ($WebPartClientId -notmatch $_guidPattern) {
+        Write-Host "  $_wrn Expected a GUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" -ForegroundColor Yellow
+        $WebPartClientId = ''
+      }
+    } while (-not $WebPartClientId)
+    Write-Host ''
+    $_promptsShown = $true
+  }
 }
+$Global:GsiSetup_WebPartClientId = $WebPartClientId
 
 Write-Hint -Lines @(
   'Required Entra roles:'
-  '  - Privileged Role Administrator  (to assign Graph app roles to the Managed Identity)'
-  '  - Application Administrator       (to configure the App Registration)'
-  '  Global Administrator covers both.'
+  '  - Privileged Role Administrator      (to assign Graph app roles to the Managed Identity)'
+  '  - Cloud Application Administrator    (to configure the App Registration)'
+  '    (or Application Administrator, or Global Administrator)'
   ''
-  'Entra admin center → Roles and administrators:'
-  '  https://entra.microsoft.com/#view/Microsoft_AAD_IAM/RolesManagementMenuBlade/~/AllRoles'
+  'If your roles are eligible (PIM): activate them, then re-run.'
+  'If you do not have the roles yet: request them from your admin.'
 )
+Write-Link -Url "https://entra.microsoft.com/$TenantId/#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/aadRoles" `
+  -Text 'PIM → My roles → Entra roles  (activate eligible roles)'
+Write-Link -Url "https://entra.microsoft.com/$TenantId/#view/Microsoft_AAD_IAM/RolesManagementMenuBlade/~/AllRoles" `
+  -Text 'Entra admin center → Roles and administrators'
 
-Connect-MgGraph -TenantId $TenantId -Scopes "AppRoleAssignment.ReadWrite.All", "Application.ReadWrite.All"
+# When no interactive prompts were shown (params from CLI or session cache),
+# show a summary of what the script is about to do and ask for confirmation
+# — unless the caller already passed -Confirm:$false or -WhatIf.
+if (-not $_promptsShown -and
+  $WhatIfPreference -ne [System.Management.Automation.SwitchParameter]$true -and
+  $ConfirmPreference -ne 'None') {
+  Write-Host ''
+  Write-Host '  Planned operations' -ForegroundColor Cyan
+  Write-Host $_sep -ForegroundColor DarkGray
+  Write-Host "  Tenant ID                  : $TenantId"
+  Write-Host "  Managed Identity Object ID : $ManagedIdentityObjectId"
+  Write-Host "  App Registration Client ID : $WebPartClientId"
+  Write-Host ''
+  Write-Host '  The script will assign Graph app roles to the Managed Identity' -ForegroundColor DarkGray
+  Write-Host '  and configure the App Registration for silent token acquisition.' -ForegroundColor DarkGray
+  Write-Host '  All operations are idempotent.' -ForegroundColor DarkGray
+  Write-Host ''
+  $reply = (Read-Host '  Proceed? [Y/n]').Trim()
+  if ($reply -and $reply -notmatch '^[Yy]') {
+    Write-Host 'Aborted.' -ForegroundColor Yellow
+    exit 0
+  }
+  Write-Host ''
+}
+#endregion
 
+#region Graph connection
+# ── Connect to Microsoft Graph ────────────────────────────────────────────────────────
+# Skip Connect-MgGraph when the current session already covers the required
+# scopes for the right tenant — avoids unnecessary MFA / browser prompts.
+$_requiredScopes = if ($_whatIf) {
+  @('AppRoleAssignment.Read.All', 'Application.Read.All')
+}
+else {
+  @('AppRoleAssignment.ReadWrite.All', 'Application.ReadWrite.All')
+}
+$_mgCtx = $null
+try { $_mgCtx = Get-MgContext -ErrorAction SilentlyContinue } catch { $null = $_ }
+$_scopesOk = $false
+if ($_mgCtx -and $_mgCtx.TenantId -eq $TenantId) {
+  $_scopesOk = $true
+  foreach ($_s in $_requiredScopes) {
+    if ($_mgCtx.Scopes -notcontains $_s) { $_scopesOk = $false; break }
+  }
+}
+
+if ($_whatIf) {
+  if ($_scopesOk) {
+    Write-Host "  [WhatIf] Reusing existing Graph session — scopes sufficient." -ForegroundColor DarkGray
+  }
+  else {
+    # In WhatIf mode read-only scopes are sufficient — write permissions are not
+    # needed for a dry run.  Fall back to offline simulation if sign-in fails.
+    Write-Host "  [WhatIf] Connecting with read-only scopes..." -ForegroundColor DarkGray
+    try {
+      Connect-MgGraph -TenantId $TenantId -Scopes 'AppRoleAssignment.Read.All', 'Application.Read.All' -ErrorAction Stop
+      Write-Host "  [WhatIf] Connected — current state will be reflected where readable." -ForegroundColor DarkGray
+    }
+    catch {
+      Write-Host "  [WhatIf] Sign-in failed — simulating all operations as 'would create/update'." -ForegroundColor Yellow
+    }
+  }
+}
+else {
+  if ($_scopesOk) {
+    Write-Host "Reusing existing Graph session." -ForegroundColor DarkGray
+  }
+  else {
+    Connect-MgGraph -TenantId $TenantId -Scopes 'AppRoleAssignment.ReadWrite.All', 'Application.ReadWrite.All'
+  }
+}
+
+# ── Verify active Entra role assignments ─────────────────────────────────────
+# Opportunistic: requires Directory.Read.All in the current token.
+# Silently skipped when the scope is absent or the session is a service
+# principal (workload identity).  The check is informational only — the
+# script will still fail later with a clear error if the role is missing.
+$_checkRoles = @(
+  'Privileged Role Administrator'
+  'Cloud Application Administrator'
+  'Application Administrator'
+  'Global Administrator'
+)
+$_activeRoles = @()
+$_roleCheckOk = $false
+try {
+  $_roleResp = Invoke-MgGraphRequest -Method GET `
+    -Uri 'https://graph.microsoft.com/v1.0/me/transitiveMemberOf/microsoft.graph.directoryRole?$select=displayName' `
+    -OutputType PSObject -ErrorAction Stop
+  if ($_roleResp.value) {
+    # Keep only the roles relevant to this script so the output stays focused.
+    $_activeRoles = @($($_roleResp.value | Where-Object { $_checkRoles -contains $_.displayName } | ForEach-Object { $_.displayName }))
+  }
+  $_roleCheckOk = $true
+}
+catch { $null = $_ }
+
+if ($_roleCheckOk) {
+  if ($_activeRoles.Count -gt 0) {
+    $_chk = if ($_u) { [string][char]0x2713 } else { 'OK' }
+    Write-Host "  $_chk Active role(s): $($_activeRoles -join ', ')" -ForegroundColor Green
+  }
+  else {
+    # Connected successfully but none of the required roles are active.
+    Write-Host "  $_wrn No required Entra role is active for your account." -ForegroundColor Yellow
+    Write-Host '  Activate your roles via PIM or request them from your admin.' -ForegroundColor Yellow
+  }
+}
+#endregion
+
+#region Graph app role assignments
 Write-Host "Resolving Microsoft Graph service principal..." -ForegroundColor Cyan
 $graphSpResp = Invoke-MgGraphRequest -Method GET `
   -Uri "https://graph.microsoft.com/v1.0/servicePrincipals?`$filter=appId eq '00000003-0000-0000-c000-000000000000'&`$select=id,appRoles" `
@@ -496,6 +763,24 @@ $requiredRoles = @(
 
 $assignedRoles = @()
 $skippedRoles = @()
+$newlyAssignedRoles = @()   # tracks roles actually POSTed this run (not pre-existing)
+
+# Fetch all existing app role assignments for the Managed Identity once so
+# the loop can skip roles that are already present without posting a duplicate
+# and receiving a 400 error.  In WhatIf/offline mode the GET may return $null
+# (trap continues) — the hashtable stays empty and ShouldProcess prints the
+# "What if:" message for every role, which is the correct dry-run behaviour.
+Write-Host "Reading existing app role assignments for the Managed Identity..." -ForegroundColor Cyan
+$_existingAssignmentsResp = Invoke-MgGraphRequest -Method GET `
+  -Uri "https://graph.microsoft.com/v1.0/servicePrincipals/$ManagedIdentityObjectId/appRoleAssignments?`$select=appRoleId" `
+  -OutputType PSObject -ErrorAction Stop
+# $_existingRoleIds: appRoleId GUID → $true — O(1) look-up in the loop below.
+$_existingRoleIds = @{}
+if ($_existingAssignmentsResp -and $_existingAssignmentsResp.value) {
+  foreach ($_ea in $_existingAssignmentsResp.value) {
+    $_existingRoleIds[$_ea.appRoleId] = $true
+  }
+}
 
 foreach ($role in $requiredRoles) {
   Write-Host "Assigning $($role.Name) ..." -ForegroundColor Cyan
@@ -512,7 +797,15 @@ foreach ($role in $requiredRoles) {
     }
   }
 
-  try {
+  # Skip POST if the role is already assigned — avoids a 400 "already exists"
+  # error and counts the role as done rather than skipped.
+  if ($_existingRoleIds.ContainsKey($appRole.id)) {
+    Write-Host "  $_chk $($role.Name) already assigned — skipping." -ForegroundColor Yellow
+    $assignedRoles += $role.Name
+    continue
+  }
+
+  if ($PSCmdlet.ShouldProcess("Managed Identity $ManagedIdentityObjectId", "POST appRoleAssignment: $($role.Name)")) {
     $null = Invoke-MgGraphRequest -Method POST `
       -Uri "https://graph.microsoft.com/v1.0/servicePrincipals/$ManagedIdentityObjectId/appRoleAssignments" `
       -Body @{
@@ -520,20 +813,14 @@ foreach ($role in $requiredRoles) {
       resourceId  = $graphSp.id
       appRoleId   = $appRole.id
     } -ErrorAction Stop
-    Write-Host "  $_chk $($role.Name) assigned." -ForegroundColor Green
-    $assignedRoles += $role.Name
   }
-  catch {
-    if ($_.Exception.Message -like "*Permission being assigned already exists*") {
-      Write-Host "  $_chk $($role.Name) already assigned — skipping." -ForegroundColor Yellow
-      $assignedRoles += $role.Name
-    }
-    else {
-      throw
-    }
-  }
+  Write-Host "  $_chk $($role.Name) assigned." -ForegroundColor Green
+  $assignedRoles += $role.Name
+  $newlyAssignedRoles += $role.Name
 }
+#endregion
 
+#region App Registration configuration
 Write-Host "`nConfiguring App Registration for silent token acquisition by the SharePoint web part..." -ForegroundColor Cyan
 
 # The SharePoint Online Web Client Extensibility app is the MSAL client that SPFx uses
@@ -559,24 +846,42 @@ else {
 }
 
 $appResp = Invoke-MgGraphRequest -Method GET `
-  -Uri "https://graph.microsoft.com/v1.0/applications?`$filter=appId eq '$FunctionAppClientId'" `
+  -Uri "https://graph.microsoft.com/v1.0/applications?`$filter=appId eq '$WebPartClientId'" `
   -OutputType PSObject -ErrorAction Stop
 $app = if ($appResp.value) { $appResp.value[0] } else { $null }
 if (-not $app) {
-  throw "Could not find App Registration with client ID '$FunctionAppClientId'. Verify the -FunctionAppClientId parameter."
+  throw "Could not find App Registration with client ID '$WebPartClientId'. Verify the -WebPartClientId parameter."
+}
+
+# WhatIf stub: if $app is still null (offline simulation), inject a minimal object
+# so all downstream checks evaluate and emit their own "What if:" messages.
+if ($_whatIf -and -not $app) {
+  $app = [PSCustomObject]@{
+    id             = '<simulated-object-id>'
+    displayName    = 'Guest Sponsor Info - SharePoint Web Part Auth'
+    signInAudience = 'AzureADMyOrg'
+    identifierUris = @()
+    api            = [PSCustomObject]@{
+      oauth2PermissionScopes    = @()
+      preAuthorizedApplications = @()
+    }
+    web            = [PSCustomObject]@{ homePageUrl = $null }
+  }
 }
 
 if ($app.signInAudience -ne 'AzureADMyOrg') {
-  throw "App Registration '$FunctionAppClientId' is not single-tenant (SignInAudience=$($app.signInAudience)). Set it to AzureADMyOrg before continuing."
+  throw "App Registration '$WebPartClientId' is not single-tenant (SignInAudience=$($app.signInAudience)). Set it to AzureADMyOrg before continuing."
 }
 
 # Ensure the identifier URI is set — required for the api:// audience used by EasyAuth.
-$expectedUri = "api://guest-sponsor-info-proxy/$FunctionAppClientId"
+$expectedUri = "api://guest-sponsor-info-proxy/$WebPartClientId"
 if ($app.identifierUris -notcontains $expectedUri) {
   Write-Host "  Setting identifier URI to $expectedUri ..." -ForegroundColor Cyan
-  Invoke-MgGraphRequest -Method PATCH `
-    -Uri "https://graph.microsoft.com/v1.0/applications/$($app.id)" `
-    -Body @{ identifierUris = @($expectedUri) } -ErrorAction Stop
+  if ($PSCmdlet.ShouldProcess($WebPartClientId, "PATCH identifierUris: $expectedUri")) {
+    Invoke-MgGraphRequest -Method PATCH `
+      -Uri "https://graph.microsoft.com/v1.0/applications/$($app.id)" `
+      -Body @{ identifierUris = @($expectedUri) } -ErrorAction Stop
+  }
   Write-Host "  $_chk Identifier URI set." -ForegroundColor Green
 }
 else {
@@ -598,14 +903,16 @@ if (-not $existingScope) {
     userConsentDescription  = 'Allows the app to call the Azure Function proxy on your behalf.'
     isEnabled               = $true
   }
-  Invoke-MgGraphRequest -Method PATCH `
-    -Uri "https://graph.microsoft.com/v1.0/applications/$($app.id)" `
-    -Body @{ api = @{ oauth2PermissionScopes = @($newScope) } } -ErrorAction Stop
-  # Re-fetch to get the assigned scope ID (may differ from what we sent).
-  $app = Invoke-MgGraphRequest -Method GET `
-    -Uri "https://graph.microsoft.com/v1.0/applications/$($app.id)" `
-    -OutputType PSObject -ErrorAction Stop
-  $existingScope = $app.api.oauth2PermissionScopes | Where-Object { $_.value -eq 'user_impersonation' }
+  if ($PSCmdlet.ShouldProcess($WebPartClientId, "PATCH api.oauth2PermissionScopes: add user_impersonation")) {
+    Invoke-MgGraphRequest -Method PATCH `
+      -Uri "https://graph.microsoft.com/v1.0/applications/$($app.id)" `
+      -Body @{ api = @{ oauth2PermissionScopes = @($newScope) } } -ErrorAction Stop
+    # Re-fetch to get the assigned scope ID (may differ from what we sent).
+    $app = Invoke-MgGraphRequest -Method GET `
+      -Uri "https://graph.microsoft.com/v1.0/applications/$($app.id)" `
+      -OutputType PSObject -ErrorAction Stop
+    $existingScope = $app.api.oauth2PermissionScopes | Where-Object { $_.value -eq 'user_impersonation' }
+  }
   Write-Host "  $_chk 'user_impersonation' scope added (id: $($existingScope.id))." -ForegroundColor Green
 }
 else {
@@ -632,9 +939,11 @@ foreach ($spAppId in $spWebClientAppIds) {
     }
     $updatedPreAuthorized = @($otherPreAuthorized) + @($newPreAuth)
     try {
-      Invoke-MgGraphRequest -Method PATCH `
-        -Uri "https://graph.microsoft.com/v1.0/applications/$($app.id)" `
-        -Body @{ api = @{ preAuthorizedApplications = $updatedPreAuthorized } } -ErrorAction Stop
+      if ($PSCmdlet.ShouldProcess($WebPartClientId, "PATCH api.preAuthorizedApplications: $spAppId")) {
+        Invoke-MgGraphRequest -Method PATCH `
+          -Uri "https://graph.microsoft.com/v1.0/applications/$($app.id)" `
+          -Body @{ api = @{ preAuthorizedApplications = $updatedPreAuthorized } } -ErrorAction Stop
+      }
       Write-Host "  $_chk $spAppId pre-authorized." -ForegroundColor Green
     }
     catch {
@@ -650,33 +959,52 @@ foreach ($spAppId in $spWebClientAppIds) {
     Write-Host "  $_chk $spAppId already pre-authorized." -ForegroundColor Yellow
   }
 }
+#endregion
 
+#region Enterprise App (Service Principal)
 # Ensure appRoleAssignmentRequired is false on the Service Principal (Enterprise App).
 # Normally created on first user sign-in, but since we run this script before any user
 # has consented, we create it explicitly here.
 $spResp = Invoke-MgGraphRequest -Method GET `
-  -Uri "https://graph.microsoft.com/v1.0/servicePrincipals?`$filter=appId eq '$FunctionAppClientId'&`$select=id,appRoleAssignmentRequired,tags,description,notes" `
+  -Uri "https://graph.microsoft.com/v1.0/servicePrincipals?`$filter=appId eq '$WebPartClientId'&`$select=id,appRoleAssignmentRequired,tags,description,notes" `
   -OutputType PSObject -ErrorAction SilentlyContinue
 $sp = if ($spResp -and $spResp.value) { $spResp.value[0] } else { $null }
 if (-not $sp) {
   Write-Host "  Service Principal not found — creating it now (no user has signed in yet)..." -ForegroundColor Cyan
-  $sp = Invoke-MgGraphRequest -Method POST `
-    -Uri "https://graph.microsoft.com/v1.0/servicePrincipals" `
-    -Body @{ appId = $FunctionAppClientId } `
-    -OutputType PSObject -ErrorAction Stop
-  Write-Host "  $_chk Service Principal created (Object ID: $($sp.id))." -ForegroundColor Green
+  if ($PSCmdlet.ShouldProcess($WebPartClientId, 'POST servicePrincipal')) {
+    $sp = Invoke-MgGraphRequest -Method POST `
+      -Uri "https://graph.microsoft.com/v1.0/servicePrincipals" `
+      -Body @{ appId = $WebPartClientId } `
+      -OutputType PSObject -ErrorAction Stop
+    Write-Host "  $_chk Service Principal created (Object ID: $($sp.id))." -ForegroundColor Green
+  }
 }
 else {
   Write-Host "  $_chk Service Principal already exists (Object ID: $($sp.id))." -ForegroundColor Yellow
+}
+
+# WhatIf stub: SP creation was simulated so $sp is still null.  Inject a stub
+# that assumes worst-case defaults so all downstream PATCH checks emit their
+# "What if:" messages (appRoleAssignmentRequired=true, no HideApp tag, etc.).
+if ($_whatIf -and -not $sp) {
+  $sp = [PSCustomObject]@{
+    id                        = '<simulated-sp-id>'
+    appRoleAssignmentRequired = $true
+    tags                      = @()
+    description               = $null
+    notes                     = $null
+  }
 }
 
 # appRoleAssignmentRequired=false: all users (including guests) can acquire tokens without
 # individual assignment — even with pre-authorization in place.
 if ($sp.appRoleAssignmentRequired) {
   Write-Host "  Disabling appRoleAssignmentRequired on the Enterprise App (was: true) ..." -ForegroundColor Cyan
-  Invoke-MgGraphRequest -Method PATCH `
-    -Uri "https://graph.microsoft.com/v1.0/servicePrincipals/$($sp.id)" `
-    -Body @{ appRoleAssignmentRequired = $false } -ErrorAction Stop
+  if ($PSCmdlet.ShouldProcess($WebPartClientId, 'PATCH servicePrincipal appRoleAssignmentRequired=false')) {
+    Invoke-MgGraphRequest -Method PATCH `
+      -Uri "https://graph.microsoft.com/v1.0/servicePrincipals/$($sp.id)" `
+      -Body @{ appRoleAssignmentRequired = $false } -ErrorAction Stop
+  }
   Write-Host "  $_chk appRoleAssignmentRequired set to false." -ForegroundColor Green
 }
 else {
@@ -689,9 +1017,11 @@ $hasHideApp = $sp.tags -contains 'HideApp'
 if (-not $hasHideApp) {
   Write-Host "  Hiding Enterprise App from My Apps portal (visible to users: No) ..." -ForegroundColor Cyan
   $updatedTags = @($sp.tags) + @('HideApp')
-  Invoke-MgGraphRequest -Method PATCH `
-    -Uri "https://graph.microsoft.com/v1.0/servicePrincipals/$($sp.id)" `
-    -Body @{ tags = $updatedTags } -ErrorAction Stop
+  if ($PSCmdlet.ShouldProcess($WebPartClientId, 'PATCH servicePrincipal tags: add HideApp')) {
+    Invoke-MgGraphRequest -Method PATCH `
+      -Uri "https://graph.microsoft.com/v1.0/servicePrincipals/$($sp.id)" `
+      -Body @{ tags = $updatedTags } -ErrorAction Stop
+  }
   Write-Host "  $_chk Enterprise App hidden from My Apps portal." -ForegroundColor Green
 }
 else {
@@ -719,16 +1049,18 @@ $spNotes = @(
   'The associated Azure Function uses a system-assigned Managed',
   'Identity for Graph API calls (User.Read.All, Presence.Read.All,',
   'MailboxSettings.Read, TeamMember.Read.All).',
-  "EasyAuth App Registration: $($app.displayName) (Client ID: $FunctionAppClientId).",
+  "EasyAuth App Registration: $($app.displayName) (Client ID: $WebPartClientId).",
   "Managed Identity Object ID: $ManagedIdentityObjectId.",
   'Docs: https://guest-sponsor-info.workoho.cloud'
 ) -join ' '
 
 if ($sp.description -ne $spDescription) {
   Write-Host "  Setting Enterprise App description ..." -ForegroundColor Cyan
-  Invoke-MgGraphRequest -Method PATCH `
-    -Uri "https://graph.microsoft.com/v1.0/servicePrincipals/$($sp.id)" `
-    -Body @{ description = $spDescription } -ErrorAction Stop
+  if ($PSCmdlet.ShouldProcess($WebPartClientId, 'PATCH servicePrincipal description')) {
+    Invoke-MgGraphRequest -Method PATCH `
+      -Uri "https://graph.microsoft.com/v1.0/servicePrincipals/$($sp.id)" `
+      -Body @{ description = $spDescription } -ErrorAction Stop
+  }
   Write-Host "  $_chk Description set." -ForegroundColor Green
 }
 else {
@@ -737,9 +1069,11 @@ else {
 
 if ($sp.notes -ne $spNotes) {
   Write-Host "  Setting Enterprise App notes ..." -ForegroundColor Cyan
-  Invoke-MgGraphRequest -Method PATCH `
-    -Uri "https://graph.microsoft.com/v1.0/servicePrincipals/$($sp.id)" `
-    -Body @{ notes = $spNotes } -ErrorAction Stop
+  if ($PSCmdlet.ShouldProcess($WebPartClientId, 'PATCH servicePrincipal notes')) {
+    Invoke-MgGraphRequest -Method PATCH `
+      -Uri "https://graph.microsoft.com/v1.0/servicePrincipals/$($sp.id)" `
+      -Body @{ notes = $spNotes } -ErrorAction Stop
+  }
   Write-Host "  $_chk Notes set." -ForegroundColor Green
 }
 else {
@@ -756,9 +1090,11 @@ $currentSmRef = (Invoke-MgGraphRequest -Method GET `
     -ErrorAction Stop).serviceManagementReference
 if ($currentSmRef -ne $desiredSmRef) {
   Write-Host "  Setting Service Management Reference ..." -ForegroundColor Cyan
-  Invoke-MgGraphRequest -Method PATCH `
-    -Uri "https://graph.microsoft.com/v1.0/applications/$($app.id)" `
-    -Body @{ serviceManagementReference = $desiredSmRef } -ErrorAction Stop
+  if ($PSCmdlet.ShouldProcess($WebPartClientId, 'PATCH application serviceManagementReference')) {
+    Invoke-MgGraphRequest -Method PATCH `
+      -Uri "https://graph.microsoft.com/v1.0/applications/$($app.id)" `
+      -Body @{ serviceManagementReference = $desiredSmRef } -ErrorAction Stop
+  }
   Write-Host "  $_chk Service Management Reference set." -ForegroundColor Green
 }
 else {
@@ -772,14 +1108,50 @@ else {
 $desiredHomepage = 'https://github.com/workoho/spfx-guest-sponsor-info'
 if ($app.web.homePageUrl -ne $desiredHomepage) {
   Write-Host "  Setting App Registration homepage URL ..." -ForegroundColor Cyan
-  Invoke-MgGraphRequest -Method PATCH `
-    -Uri "https://graph.microsoft.com/v1.0/applications/$($app.id)" `
-    -Body @{ web = @{ homePageUrl = $desiredHomepage } } -ErrorAction Stop
+  if ($PSCmdlet.ShouldProcess($WebPartClientId, 'PATCH application web.homePageUrl')) {
+    Invoke-MgGraphRequest -Method PATCH `
+      -Uri "https://graph.microsoft.com/v1.0/applications/$($app.id)" `
+      -Body @{ web = @{ homePageUrl = $desiredHomepage } } -ErrorAction Stop
+  }
   Write-Host "  $_chk Homepage URL set." -ForegroundColor Green
 }
 else {
   Write-Host "  $_chk App Registration homepage URL already set." -ForegroundColor Yellow
 }
+#endregion
+
+#region Summary
+# Try to resolve the Function App URL from the Managed Identity's resource ID.
+# A system-assigned MI stores the Azure resource ID in its SP's alternativeNames:
+#   /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/sites/{name}
+# This lets us show a portal deep link without the Azure CLI or Az PowerShell module.
+$_functionAppUrl = $null
+$_functionAppPortalUrl = $null
+if (-not $_whatIf) {
+  try {
+    $_miSpResp = Invoke-MgGraphRequest -Method GET `
+      -Uri "https://graph.microsoft.com/v1.0/servicePrincipals/$ManagedIdentityObjectId`?`$select=alternativeNames" `
+      -OutputType PSObject -ErrorAction Stop
+    if ($_miSpResp -and $_miSpResp.alternativeNames) {
+      # System-assigned MI: one entry in alternativeNames begins with /subscriptions/
+      $_resourceId = $_miSpResp.alternativeNames |
+      Where-Object { $_ -match '^/subscriptions/' } |
+      Select-Object -First 1
+      if ($_resourceId -match
+        '^/subscriptions/([^/]+)/resourceGroups/([^/]+)/providers/Microsoft\.Web/sites/([^/]+)') {
+        $_appName = $Matches[3]
+        $_functionAppUrl = "https://$_appName.azurewebsites.net"
+        # Portal deep link to the Function App Overview (Restart button is in the toolbar)
+        $_functionAppPortalUrl = "https://portal.azure.com/#@$TenantId/resource$_resourceId/appServices"
+      }
+    }
+  }
+  catch {
+    # Non-fatal — just omit the portal deep link from the output
+    Write-Verbose "Could not resolve Function App URL from Managed Identity: $_"
+  }
+}
+
 # Build a summary of assigned and skipped roles for the callout box.
 $summaryLines = @('The Managed Identity can now call Microsoft Graph with:')
 foreach ($r in $assignedRoles) {
@@ -797,6 +1169,28 @@ $summaryLines += 'The App Registration is configured for silent token acquisitio
 $summaryLines += "  - Identifier URI: $expectedUri"
 $summaryLines += "  - Scope 'user_impersonation' exposed and SharePoint pre-authorized."
 $summaryLines += ''
-$summaryLines += 'The SharePoint web part can now acquire tokens silently.'
-$summaryLines += 'No page reloads or consent prompts.'
+$summaryLines += 'Configure the web part (property pane → Guest Sponsor API):'
+if ($_functionAppUrl) {
+  $summaryLines += "  Base URL               : $_functionAppUrl"
+}
+$summaryLines += "  Application (client) ID: $WebPartClientId"
 Write-NextStep @summaryLines
+
+# New Graph permissions require a Function App restart so the managed identity
+# picks them up — the MSAL token cache must be cleared.  Skip this notice when
+# all roles were already present (nothing changed, no restart needed) or when
+# running in WhatIf mode (no real changes were made).
+if ($newlyAssignedRoles.Count -gt 0 -and -not $_whatIf) {
+  Write-Important -Lines @(
+    'New Graph permissions were granted. Restart the Azure Function'
+    'to activate them — its managed identity token must be refreshed.'
+  )
+  if ($_functionAppPortalUrl) {
+    Write-Link -Url $_functionAppPortalUrl `
+      -Text 'Azure portal — Function App (use Restart in the toolbar)'
+  }
+  if ($_functionAppUrl) {
+    Write-Link -Url $_functionAppUrl -Text "Function App: $_functionAppUrl"
+  }
+}
+#endregion

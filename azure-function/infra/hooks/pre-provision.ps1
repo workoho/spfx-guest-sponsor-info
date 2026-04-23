@@ -8,11 +8,13 @@
 #   1. Derive a default Function App name from the azd environment name.
 #   2. Detect or prompt for the SharePoint tenant name.
 #   3. Create (or reuse) the Entra App Registration required for EasyAuth,
-#      and store its client ID as AZURE_FUNCTION_CLIENT_ID in the azd environment.
+#      and store its client ID as AZURE_WEB_PART_CLIENT_ID in the azd environment.
 #
 # All operations are idempotent — safe to re-run on 'azd provision' or 'azd up'.
 
 $ErrorActionPreference = 'Stop'
+
+Set-Location -Path (Resolve-Path -Path (Join-Path -Path $PSScriptRoot -ChildPath '../../..')).Path
 
 $APP_DISPLAY_NAME = 'Guest Sponsor Info - SharePoint Web Part Auth'
 $APP_DESCRIPTION = @(
@@ -25,6 +27,137 @@ $APP_DESCRIPTION = @(
   'Source: https://github.com/workoho/spfx-guest-sponsor-info'
 ) -join ' '
 $envValues = azd env get-values
+
+# ── 0a. Check Azure RBAC permission ─────────────────────────────────────────
+# Contributor (or Owner) on the subscription is needed to register resource
+# providers and to deploy Bicep resources.  The check is informational — a
+# missing role does not abort the script, but it surfaces the gap early so
+# the operator can activate a PIM role or request access before the actual
+# deployment runs.
+Write-Host ''
+Write-Host 'Checking Azure role assignment...'
+$_subIdMatch = ($envValues | Select-String '^AZURE_SUBSCRIPTION_ID="?([^"]+)"?').Matches
+$_subId = if ($_subIdMatch -and $_subIdMatch.Count -gt 0) { $_subIdMatch[0].Groups[1].Value } else { $null }
+if ($_subId) {
+  try {
+    $_userId = az ad signed-in-user show --query id -o tsv 2>$null
+    if ($LASTEXITCODE -eq 0 -and $_userId) {
+      $_rbacRaw = az role assignment list `
+        --scope "/subscriptions/$_subId" `
+        --assignee "$_userId" `
+        --include-inherited `
+        --query "[?contains(['Owner','Contributor'], roleDefinitionName)].roleDefinitionName" `
+        -o tsv 2>$null
+      if ($LASTEXITCODE -eq 0) {
+        $_rbacList = @($_rbacRaw -split "`n" | Where-Object { $_ } | Select-Object -Unique)
+        if ($_rbacList.Count -gt 0) {
+          Write-Host "  + Azure RBAC: $($_rbacList -join ', ') on subscription."
+        }
+        else {
+          Write-Host '  ! Azure RBAC: no Contributor or Owner role found on this subscription.'
+          Write-Host '    Both are required for resource provider registration and Bicep deployment.'
+          Write-Host '    Contact your subscription owner to request Contributor access or activate'
+          Write-Host '    an eligible role via Azure PIM before re-running azd provision.'
+          Write-Host '    Azure PIM: https://portal.azure.com/#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/azurerbac'
+        }
+      }
+      else {
+        Write-Host '  ! Azure RBAC: role listing failed — continuing anyway.'
+        Write-Host '    Required: Contributor or Owner on the subscription.'
+      }
+    }
+    else {
+      Write-Host '  ! Azure RBAC: could not identify the signed-in user — skipping check.'
+      Write-Host '    Required: Contributor or Owner on the subscription.'
+    }
+  }
+  catch {
+    Write-Host '  ! Azure RBAC: check encountered an error — continuing anyway.'
+    Write-Host '    Required: Contributor or Owner on the subscription.'
+  }
+}
+else {
+  Write-Host '  ! Azure RBAC: AZURE_SUBSCRIPTION_ID not yet set — skipping role check.'
+  Write-Host '    Required: Contributor or Owner on the subscription.'
+}
+Write-Host ''
+
+# ── 0. Validate required Azure resource providers ───────────────────────────
+# Keep these defaults aligned with azure-function/infra/main.parameters.json.
+$hostingPlan = 'Consumption'
+$deployAzureMaps = $true
+$requiredProviders = @(
+  'Microsoft.AlertsManagement',
+  'Microsoft.Authorization',
+  'Microsoft.Insights',
+  'Microsoft.ManagedIdentity',
+  'Microsoft.OperationalInsights',
+  'Microsoft.Resources',
+  'Microsoft.Storage',
+  'Microsoft.Web'
+)
+
+if ($hostingPlan -eq 'FlexConsumption') {
+  $requiredProviders += 'Microsoft.ContainerInstance'
+}
+
+if ($deployAzureMaps) {
+  $requiredProviders += 'Microsoft.Maps'
+}
+
+$requiredProviders = $requiredProviders | Sort-Object -Unique
+$missingProviders = @()
+
+Write-Host 'Checking required Azure resource providers...'
+foreach ($provider in $requiredProviders) {
+  $state = az provider show --namespace $provider --query registrationState -o tsv 2>$null
+
+  switch ($state) {
+    'Registered' {
+      Write-Host "  + $provider is registered."
+    }
+    'Registering' {
+      Write-Host "  ! $provider is still registering. Deployment can usually continue."
+    }
+    'NotRegistered' {
+      Write-Host "  ! $provider is not registered."
+      $missingProviders += $provider
+    }
+    'Unregistered' {
+      Write-Host "  ! $provider is not registered."
+      $missingProviders += $provider
+    }
+    '' {
+      Write-Host "  ! $provider returned no state."
+      $missingProviders += $provider
+    }
+    default {
+      Write-Host "  ! $provider returned state: $state"
+      $missingProviders += $provider
+    }
+  }
+}
+
+if ($missingProviders.Count -gt 0) {
+  Write-Host 'Registering missing Azure resource providers...'
+  foreach ($provider in $missingProviders) {
+    Write-Host "  -> az provider register --namespace $provider --wait"
+    try {
+      az provider register --namespace $provider --wait | Out-Null
+      Write-Host "  + $provider registered."
+    }
+    catch {
+      throw @(
+        "Could not register $provider.",
+        'This usually means your account lacks subscription-level register permission.',
+        'Minimum built-in role: Contributor. Owner also works.'
+      ) -join ' '
+    }
+  }
+}
+else {
+  Write-Host '  + All required resource providers are ready.'
+}
 
 # ── 1. Derive a default Function App name ────────────────────────────────────
 if ($envValues -notmatch 'AZURE_FUNCTION_APP_NAME=') {
@@ -41,7 +174,7 @@ if ($envValues -notmatch 'AZURE_SHAREPOINT_TENANT_NAME=') {
     $raw = az rest `
       --method GET `
       --url 'https://graph.microsoft.com/v1.0/organization?$select=verifiedDomains' `
-      --query 'value[0].verifiedDomains[?isDefault].name | [0]' `
+      --query 'value[0].verifiedDomains[?isInitial].name | [0]' `
       -o tsv 2>$null
     $derived = $raw -replace '\.onmicrosoft\.com$', ''
   }
@@ -61,39 +194,112 @@ if ($envValues -notmatch 'AZURE_SHAREPOINT_TENANT_NAME=') {
   }
 }
 
-# ── 3. Create or reuse the App Registration ───────────────────────────────────
+# ── 3. Create or reuse the App Registration ──────────────────────────────────
+# ── 3a. Check Entra role for App Registration ────────────────────────────────
+# Creating or modifying an App Registration requires an active Entra admin
+# role.  'az rest' reuses the already-authenticated az CLI session to query
+# the current user's directory role memberships.  The check is informational
+# — a missing role does not abort the script, but it surfaces the gap early
+# so the operator can activate an eligible PIM role before proceeding.
+Write-Host ''
+Write-Host 'Checking Entra role for App Registration...'
+$_requiredEntraRoles = @(
+  'Cloud Application Administrator'
+  'Application Administrator'
+  'Global Administrator'
+)
+try {
+  $_entraRaw = az rest `
+    --method GET `
+    --url 'https://graph.microsoft.com/v1.0/me/transitiveMemberOf/microsoft.graph.directoryRole?$select=displayName' `
+    --query 'value[*].displayName' `
+    -o tsv 2>$null
+  if ($LASTEXITCODE -eq 0) {
+    $_activeEntraRoles = @(
+      $_entraRaw -split "`n" |
+        Where-Object { $_ } |
+        ForEach-Object { $_.Trim() } |
+        Where-Object { $_requiredEntraRoles -contains $_ }
+    )
+    if ($_activeEntraRoles.Count -gt 0) {
+      Write-Host "  + Entra role: $($_activeEntraRoles -join ', ') — active."
+    }
+    else {
+      Write-Host '  ! Entra role: no required admin role is active for your account.'
+      Write-Host '    Required (one of):'
+      Write-Host '      Cloud Application Administrator'
+      Write-Host '      Application Administrator'
+      Write-Host '      Global Administrator'
+      Write-Host '    If your role is eligible (PIM): activate it before continuing.'
+      Write-Host '    PIM → My roles → Entra roles:'
+      Write-Host '    https://entra.microsoft.com/#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/aadRoles'
+      Write-Host '    The App Registration step below will fail without one of these roles.'
+    }
+  }
+  else {
+    Write-Host '  ! Entra role: check returned an error — continuing anyway.'
+    Write-Host '    Required (one of): Cloud Application Administrator,'
+    Write-Host '    Application Administrator, or Global Administrator.'
+  }
+}
+catch {
+  Write-Host '  ! Entra role: check encountered an error — continuing anyway.'
+  Write-Host '    Required (one of): Cloud Application Administrator,'
+  Write-Host '    Application Administrator, or Global Administrator.'
+}
+Write-Host ''
+
 Write-Host "Checking for existing App Registration '$APP_DISPLAY_NAME'..."
-$existingClientId = az ad app list `
-  --display-name $APP_DISPLAY_NAME `
-  --query '[0].appId' `
-  -o tsv 2>$null
-
-if ($existingClientId) {
-  Write-Host "App Registration already exists. Client ID: $existingClientId"
-  $clientId = $existingClientId
-}
-else {
-  Write-Host "Creating App Registration '$APP_DISPLAY_NAME'..."
-  $clientId = az ad app create `
+try {
+  $existingClientId = az ad app list `
     --display-name $APP_DISPLAY_NAME `
-    --sign-in-audience 'AzureADMyOrg' `
-    --description $APP_DESCRIPTION `
-    --query 'appId' `
-    -o tsv
+    --query '[0].appId' `
+    -o tsv 2>$null
 
-  $appIdUri = "api://guest-sponsor-info-proxy/$clientId"
-  az ad app update --id $clientId --identifier-uris $appIdUri | Out-Null
-  Write-Host "App Registration created. App ID URI: $appIdUri"
+  if ($existingClientId) {
+    Write-Host "App Registration already exists. Client ID: $existingClientId"
+    $clientId = $existingClientId
+  }
+  else {
+    Write-Host "Creating App Registration '$APP_DISPLAY_NAME'..."
+    $clientId = az ad app create `
+      --display-name $APP_DISPLAY_NAME `
+      --sign-in-audience 'AzureADMyOrg' `
+      --description $APP_DESCRIPTION `
+      --query 'appId' `
+      -o tsv
+
+    $appIdUri = "api://guest-sponsor-info-proxy/$clientId"
+    az ad app update --id $clientId --identifier-uris $appIdUri | Out-Null
+    Write-Host "App Registration created. App ID URI: $appIdUri"
+  }
+
+  # Ensure accessTokenAcceptedVersion is set to 2 (v2 tokens — aud = bare clientId).
+  $appObj = az ad app show --id $clientId --query 'api.requestedAccessTokenVersion' -o tsv 2>$null
+  if ($appObj -ne '2') {
+    Write-Host "Setting accessTokenAcceptedVersion to 2..."
+    az rest --method PATCH `
+      --url "https://graph.microsoft.com/v1.0/applications(appId='$clientId')" `
+      --body '{"api":{"requestedAccessTokenVersion":2}}' | Out-Null
+  }
+
+  azd env set AZURE_WEB_PART_CLIENT_ID $clientId
+  Write-Host "AZURE_WEB_PART_CLIENT_ID set to $clientId"
 }
-
-# Ensure accessTokenAcceptedVersion is set to 2 (v2 tokens — aud = bare clientId).
-$appObj = az ad app show --id $clientId --query 'api.requestedAccessTokenVersion' -o tsv 2>$null
-if ($appObj -ne '2') {
-  Write-Host "Setting accessTokenAcceptedVersion to 2..."
-  az rest --method PATCH `
-    --url "https://graph.microsoft.com/v1.0/applications(appId='$clientId')" `
-    --body '{"api":{"requestedAccessTokenVersion":2}}' | Out-Null
+catch {
+  $_errMsg = if ($_.Exception -and $_.Exception.Message) { $_.Exception.Message } else { [string]$_ }
+  if ($_errMsg -match 'Authorization_RequestDenied|Forbidden|Unauthorized|insufficient.privilege|403|401') {
+    Write-Host ''
+    Write-Host 'ERROR: App Registration step failed — your account lacks the required Entra role.' -ForegroundColor Red
+    Write-Host '  Required (one of):' -ForegroundColor Red
+    Write-Host '    Cloud Application Administrator' -ForegroundColor Red
+    Write-Host '    Application Administrator' -ForegroundColor Red
+    Write-Host '    Global Administrator' -ForegroundColor Red
+    Write-Host ''
+    Write-Host '  If your role is eligible (PIM): activate it, then re-run azd provision.' -ForegroundColor Yellow
+    Write-Host '  PIM → My roles → Entra roles:' -ForegroundColor Yellow
+    Write-Host '  https://entra.microsoft.com/#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/aadRoles' -ForegroundColor Yellow
+    exit 1
+  }
+  throw
 }
-
-azd env set AZURE_FUNCTION_CLIENT_ID $clientId
-Write-Host "AZURE_FUNCTION_CLIENT_ID set to $clientId"

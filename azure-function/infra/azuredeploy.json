@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "15270159856813050650"
+      "templateHash": "16086054910493006561"
     },
     "name": "Guest Sponsor API for Microsoft Entra B2B",
     "description": "Deploys an Azure Function App that acts as a Graph API proxy for the Guest Sponsor Info for Microsoft Entra B2B SharePoint web part. Includes a Storage Account, App Service Plan, EasyAuth configuration, Managed Identity role assignments, Log Analytics Workspace, and Application Insights.",
@@ -46,11 +46,11 @@
       "minLength": 2,
       "maxLength": 58
     },
-    "functionClientId": {
+    "webPartClientId": {
       "type": "string",
       "metadata": {
         "category": "Basics",
-        "description": "Client ID of the App Registration created for EasyAuth."
+        "description": "Client ID of the EasyAuth App Registration. The web part acquires delegated tokens against this audience on behalf of the signed-in guest user."
       }
     },
     "hostingPlan": {
@@ -145,6 +145,14 @@
       "metadata": {
         "category": "Monitoring",
         "description": "Enable operational email alert for probable service outage (5xx/504 spike or low success rate)."
+      }
+    },
+    "enableMonitoring": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "category": "Monitoring",
+        "description": "Deploy the monitoring stack (Log Analytics, Application Insights, action groups, and KQL alerts). Default: true."
       }
     },
     "enableAuthConfigRegressionAlert": {
@@ -271,6 +279,14 @@
         "description": "Enable operational alert when a hard-deleted Entra object remains referenced as a sponsor (Graph 404)."
       }
     },
+    "enableFailureAnomaliesAlert": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "category": "Monitoring",
+        "description": "Enable the Application Insights Failure Anomalies smart detector alert rule. Default: false, so the rule stays disabled unless explicitly activated."
+      }
+    },
     "newReleaseAlertEvaluationFrequencyInMinutes": {
       "type": "int",
       "defaultValue": 60,
@@ -365,6 +381,48 @@
     "appServicePlanName": "[format('{0}-plan', parameters('functionAppName'))]",
     "azureMapsName": "[if(empty(parameters('azureMapsAccountName')), toLower(format('maps{0}', uniqueString(resourceGroup().id, parameters('functionAppName')))), toLower(parameters('azureMapsAccountName')))]",
     "deployScriptIdentityResourceId": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-deploy-id', parameters('functionAppName')))]",
+    "sharedAppSettings": [
+      {
+        "name": "AzureWebJobsStorage__accountName",
+        "value": "[if(greater(length(variables('storageAccountName')), 24), substring(variables('storageAccountName'), 0, 24), variables('storageAccountName'))]"
+      },
+      {
+        "name": "AzureWebJobsStorage__credential",
+        "value": "managedidentity"
+      },
+      {
+        "name": "TENANT_ID",
+        "value": "[parameters('tenantId')]"
+      },
+      {
+        "name": "ALLOWED_AUDIENCE",
+        "value": "[parameters('webPartClientId')]"
+      },
+      {
+        "name": "CORS_ALLOWED_ORIGIN",
+        "value": "[format('https://{0}.sharepoint.com', parameters('tenantName'))]"
+      },
+      {
+        "name": "SPONSOR_LOOKUP_TIMEOUT_MS",
+        "value": "5000"
+      },
+      {
+        "name": "BATCH_TIMEOUT_MS",
+        "value": "4000"
+      },
+      {
+        "name": "PRESENCE_TIMEOUT_MS",
+        "value": "2500"
+      },
+      {
+        "name": "NODE_ENV",
+        "value": "production"
+      },
+      {
+        "name": "APP_VERSION",
+        "value": "[parameters('appVersion')]"
+      }
+    ],
     "consumptionOnlyAppSettings": [
       {
         "name": "FUNCTIONS_EXTENSION_VERSION",
@@ -392,11 +450,11 @@
         "azureActiveDirectory": {
           "enabled": true,
           "registration": {
-            "clientId": "[parameters('functionClientId')]",
+            "clientId": "[parameters('webPartClientId')]",
             "openIdIssuer": "[format('https://sts.windows.net/{0}/', parameters('tenantId'))]"
           },
           "validation": {
-            "allowedAudiences": ["[parameters('functionClientId')]"]
+            "allowedAudiences": ["[parameters('webPartClientId')]"]
           }
         }
       },
@@ -590,7 +648,7 @@
         "httpsOnly": true,
         "dailyMemoryTimeQuota": "[parameters('dailyMemoryTimeQuotaGBs')]",
         "siteConfig": {
-          "appSettings": "[concat(createArray(createObject('name', 'AzureWebJobsStorage__accountName', 'value', if(greater(length(variables('storageAccountName')), 24), substring(variables('storageAccountName'), 0, 24), variables('storageAccountName'))), createObject('name', 'AzureWebJobsStorage__credential', 'value', 'managedidentity'), createObject('name', 'TENANT_ID', 'value', parameters('tenantId')), createObject('name', 'ALLOWED_AUDIENCE', 'value', parameters('functionClientId')), createObject('name', 'CORS_ALLOWED_ORIGIN', 'value', format('https://{0}.sharepoint.com', parameters('tenantName'))), createObject('name', 'SPONSOR_LOOKUP_TIMEOUT_MS', 'value', '5000'), createObject('name', 'BATCH_TIMEOUT_MS', 'value', '4000'), createObject('name', 'PRESENCE_TIMEOUT_MS', 'value', '2500'), createObject('name', 'NODE_ENV', 'value', 'production'), createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', reference(resourceId('Microsoft.Resources/deployments', 'monitoring'), '2025-04-01').outputs.appInsightsConnectionString.value), createObject('name', 'APP_VERSION', 'value', parameters('appVersion'))), variables('consumptionOnlyAppSettings'))]",
+          "appSettings": "[concat(concat(variables('sharedAppSettings'), if(parameters('enableMonitoring'), createArray(createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', if(parameters('enableMonitoring'), reference(resourceId('Microsoft.Resources/deployments', 'monitoring'), '2025-04-01').outputs.appInsightsConnectionString.value, ''))), createArray())), variables('consumptionOnlyAppSettings'))]",
           "cors": {
             "allowedOrigins": ["[format('https://{0}.sharepoint.com', parameters('tenantName'))]"],
             "supportCredentials": false
@@ -638,52 +696,7 @@
           }
         },
         "siteConfig": {
-          "appSettings": [
-            {
-              "name": "AzureWebJobsStorage__accountName",
-              "value": "[if(greater(length(variables('storageAccountName')), 24), substring(variables('storageAccountName'), 0, 24), variables('storageAccountName'))]"
-            },
-            {
-              "name": "AzureWebJobsStorage__credential",
-              "value": "managedidentity"
-            },
-            {
-              "name": "TENANT_ID",
-              "value": "[parameters('tenantId')]"
-            },
-            {
-              "name": "ALLOWED_AUDIENCE",
-              "value": "[parameters('functionClientId')]"
-            },
-            {
-              "name": "CORS_ALLOWED_ORIGIN",
-              "value": "[format('https://{0}.sharepoint.com', parameters('tenantName'))]"
-            },
-            {
-              "name": "SPONSOR_LOOKUP_TIMEOUT_MS",
-              "value": "5000"
-            },
-            {
-              "name": "BATCH_TIMEOUT_MS",
-              "value": "4000"
-            },
-            {
-              "name": "PRESENCE_TIMEOUT_MS",
-              "value": "2500"
-            },
-            {
-              "name": "NODE_ENV",
-              "value": "production"
-            },
-            {
-              "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
-              "value": "[reference(resourceId('Microsoft.Resources/deployments', 'monitoring'), '2025-04-01').outputs.appInsightsConnectionString.value]"
-            },
-            {
-              "name": "APP_VERSION",
-              "value": "[parameters('appVersion')]"
-            }
-          ],
+          "appSettings": "[concat(variables('sharedAppSettings'), if(parameters('enableMonitoring'), createArray(createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', if(parameters('enableMonitoring'), reference(resourceId('Microsoft.Resources/deployments', 'monitoring'), '2025-04-01').outputs.appInsightsConnectionString.value, ''))), createArray()))]",
           "cors": {
             "allowedOrigins": ["[format('https://{0}.sharepoint.com', parameters('tenantName'))]"],
             "supportCredentials": false
@@ -810,6 +823,7 @@
       ]
     },
     {
+      "condition": "[parameters('enableMonitoring')]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "monitoring",
@@ -879,6 +893,9 @@
           "enableBrokenSponsorAlert": {
             "value": "[parameters('enableBrokenSponsorAlert')]"
           },
+          "enableFailureAnomaliesAlert": {
+            "value": "[parameters('enableFailureAnomaliesAlert')]"
+          },
           "operationalActionGroupResourceIds": {
             "value": "[parameters('operationalActionGroupResourceIds')]"
           },
@@ -902,7 +919,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "10085091751666701476"
+              "templateHash": "9261263988806336922"
             },
             "name": "Guest Sponsor API for Microsoft Entra B2B - Monitoring",
             "description": "Log Analytics Workspace, Application Insights, Action Groups, and KQL alert rules."
@@ -959,6 +976,13 @@
               "defaultValue": false,
               "metadata": {
                 "description": "Enable operational alert when a hard-deleted Entra object remains referenced as a sponsor (Graph 404)."
+              }
+            },
+            "enableFailureAnomaliesAlert": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Deploy and enable the Application Insights Failure Anomalies smart detector rule. Default: false, so this AlertsManagement resource is only created when explicitly requested."
               }
             },
             "alertEvaluationFrequencyInMinutes": {
@@ -1183,6 +1207,31 @@
               },
               "dependsOn": [
                 "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsWorkspaceName'))]"
+              ]
+            },
+            {
+              "condition": "[parameters('enableFailureAnomaliesAlert')]",
+              "type": "microsoft.alertsManagement/smartDetectorAlertRules",
+              "apiVersion": "2021-04-01",
+              "name": "[format('Failure Anomalies - {0}', variables('appInsightsResourceName'))]",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "actionGroups": {
+                  "groupIds": "[variables('effectiveOperationalActionGroupIds')]"
+                },
+                "description": "Application Insights Failure Anomalies smart detector. Created only when explicitly requested.",
+                "detector": {
+                  "id": "FailureAnomaliesDetector"
+                },
+                "frequency": "PT1M",
+                "scope": ["[resourceId('Microsoft.Insights/components', variables('appInsightsResourceName'))]"],
+                "severity": "Sev2",
+                "state": "Enabled"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Insights/components', variables('appInsightsResourceName'))]",
+                "[resourceId('Microsoft.Insights/actionGroups', format('{0}-ops-ag', parameters('functionAppName')))]"
               ]
             },
             {
@@ -1430,9 +1479,9 @@
     "appInsightsName": {
       "type": "string",
       "metadata": {
-        "description": "Name of the Application Insights component — open in the Azure Portal for live telemetry."
+        "description": "Name of the Application Insights component (empty when enableMonitoring=false)."
       },
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'monitoring'), '2025-04-01').outputs.appInsightsName.value]"
+      "value": "[if(parameters('enableMonitoring'), reference(resourceId('Microsoft.Resources/deployments', 'monitoring'), '2025-04-01').outputs.appInsightsName.value, '')]"
     },
     "hostingPlan": {
       "type": "string",

@@ -69,6 +69,27 @@ jobs:
         working-directory: azure-function
         run: npm run package
 
+      # Bundle only the Bicep template sources and their modules.
+      # azd hooks live under infra/hooks via azure.yaml and are intentionally
+      # excluded from this archive because they are not part of the Bicep file graph.
+      - name: Package Bicep template as ZIP
+        run: |
+          rm -f azure-function/guest-sponsor-info-bicep.zip
+          cd azure-function/infra
+          zip -r ../guest-sponsor-info-bicep.zip main.bicep main.parameters.json modules
+
+      # Bundle the minimal azd deployment sources: azure.yaml, the Bicep template,
+      # and the pre/post-provision hooks referenced by azure.yaml.
+      - name: Package azd deployment bundle as ZIP
+        run: |
+          rm -f guest-sponsor-info-azd.zip
+          zip -r guest-sponsor-info-azd.zip \
+            azure.yaml \
+            azure-function/infra/main.bicep \
+            azure-function/infra/main.parameters.json \
+            azure-function/infra/modules \
+            azure-function/infra/hooks
+
       # Compile the Bicep infra template to ARM JSON for the Deploy-to-Azure button.
       # Uses the Azure CLI (pre-installed on GitHub runners) instead of the
       # third-party anthony-c-martin/setup-bicep action — az bicep is maintained
@@ -111,9 +132,8 @@ jobs:
           files: |
             sharepoint/solution/guest-sponsor-info.sppkg
             azure-function/guest-sponsor-info-function.zip
+            azure-function/guest-sponsor-info-bicep.zip
+            guest-sponsor-info-azd.zip
             azure-function/infra/azuredeploy.json
-            azure-function/infra/main.bicep
-            azure-function/infra/main.parameters.json
-            azure-function/infra/modules/monitoring.bicep
             azure-function/infra/setup-app-registration.ps1
             azure-function/infra/setup-graph-permissions.ps1

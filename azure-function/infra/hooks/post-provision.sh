@@ -23,12 +23,21 @@ set -euo pipefail
 # shellcheck disable=SC1090  # process substitution: no static path to specify
 source <(azd env get-values)
 
-MANAGED_IDENTITY_OBJECT_ID="${MANAGED_IDENTITY_OBJECT_ID:?Bicep output MANAGED_IDENTITY_OBJECT_ID missing — did provisioning succeed?}"
+# azd writes Bicep output names verbatim (camelCase) to the .env file and
+# preloads them into the hook process environment with the same casing.
+# Create SCREAMING_SNAKE_CASE aliases so the rest of this script uses a
+# consistent naming convention alongside the AZURE_* env vars.
+MANAGED_IDENTITY_OBJECT_ID="${managedIdentityObjectId:-${MANAGED_IDENTITY_OBJECT_ID:-}}"
+SPONSOR_API_URL="${sponsorApiUrl:-${SPONSOR_API_URL:-}}"
+
+MANAGED_IDENTITY_OBJECT_ID="${MANAGED_IDENTITY_OBJECT_ID:?Bicep output managedIdentityObjectId missing — did provisioning succeed?}"
 
 GRAPH_APP_ID="00000003-0000-0000-c000-000000000000"
 
 echo "Resolving Microsoft Graph service principal..."
 GRAPH_SP_ID=$(az ad sp show --id "${GRAPH_APP_ID}" --query "id" -o tsv)
+
+NEW_ROLES_ASSIGNED=false
 
 # Resolve a Graph app role ID by permission name (Application type only).
 resolve_role_id() {
@@ -73,6 +82,7 @@ assign_role() {
       --body "{\"principalId\":\"${MANAGED_IDENTITY_OBJECT_ID}\",\"resourceId\":\"${GRAPH_SP_ID}\",\"appRoleId\":\"${ROLE_ID}\"}" \
       >/dev/null
     echo "  ${ROLE_NAME} assigned."
+    NEW_ROLES_ASSIGNED=true
   fi
 }
 
@@ -80,13 +90,34 @@ assign_role "User.Read.All"
 assign_role "Presence.Read.All" "true"
 assign_role "MailboxSettings.Read" "true"
 
+# ── Restart Function App if new permissions were granted ─────────────────────
+# New Graph app role assignments are not picked up until the managed identity
+# token cache is cleared — a restart is the fastest way to do that.
+if [ "${NEW_ROLES_ASSIGNED}" = "true" ]; then
+  # AZURE_FUNCTION_APP_NAME is set by the pre-provision hook.
+  # AZURE_RESOURCE_GROUP is set by azd from the environment configuration.
+  if [ -n "${AZURE_FUNCTION_APP_NAME:-}" ] && [ -n "${AZURE_RESOURCE_GROUP:-}" ]; then
+    echo ""
+    echo "Restarting Function App '${AZURE_FUNCTION_APP_NAME}' to activate new Graph permissions..."
+    az functionapp restart \
+      --name "${AZURE_FUNCTION_APP_NAME}" \
+      --resource-group "${AZURE_RESOURCE_GROUP}" \
+      >/dev/null
+    echo "  Function App restarted."
+  else
+    echo ""
+    echo "Note: New Graph permissions were granted. Restart the Function App manually"
+    echo "to activate them (AZURE_FUNCTION_APP_NAME or AZURE_RESOURCE_GROUP not set)."
+  fi
+fi
+
 # ── Print web part configuration values ──────────────────────────────────────
 echo ""
 echo "Paste these values into the SPFx web part property pane"
 echo "(Edit web part → Guest Sponsor API):"
 echo ""
 echo "  Guest Sponsor API Base URL              : ${SPONSOR_API_URL}"
-echo "  Guest Sponsor API Client ID (App Reg.)  : ${AZURE_FUNCTION_CLIENT_ID}"
+echo "  Guest Sponsor API Client ID (App Reg.)  : ${AZURE_WEB_PART_CLIENT_ID}"
 echo ""
 echo "Note: Storage role assignment propagation can take 1–2 minutes."
 echo "If the function returns errors immediately after deployment,"

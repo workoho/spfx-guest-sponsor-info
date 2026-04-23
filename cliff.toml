@@ -30,8 +30,9 @@ footer = """
 |---|---|
 | `guest-sponsor-info.sppkg` | SharePoint web part — upload to App Catalog |
 | `guest-sponsor-info-function.zip` | Azure Function proxy — deploy via ARM template or Azure Portal |
+| `guest-sponsor-info-bicep.zip` | Complete Bicep source template including parameter file and modules |
+| `guest-sponsor-info-azd.zip` | Minimal azd deployment bundle with azure.yaml, Bicep files, and hooks |
 | `azuredeploy.json` | ARM template for the Azure Function proxy |
-| `main.bicep` | Bicep source template — for customisation before compiling to ARM |
 | `setup-app-registration.ps1` | Creates the Entra App Registration for EasyAuth |
 | `setup-graph-permissions.ps1` | Grants Graph permissions and configures silent token acquisition |
 

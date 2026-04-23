@@ -144,7 +144,8 @@ define([], function () {
     AdvancedDisplayGroupName: "Zaawansowane opcje wyświetlania",
     FunctionGroupName: "Guest Sponsor API",
     FunctionUrlFieldLabel: "Podstawowy adres URL",
-    FunctionClientIdFieldLabel: "Identyfikator aplikacji (klienta)",
+    WebPartClientIdFieldLabel: "Identyfikator aplikacji (klienta)",
+    SessionCacheTtlMinutesFieldLabel: "Czas trwania pamięci podręcznej sesji (minuty)",
     PpClientIdHintLabel: "Gdzie znajd\u0119 identyfikator klienta?",
     PpClientIdHintBody:
       "Skopiuj identyfikator klienta (identyfikator aplikacji) z rejestracji aplikacji utworzonej podczas konfiguracji.",

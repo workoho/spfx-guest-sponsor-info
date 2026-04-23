@@ -20,16 +20,21 @@
 
 $ErrorActionPreference = 'Stop'
 
-# Load azd environment (includes Bicep outputs converted to SCREAMING_SNAKE_CASE).
+# Load azd environment. azd writes Bicep output names verbatim (camelCase) to
+# the .env file and preloads them into the hook process with the same casing.
 foreach ($line in (azd env get-values)) {
   if ($line -match '^([A-Za-z_][A-Za-z0-9_]*)=(.*)$') {
     [Environment]::SetEnvironmentVariable($Matches[1], $Matches[2].Trim('"'))
   }
 }
+# Create SCREAMING_SNAKE_CASE aliases for camelCase Bicep outputs so the rest of
+# this script uses a consistent naming convention alongside the AZURE_* env vars.
+if (-not $env:MANAGED_IDENTITY_OBJECT_ID) { $env:MANAGED_IDENTITY_OBJECT_ID = $env:managedIdentityObjectId }
+if (-not $env:SPONSOR_API_URL) { $env:SPONSOR_API_URL = $env:sponsorApiUrl }
 
 $miObjectId = $env:MANAGED_IDENTITY_OBJECT_ID
 if (-not $miObjectId) {
-  throw "Bicep output MANAGED_IDENTITY_OBJECT_ID is missing — did provisioning succeed?"
+  throw "Bicep output managedIdentityObjectId is missing — did provisioning succeed?"
 }
 
 $GRAPH_APP_ID = '00000003-0000-0000-c000-000000000000'
@@ -42,6 +47,7 @@ $roles = @(
 Write-Host "Resolving Microsoft Graph service principal..."
 $graphSpId = az ad sp show --id $GRAPH_APP_ID --query 'id' -o tsv
 
+$newRolesAssigned = $false
 foreach ($role in $roles) {
   # Resolve the app role ID dynamically by name — avoids hardcoded GUIDs.
   $roleId = az rest `
@@ -77,6 +83,26 @@ foreach ($role in $roles) {
       --body "{`"principalId`":`"$miObjectId`",`"resourceId`":`"$graphSpId`",`"appRoleId`":`"$roleId`"}" `
     | Out-Null
     Write-Host "  $($role.Name) assigned."
+    $newRolesAssigned = $true
+  }
+}
+
+# ── Restart Function App if new permissions were granted ─────────────────────
+# New Graph app role assignments are not picked up until the managed identity
+# token cache is cleared — a restart is the fastest way to do that.
+if ($newRolesAssigned) {
+  $functionAppName = $env:AZURE_FUNCTION_APP_NAME
+  $resourceGroup = $env:AZURE_RESOURCE_GROUP
+  if ($functionAppName -and $resourceGroup) {
+    Write-Host ''
+    Write-Host "Restarting Function App '$functionAppName' to activate new Graph permissions..."
+    az functionapp restart --name $functionAppName --resource-group $resourceGroup | Out-Null
+    Write-Host '  Function App restarted.'
+  }
+  else {
+    Write-Host ''
+    Write-Host "Note: New Graph permissions were granted. Restart the Function App manually"
+    Write-Host "to activate them (AZURE_FUNCTION_APP_NAME or AZURE_RESOURCE_GROUP not set)."
   }
 }
 
@@ -86,7 +112,7 @@ Write-Host 'Paste these values into the SPFx web part property pane'
 Write-Host '(Edit web part → Guest Sponsor API):'
 Write-Host ''
 Write-Host "  Guest Sponsor API Base URL              : $($env:SPONSOR_API_URL)"
-Write-Host "  Guest Sponsor API Client ID (App Reg.)  : $($env:AZURE_FUNCTION_CLIENT_ID)"
+Write-Host "  Guest Sponsor API Client ID (App Reg.)  : $($env:AZURE_WEB_PART_CLIENT_ID)"
 Write-Host ''
 Write-Host 'Note: Storage role assignment propagation can take 1-2 minutes.'
 Write-Host 'If the function returns errors immediately after deployment,'

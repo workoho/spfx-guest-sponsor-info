@@ -143,7 +143,8 @@ define([], function () {
     AdvancedDisplayGroupName: "Opzioni di visualizzazione avanzate",
     FunctionGroupName: "Guest Sponsor API",
     FunctionUrlFieldLabel: "URL di base",
-    FunctionClientIdFieldLabel: "ID applicazione (client)",
+    WebPartClientIdFieldLabel: "ID applicazione (client)",
+    SessionCacheTtlMinutesFieldLabel: "Durata della cache di sessione (minuti)",
     PpClientIdHintLabel: "Dove trovo l'ID client?",
     PpClientIdHintBody:
       "Copiare l'ID client (ID applicazione) dalla registrazione applicazione creata durante la configurazione.",

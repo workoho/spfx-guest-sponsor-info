@@ -96,7 +96,7 @@ This is defence-in-depth on top of EasyAuth's own issuer/audience validation.
 | **GUID validation** | Every OID is validated against a strict GUID regex before being embedded in a Graph API URL. |
 | **CORS** | Restricted to `CORS_ALLOWED_ORIGIN` (the tenant's SharePoint origin). |
 | **Caller OID redacted in logs** | Only the first 8 and last 4 characters are logged. |
-| **Rate limiting** | Anonymous callers: 10 req / 60 s per IP (always active). Authenticated callers: disabled by default; configurable via `RATE_LIMIT_ENABLED`. |
+| **Rate limiting** | Anonymous callers: 5 req / 60 s per IP (always active). Authenticated callers: disabled by default; when enabled, each endpoint is rate-limited independently per user. |
 | **Response data validation** | Graph response fields (e.g. `availability`) are matched against an allowlist regex before being forwarded to the client. |
 
 **Overall risk level: Low.**
@@ -112,7 +112,7 @@ This is defence-in-depth on top of EasyAuth's own issuer/audience validation.
 | `BATCH_TIMEOUT_MS` | | `4000` | Timeout in ms for the Graph `$batch` call (profiles + manager). |
 | `PRESENCE_TIMEOUT_MS` | | `2500` | Timeout in ms for the presence Graph call. |
 | `RATE_LIMIT_ENABLED` | | `false` | Enable per-user rate limiting for authenticated callers. |
-| `RATE_LIMIT_MAX_REQUESTS` | | `20` | Max requests per window when rate limiting is enabled. |
+| `RATE_LIMIT_MAX_REQUESTS` | | `12` | Max requests per user and endpoint per window when rate limiting is enabled. |
 | `RATE_LIMIT_WINDOW_MS` | | `60000` | Sliding window in ms for rate limiting. |
 | `MOCK_MODE` | | `false` | Return demo data without Graph credentials. Only accepted when `NODE_ENV` is not `production`. |
 

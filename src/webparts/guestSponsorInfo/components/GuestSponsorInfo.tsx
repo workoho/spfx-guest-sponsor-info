@@ -17,6 +17,125 @@ import SponsorCard from './SponsorCard';
 import WelcomeDialog from './WelcomeDialog';
 import { griffelRenderer } from '../griffelRenderer';
 
+const DEFAULT_SESSION_CACHE_TTL_MINUTES = 30;
+const MIN_SESSION_CACHE_TTL_MINUTES = 2;
+const MAX_SESSION_CACHE_TTL_MINUTES = 480;
+const SESSION_CACHE_KEY_PREFIX = 'gsi:session-cache';
+const SPONSOR_CACHE_CHANNEL_PREFIX = 'gsi:sponsor-cache';
+const SPONSOR_CACHE_PEER_TIMEOUT_MS = 25;
+
+interface ICachedSponsorsPayload {
+  ts: number;
+  clientVersion: string;
+  activeSponsors: ISponsor[];
+  unavailableSponsors: ISponsor[];
+  sponsorOrder: string[];
+  guestHasTeamsAccess?: boolean;
+  presenceToken?: string;
+  functionVersion?: string;
+}
+
+type ISponsorCacheWritePayload = Omit<ICachedSponsorsPayload, 'ts'>;
+
+type ISponsorCacheMessage =
+  | { type: 'request'; cacheKey: string; requestId: string }
+  | { type: 'response'; cacheKey: string; requestId: string; payload: ICachedSponsorsPayload }
+  | { type: 'invalidate'; cacheKey: string };
+
+function buildSponsorCacheKey(
+  loginName: string,
+  functionUrl: string,
+  sponsorFilter: 'any' | 'exchange' | 'teams',
+  requireUserMailbox: boolean
+): string {
+  const normalizedUrl = functionUrl.replace(/\/+$/, '').toLowerCase();
+  const normalizedLogin = loginName.trim().toLowerCase();
+  return `gsi:sponsors:${normalizedLogin}:${normalizedUrl}:${sponsorFilter}:${requireUserMailbox ? 'mailbox' : 'license'}`;
+}
+
+function getSessionCacheTtlMs(minutes: number | undefined): number {
+  const fallback = minutes ?? DEFAULT_SESSION_CACHE_TTL_MINUTES;
+  const normalized = Number.isFinite(fallback) ? Math.floor(fallback) : DEFAULT_SESSION_CACHE_TTL_MINUTES;
+  const clamped = Math.min(MAX_SESSION_CACHE_TTL_MINUTES, Math.max(MIN_SESSION_CACHE_TTL_MINUTES, normalized));
+  return clamped * 60 * 1000;
+}
+
+function getSponsorCacheStorageKey(cacheKey: string): string {
+  return `${SESSION_CACHE_KEY_PREFIX}:${cacheKey}`;
+}
+
+function validateSponsorCachePayload(
+  parsed: Partial<ICachedSponsorsPayload>,
+  cacheTtlMs: number,
+  clientVersion: string
+): ICachedSponsorsPayload | undefined {
+  if (
+    typeof parsed.ts !== 'number' ||
+    Date.now() - parsed.ts > cacheTtlMs ||
+    parsed.clientVersion !== clientVersion ||
+    (typeof parsed.functionVersion === 'string' && parsed.functionVersion !== clientVersion)
+  ) {
+    return undefined;
+  }
+
+  return {
+    ts: parsed.ts,
+    clientVersion,
+    activeSponsors: Array.isArray(parsed.activeSponsors) ? parsed.activeSponsors as ISponsor[] : [],
+    unavailableSponsors: Array.isArray(parsed.unavailableSponsors) ? parsed.unavailableSponsors as ISponsor[] : [],
+    sponsorOrder: Array.isArray(parsed.sponsorOrder)
+      ? parsed.sponsorOrder.filter((id): id is string => typeof id === 'string')
+      : [],
+    guestHasTeamsAccess: typeof parsed.guestHasTeamsAccess === 'boolean'
+      ? parsed.guestHasTeamsAccess
+      : undefined,
+    presenceToken: typeof parsed.presenceToken === 'string' ? parsed.presenceToken : undefined,
+    functionVersion: typeof parsed.functionVersion === 'string' ? parsed.functionVersion : undefined,
+  };
+}
+
+function createSponsorCacheChannel(cacheKey: string): BroadcastChannel | undefined {
+  if (typeof BroadcastChannel === 'undefined') return undefined;
+  try {
+    return new BroadcastChannel(`${SPONSOR_CACHE_CHANNEL_PREFIX}:${cacheKey}`);
+  } catch {
+    return undefined;
+  }
+}
+
+function deleteSponsorCache(cacheKey: string): void {
+  try {
+    sessionStorage.removeItem(getSponsorCacheStorageKey(cacheKey));
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+function readSponsorCache(cacheKey: string, cacheTtlMs: number, clientVersion: string): ICachedSponsorsPayload | undefined {
+  try {
+    const storageKey = getSponsorCacheStorageKey(cacheKey);
+    const raw = sessionStorage.getItem(storageKey);
+    if (!raw) return undefined;
+
+    const validated = validateSponsorCachePayload(JSON.parse(raw) as Partial<ICachedSponsorsPayload>, cacheTtlMs, clientVersion);
+    if (!validated) {
+      sessionStorage.removeItem(storageKey);
+      return undefined;
+    }
+    return validated;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeSponsorCache(cacheKey: string, payload: ISponsorCacheWritePayload): void {
+  try {
+    sessionStorage.setItem(getSponsorCacheStorageKey(cacheKey), JSON.stringify({ ts: Date.now(), ...payload }));
+  } catch {
+    // Ignore storage quota / browser privacy mode failures.
+  }
+}
+
 const useWebPartStyles = makeStyles({
   webPart: {
     // No top/side padding — the SharePoint section provides uniform spacing on
@@ -454,6 +573,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   useInformalAddress,
   sponsorFilter,
   requireUserMailbox,
+  sessionCacheTtlMinutes,
   clientVersion,
   onProxyStatusChange,
   onVersionMismatch,
@@ -485,20 +605,30 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   const isGuest = isExternalGuestUser || isGuestUser(loginName);
   const isEditMode = displayMode === DisplayMode.Edit;
   const classes = useWebPartStyles();
+  const sponsorCacheTtlMs = getSessionCacheTtlMs(sessionCacheTtlMinutes);
+  const sponsorCacheKey = !isEditMode && !mockMode && isGuest && functionUrl
+    ? buildSponsorCacheKey(loginName, functionUrl, sponsorFilter, requireUserMailbox)
+    : undefined;
+  const initialSponsorCacheRef = React.useRef<ICachedSponsorsPayload | undefined>(
+    sponsorCacheKey ? readSponsorCache(sponsorCacheKey, sponsorCacheTtlMs, clientVersion) : undefined
+  );
+  const initialSponsorCache = initialSponsorCacheRef.current;
 
-  const [sponsors, setSponsors] = React.useState<ISponsor[]>([]);
-  const [sponsorOrder, setSponsorOrder] = React.useState<string[]>([]);
-  const [unavailableSponsors, setUnavailableSponsors] = React.useState<ISponsor[]>([]);
+  const [sponsors, setSponsors] = React.useState<ISponsor[]>(initialSponsorCache?.activeSponsors ?? []);
+  const [sponsorOrder, setSponsorOrder] = React.useState<string[]>(initialSponsorCache?.sponsorOrder ?? []);
+  const [unavailableSponsors, setUnavailableSponsors] = React.useState<ISponsor[]>(initialSponsorCache?.unavailableSponsors ?? []);
   // Start in loading state immediately for guests and demo mode so the shimmer
   // is visible on the very first render — before the first useEffect tick.
   // Without this, React paints a brief "no sponsors" flash before the effect
   // can call setLoading(true).
-  const [loading, setLoading] = React.useState(!isEditMode && (mockMode || isGuest));
+  const [loading, setLoading] = React.useState(!isEditMode && (mockMode || (isGuest && !initialSponsorCache)));
   const [error, setError] = React.useState<string | undefined>(undefined);
   const [isPermissionError, setIsPermissionError] = React.useState(false);
   const [retryCount, setRetryCount] = React.useState(0);
   const [hasActiveCard, setHasActiveCard] = React.useState(false);
-  const [guestHasTeamsAccess, setGuestHasTeamsAccess] = React.useState<boolean | undefined>(undefined);
+  const [guestHasTeamsAccess, setGuestHasTeamsAccess] = React.useState<boolean | undefined>(
+    initialSponsorCache?.guestHasTeamsAccess
+  );
   const [versionMismatch, setVersionMismatch] = React.useState(false);
 
   // First-run welcome wizard: shown in edit mode until the admin completes it.
@@ -528,11 +658,143 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   };
   // Signed token issued by getGuestSponsors; passed to getPresence so the function
   // can validate sponsor IDs without server-side state or extra Graph calls.
-  const [presenceToken, setPresenceToken] = React.useState<string | undefined>(undefined);
+  const [presenceToken, setPresenceToken] = React.useState<string | undefined>(initialSponsorCache?.presenceToken);
 
   // Ref that always holds the IDs of currently displayed sponsors.
   // The presence refresh interval reads this without capturing sponsors in its closure.
-  const sponsorIdsRef = React.useRef<string[]>([]);
+  const sponsorIdsRef = React.useRef<string[]>(initialSponsorCache?.activeSponsors.map(s => s.id) ?? []);
+  const sponsorCacheMetaRef = React.useRef<ISponsorCacheWritePayload | undefined>(
+    initialSponsorCache
+      ? {
+          activeSponsors: initialSponsorCache.activeSponsors,
+          clientVersion,
+          unavailableSponsors: initialSponsorCache.unavailableSponsors,
+          sponsorOrder: initialSponsorCache.sponsorOrder,
+          guestHasTeamsAccess: initialSponsorCache.guestHasTeamsAccess,
+          presenceToken: initialSponsorCache.presenceToken,
+          functionVersion: initialSponsorCache.functionVersion,
+        }
+      : undefined
+  );
+  const sponsorCacheDisabledRef = React.useRef(false);
+  const sponsorCacheChannelRef = React.useRef<BroadcastChannel | undefined>(undefined);
+  const pendingSponsorCacheRequestsRef = React.useRef(new Map<string, {
+    resolve: (payload: ICachedSponsorsPayload | undefined) => void;
+    timeoutId: ReturnType<typeof setTimeout>;
+  }>());
+  const primePresenceRefreshRef = React.useRef(!!initialSponsorCache);
+
+  const invalidateSponsorCache = (): void => {
+    if (!sponsorCacheKey) return;
+    sponsorCacheDisabledRef.current = true;
+    sponsorCacheMetaRef.current = undefined;
+    deleteSponsorCache(sponsorCacheKey);
+    sponsorCacheChannelRef.current?.postMessage({ type: 'invalidate', cacheKey: sponsorCacheKey } satisfies ISponsorCacheMessage);
+  };
+
+  const requestSponsorCacheFromPeers = (): Promise<ICachedSponsorsPayload | undefined> => {
+    const channel = sponsorCacheChannelRef.current;
+    if (!channel || !sponsorCacheKey || sponsorCacheDisabledRef.current) {
+      return Promise.resolve(undefined);
+    }
+
+    const requestId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    return new Promise(resolve => {
+      const timeoutId = setTimeout(() => {
+        pendingSponsorCacheRequestsRef.current.delete(requestId);
+        resolve(undefined);
+      }, SPONSOR_CACHE_PEER_TIMEOUT_MS);
+
+      pendingSponsorCacheRequestsRef.current.set(requestId, { resolve, timeoutId });
+      channel.postMessage({ type: 'request', cacheKey: sponsorCacheKey, requestId } satisfies ISponsorCacheMessage);
+    });
+  };
+
+  const persistSponsorCache = (
+    activeSponsors: ISponsor[],
+    overrides: Partial<Omit<ISponsorCacheWritePayload, 'activeSponsors'>> = {}
+  ): void => {
+    if (!sponsorCacheKey || sponsorCacheDisabledRef.current) return;
+    const payload: ISponsorCacheWritePayload = {
+      activeSponsors,
+      clientVersion,
+      unavailableSponsors: 'unavailableSponsors' in overrides
+        ? overrides.unavailableSponsors ?? []
+        : sponsorCacheMetaRef.current?.unavailableSponsors ?? [],
+      sponsorOrder: 'sponsorOrder' in overrides
+        ? overrides.sponsorOrder ?? activeSponsors.map(s => s.id)
+        : sponsorCacheMetaRef.current?.sponsorOrder ?? activeSponsors.map(s => s.id),
+      guestHasTeamsAccess: 'guestHasTeamsAccess' in overrides
+        ? overrides.guestHasTeamsAccess
+        : sponsorCacheMetaRef.current?.guestHasTeamsAccess,
+      presenceToken: 'presenceToken' in overrides
+        ? overrides.presenceToken
+        : sponsorCacheMetaRef.current?.presenceToken,
+      functionVersion: 'functionVersion' in overrides
+        ? overrides.functionVersion
+        : sponsorCacheMetaRef.current?.functionVersion,
+    };
+    if (payload.functionVersion && payload.functionVersion !== clientVersion) {
+      invalidateSponsorCache();
+      return;
+    }
+    sponsorCacheMetaRef.current = payload;
+    writeSponsorCache(sponsorCacheKey, payload);
+  };
+
+  React.useEffect(() => {
+    if (!sponsorCacheKey) return;
+
+    const channel = createSponsorCacheChannel(sponsorCacheKey);
+    sponsorCacheChannelRef.current = channel;
+    if (!channel) {
+      return () => { sponsorCacheChannelRef.current = undefined; };
+    }
+
+    channel.onmessage = (event: MessageEvent<ISponsorCacheMessage>) => {
+      const message = event.data;
+      if (!message || message.cacheKey !== sponsorCacheKey) return;
+
+      if (message.type === 'request') {
+        if (sponsorCacheDisabledRef.current) return;
+        const cached = readSponsorCache(sponsorCacheKey, sponsorCacheTtlMs, clientVersion);
+        if (!cached) return;
+        channel.postMessage({
+          type: 'response',
+          cacheKey: sponsorCacheKey,
+          requestId: message.requestId,
+          payload: cached,
+        } satisfies ISponsorCacheMessage);
+        return;
+      }
+
+      if (message.type === 'response') {
+        const pending = pendingSponsorCacheRequestsRef.current.get(message.requestId);
+        if (!pending) return;
+
+        clearTimeout(pending.timeoutId);
+        pendingSponsorCacheRequestsRef.current.delete(message.requestId);
+        pending.resolve(validateSponsorCachePayload(message.payload, sponsorCacheTtlMs, clientVersion));
+        return;
+      }
+
+      sponsorCacheMetaRef.current = undefined;
+      deleteSponsorCache(sponsorCacheKey);
+    };
+
+    return () => {
+      sponsorCacheChannelRef.current = undefined;
+      pendingSponsorCacheRequestsRef.current.forEach(({ resolve, timeoutId }) => {
+        clearTimeout(timeoutId);
+        resolve(undefined);
+      });
+      pendingSponsorCacheRequestsRef.current.clear();
+      channel.close();
+    };
+  }, [sponsorCacheKey, sponsorCacheTtlMs, clientVersion]);
 
   // Edit-mode proxy health check: verify the Azure Function is reachable while the
   // page author has the web part selected.  Uses the lightweight /api/ping endpoint
@@ -590,83 +852,161 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
     if (functionUrl === undefined || aadHttpClient === undefined) return;
 
     let cancelled = false;
-    setLoading(true);
     setError(undefined);
     setIsPermissionError(false);
+
+    const applyCachedSponsors = (cachedSponsors: ICachedSponsorsPayload): void => {
+      sponsorCacheDisabledRef.current = false;
+      sponsorCacheMetaRef.current = {
+        activeSponsors: cachedSponsors.activeSponsors,
+        clientVersion,
+        unavailableSponsors: cachedSponsors.unavailableSponsors,
+        sponsorOrder: cachedSponsors.sponsorOrder,
+        guestHasTeamsAccess: cachedSponsors.guestHasTeamsAccess,
+        presenceToken: cachedSponsors.presenceToken,
+        functionVersion: cachedSponsors.functionVersion,
+      };
+      sponsorIdsRef.current = cachedSponsors.activeSponsors.map(s => s.id);
+      setSponsors(cachedSponsors.activeSponsors);
+      setSponsorOrder(cachedSponsors.sponsorOrder);
+      setUnavailableSponsors(cachedSponsors.unavailableSponsors);
+      setGuestHasTeamsAccess(cachedSponsors.guestHasTeamsAccess);
+      setPresenceToken(cachedSponsors.presenceToken);
+      setVersionMismatch(false);
+      setLoading(false);
+      setRetryCount(0);
+      primePresenceRefreshRef.current = true;
+
+      if (photoUrl && cachedSponsors.activeSponsors.some(s => s.managerId && !s.managerPhotoUrl)) {
+        loadManagerPhotosViaProxy(photoUrl, aadHttpClient, cachedSponsors.presenceToken, cachedSponsors.activeSponsors, (sponsorId, managerPhotoUrl) => {
+          if (!cancelled) {
+            setSponsors(prev => {
+              const nextSponsors = prev.map(s => (
+                s.id === sponsorId ? { ...s, managerPhotoUrl } : s
+              ));
+              persistSponsorCache(nextSponsors);
+              return nextSponsors;
+            });
+          }
+        });
+      }
+    };
+
+    const cachedSponsors = sponsorCacheKey ? readSponsorCache(sponsorCacheKey, sponsorCacheTtlMs, clientVersion) : undefined;
+    if (cachedSponsors) {
+      applyCachedSponsors(cachedSponsors);
+      return () => { cancelled = true; };
+    }
+
+    sponsorCacheDisabledRef.current = false;
+    setLoading(true);
     setVersionMismatch(false);
     setGuestHasTeamsAccess(undefined);
 
-    getSponsorsViaProxy(functionUrl, aadHttpClient, clientVersion, sponsorFilter, requireUserMailbox)
-      .then(result => {
-        if (!cancelled) {
-          // Sponsor photos are bundled in the proxy response; keep them as-is.
-          const active = result.activeSponsors;
-          setSponsors(active);
-          sponsorIdsRef.current = active.map(s => s.id);
-          setSponsorOrder(result.sponsorOrder ?? active.map(s => s.id));
-          // All unavailable = sponsors were assigned but every account is disabled/deleted.
-          setUnavailableSponsors(result.unavailableSponsors ?? []);
-          setGuestHasTeamsAccess(result.guestHasTeamsAccess);
-          setPresenceToken(result.presenceToken);
-          setLoading(false);
-          setRetryCount(0);
+    const loadSponsors = async (): Promise<void> => {
+      const peerCachedSponsors = sponsorCacheKey ? await requestSponsorCacheFromPeers() : undefined;
+      if (cancelled) return;
 
-          // Log a UI notice when the web part and function versions diverge.
-          if (clientVersion && result.functionVersion && clientVersion !== result.functionVersion) {
-            setVersionMismatch(true);
-          }
+      if (peerCachedSponsors) {
+        persistSponsorCache(peerCachedSponsors.activeSponsors, {
+          unavailableSponsors: peerCachedSponsors.unavailableSponsors,
+          sponsorOrder: peerCachedSponsors.sponsorOrder,
+          guestHasTeamsAccess: peerCachedSponsors.guestHasTeamsAccess,
+          presenceToken: peerCachedSponsors.presenceToken,
+          functionVersion: peerCachedSponsors.functionVersion,
+        });
+        applyCachedSponsors(peerCachedSponsors);
+        return;
+      }
 
-          // Phase 2: lazily fetch manager photos via the proxy photo endpoint.
-          // Sponsor photos already arrived inline; only manager photos need a round-trip.
-          if (photoUrl && active.length > 0) {
-            loadManagerPhotosViaProxy(photoUrl, aadHttpClient, result.presenceToken, active, (sponsorId, managerPhotoUrl) => {
-              if (!cancelled) {
-                setSponsors(prev => prev.map(s =>
+      try {
+        const result = await getSponsorsViaProxy(functionUrl, aadHttpClient, clientVersion, sponsorFilter, requireUserMailbox);
+        if (cancelled) return;
+
+        // Sponsor photos are bundled in the proxy response; keep them as-is.
+        const active = result.activeSponsors;
+        const nextSponsorOrder = result.sponsorOrder ?? active.map(s => s.id);
+        const nextUnavailableSponsors = result.unavailableSponsors ?? [];
+        setSponsors(active);
+        sponsorIdsRef.current = active.map(s => s.id);
+        setSponsorOrder(nextSponsorOrder);
+        // All unavailable = sponsors were assigned but every account is disabled/deleted.
+        setUnavailableSponsors(nextUnavailableSponsors);
+        setGuestHasTeamsAccess(result.guestHasTeamsAccess);
+        setPresenceToken(result.presenceToken);
+        setLoading(false);
+        setRetryCount(0);
+        persistSponsorCache(active, {
+          unavailableSponsors: nextUnavailableSponsors,
+          sponsorOrder: nextSponsorOrder,
+          guestHasTeamsAccess: result.guestHasTeamsAccess,
+          presenceToken: result.presenceToken,
+          functionVersion: result.functionVersion,
+        });
+
+        // Log a UI notice when the web part and function versions diverge.
+        if (clientVersion && result.functionVersion && clientVersion !== result.functionVersion) {
+          setVersionMismatch(true);
+        }
+
+        // Phase 2: lazily fetch manager photos via the proxy photo endpoint.
+        // Sponsor photos already arrived inline; only manager photos need a round-trip.
+        if (photoUrl && active.length > 0) {
+          loadManagerPhotosViaProxy(photoUrl, aadHttpClient, result.presenceToken, active, (sponsorId, managerPhotoUrl) => {
+            if (!cancelled) {
+              setSponsors(prev => {
+                const nextSponsors = prev.map(s => (
                   s.id === sponsorId ? { ...s, managerPhotoUrl } : s
                 ));
-              }
-            });
-          }
-        }
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) {
-          const status = (err as { statusCode?: number }).statusCode;
-          const reasonCode = (err as { reasonCode?: string }).reasonCode;
-          const referenceId = (err as { referenceId?: string }).referenceId;
-          const retryable = (err as { retryable?: boolean }).retryable;
-          // Structured console log for first-level operations triage.
-          console.error('[GuestSponsorInfo] getSponsorsViaProxy failed', {
-            status,
-            reasonCode,
-            referenceId,
-            retryable,
-            error: err,
-          });
-
-          const is4xx = status !== undefined && status >= 400 && status < 500;
-          const shouldRetry = retryable === true || (!is4xx && retryable !== false);
-          if (!shouldRetry || retryCount >= MAX_RETRIES) {
-            // Permanent error (e.g. 401, 403) or retry limit reached:
-            // stop retrying and show the error message so the shimmer disappears.
-            if (reasonCode === 'GRAPH_PERMISSION_DENIED') {
-              setIsPermissionError(true);
-              setError(strings.InsufficientPermissionsMessage);
-            } else {
-              const supportRef = referenceId ? ` (Ref: ${referenceId})` : '';
-              setError(`${fstr('ErrorMessage')}${supportRef}`);
+                persistSponsorCache(nextSponsors);
+                return nextSponsors;
+              });
             }
-            setLoading(false);
-          } else {
-            // Transient error: retry with exponential backoff capped at 30 seconds.
-            const delay = Math.min(3000 * Math.pow(3, retryCount), 30 * 1000);
-            setTimeout(() => { if (!cancelled) setRetryCount(n => n + 1); }, delay);
-          }
+          });
         }
-      });
+      } catch (err: unknown) {
+        if (cancelled) return;
+
+        const status = (err as { statusCode?: number }).statusCode;
+        const reasonCode = (err as { reasonCode?: string }).reasonCode;
+        const referenceId = (err as { referenceId?: string }).referenceId;
+        const retryable = (err as { retryable?: boolean }).retryable;
+        // Structured console log for first-level operations triage.
+        console.error('[GuestSponsorInfo] getSponsorsViaProxy failed', {
+          status,
+          reasonCode,
+          referenceId,
+          retryable,
+          error: err,
+        });
+
+        const is4xx = status !== undefined && status >= 400 && status < 500;
+        const shouldRetry = retryable === true || (!is4xx && retryable !== false);
+        if (!shouldRetry || retryCount >= MAX_RETRIES) {
+          // Permanent error (e.g. 401, 403) or retry limit reached:
+          // stop retrying and show the error message so the shimmer disappears.
+          if (reasonCode === 'GRAPH_PERMISSION_DENIED') {
+            setIsPermissionError(true);
+            setError(strings.InsufficientPermissionsMessage);
+          } else {
+            const supportRef = referenceId ? ` (Ref: ${referenceId})` : '';
+            setError(`${fstr('ErrorMessage')}${supportRef}`);
+          }
+          setLoading(false);
+        } else {
+          // Transient error: retry with exponential backoff capped at 30 seconds.
+          const delay = Math.min(3000 * Math.pow(3, retryCount), 30 * 1000);
+          setTimeout(() => { if (!cancelled) setRetryCount(n => n + 1); }, delay);
+        }
+      }
+    };
+
+    loadSponsors().catch((unexpectedError: unknown) => {
+      console.error('[GuestSponsorInfo] unexpected sponsor load failure', unexpectedError);
+    });
 
     return () => { cancelled = true; };
-  }, [isGuest, isEditMode, mockMode, mockSponsorCount, functionUrl, aadHttpClient, clientVersion, sponsorFilter, requireUserMailbox, retryCount]);
+  }, [isGuest, isEditMode, mockMode, mockSponsorCount, functionUrl, aadHttpClient, clientVersion, sponsorFilter, requireUserMailbox, retryCount, sponsorCacheTtlMs]);
 
   // Presence refresh: poll faster while a card is actively open and the tab is visible,
   // but back off when the tab is hidden to reduce Graph traffic.
@@ -689,19 +1029,31 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
       getPresencesViaProxy(presenceUrl, aadHttpClient, ids, presenceToken)
         .then(({ map: presenceMap, presenceToken: renewedToken }) => {
           if (renewedToken) setPresenceToken(renewedToken);
-          setSponsors(prev => prev.map(s => {
-            const snapshot = presenceMap.get(s.id);
-            return {
-              ...s,
-              presence: snapshot?.availability ?? s.presence,
-              presenceActivity: snapshot?.activity ?? s.presenceActivity,
-            };
-          }));
+          setSponsors(prev => {
+            const nextSponsors = prev.map(s => {
+              const snapshot = presenceMap.get(s.id);
+              return {
+                ...s,
+                presence: snapshot?.availability ?? s.presence,
+                presenceActivity: snapshot?.activity ?? s.presenceActivity,
+              };
+            });
+            if (renewedToken) {
+              persistSponsorCache(nextSponsors, { presenceToken: renewedToken });
+            }
+            return nextSponsors;
+          });
         })
         .catch((err: unknown) => {
           // Presence refresh failures are silent — the existing data stays on screen.
           console.warn('[GuestSponsorInfo] Presence refresh failed:', err);
         });
+    };
+
+    const refreshImmediatelyIfNeeded = (): void => {
+      if (!hasActiveCard && !primePresenceRefreshRef.current) return;
+      primePresenceRefreshRef.current = false;
+      refreshPresence();
     };
 
     const getRefreshIntervalMs = (): number => {
@@ -719,14 +1071,14 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
     const onVisibilityChange = (): void => {
       restartInterval();
       if (document.visibilityState === 'visible') {
-        refreshPresence();
+        refreshImmediatelyIfNeeded();
       }
     };
 
     document.addEventListener('visibilitychange', onVisibilityChange);
 
-    if (document.visibilityState === 'visible' && hasActiveCard) {
-      refreshPresence();
+    if (document.visibilityState === 'visible') {
+      refreshImmediatelyIfNeeded();
     }
 
     return () => {

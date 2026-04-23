@@ -11,8 +11,11 @@
     "tenantName": {
       "value": "${AZURE_SHAREPOINT_TENANT_NAME}"
     },
-    "functionClientId": {
-      "value": "${AZURE_FUNCTION_CLIENT_ID}"
+    "webPartClientId": {
+      "value": "${AZURE_WEB_PART_CLIENT_ID}"
+    },
+    "enableMonitoring": {
+      "value": true
     },
     "deployAzureMaps": {
       "value": true
@@ -22,6 +25,9 @@
     },
     "defaultAlertNotificationEmail": {
       "value": ""
+    },
+    "enableFailureAnomaliesAlert": {
+      "value": false
     },
     "defaultOperationalActionGroupShortName": {
       "value": "GSIOps"

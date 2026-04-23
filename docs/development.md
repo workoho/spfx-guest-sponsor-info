@@ -379,7 +379,7 @@ The workflow automatically:
 1. Generates release notes from Conventional Commit history
    (via [git-cliff](https://git-cliff.org)).
 2. Builds the production `.sppkg`.
-3. Creates a GitHub Release with the notes and `.sppkg` attached.
+3. Creates a GitHub Release with the notes, `.sppkg`, Function ZIP, Bicep ZIP, and azd ZIP attached.
 
 For the **first release**, this works even with a single commit and no prior
 tags. Preview release notes before tagging:
@@ -393,7 +393,7 @@ tags. Preview release notes before tagging:
 | Workflow | Trigger | What it does |
 |---|---|---|
 | `ci.yml` | Push / PR to `main` | Build · test · upload coverage |
-| `release.yml` | `v*` SemVer tag | Bump version · build · create GitHub Release + `.sppkg` |
+| `release.yml` | `v*` SemVer tag | Bump version · build · create GitHub Release + deploy artifacts |
 
 ## Code Conventions
 

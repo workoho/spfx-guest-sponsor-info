@@ -83,7 +83,7 @@ export interface IGuestSponsorInfoProps {
    */
   pingUrl: string | undefined;
   /** Client ID of the App Registration used by the Azure Function proxy. Undefined when not configured. */
-  functionClientId: string | undefined;
+  webPartClientId: string | undefined;
   /** Pre-acquired AAD HTTP client scoped to the function App Registration. Undefined when not configured. */
   aadHttpClient: AadHttpClient | undefined;
   /** Show business phone numbers in the contact card. */
@@ -116,6 +116,8 @@ export interface IGuestSponsorInfoProps {
    * When false, an active Exchange Online license is used as a mailbox proxy instead.
    */
   requireUserMailbox: boolean;
+  /** Session-scoped sponsor cache duration in minutes (2-480). Default: 30. */
+  sessionCacheTtlMinutes: number;
   /** Optional Azure Maps key used for inline map preview. */
   azureMapsSubscriptionKey: string | undefined;
   /** External map provider used for fallback links. */

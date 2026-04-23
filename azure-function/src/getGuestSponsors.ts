@@ -56,21 +56,23 @@ const DEFAULT_PHOTO_TIMEOUT_MS = 5000;
  *    requests at the infra level before function code runs; this tier protects
  *    dev environments and acts as a belt-and-suspenders guard should EasyAuth
  *    ever be misconfigured.
- *      10 req / 60 s per IP (hardcoded — anonymous callers are not legitimate).
+ *      5 req / 60 s per IP (hardcoded — anonymous callers are not legitimate).
  *
  * 2. Authenticated callers (valid OID) — disabled by default to avoid false
  *    positives when multiple web parts are on one page or the user reloads
- *    quickly.  Enable only for incident response via:
+ *    quickly. When enabled, each endpoint gets its own per-user bucket so
+ *    sponsor loads, presence polls, and photo fetches do not throttle each other.
+ *    Enable only for incident response via:
  *      RATE_LIMIT_ENABLED=true
- *      RATE_LIMIT_MAX_REQUESTS=20   (optional, default 20)
+ *      RATE_LIMIT_MAX_REQUESTS=12   (optional, default 12)
  *      RATE_LIMIT_WINDOW_MS=60000  (optional, default 60 000 ms)
  *
  * Note: on a Consumption plan each instance has its own counter.
  */
-const ANON_RATE_LIMIT_MAX_REQUESTS = 10;
+const ANON_RATE_LIMIT_MAX_REQUESTS = 5;
 const ANON_RATE_LIMIT_WINDOW_MS = 60_000;
 const DEFAULT_RATE_LIMIT_ENABLED = false;
-const DEFAULT_RATE_LIMIT_MAX_REQUESTS = 20;
+const DEFAULT_RATE_LIMIT_MAX_REQUESTS = 12;
 const DEFAULT_RATE_LIMIT_WINDOW_MS = 60_000;
 const rateLimitMap = new Map<string, number[]>();
 
@@ -313,6 +315,12 @@ function getRateLimitConfig(): { enabled: boolean; maxRequests: number; windowMs
     : DEFAULT_RATE_LIMIT_WINDOW_MS;
 
   return { enabled, maxRequests, windowMs };
+}
+
+type RateLimitEndpoint = 'getGuestSponsors' | 'getPresence' | 'getPhoto';
+
+function getRateLimitKey(endpoint: RateLimitEndpoint, subjectKey: string): string {
+  return `${endpoint}:${subjectKey}`;
 }
 
 /**
@@ -937,7 +945,11 @@ export async function getGuestSponsors(
     // Anonymous / unauthenticated caller — apply strict IP-based rate limiting
     // before rejecting, to prevent hammering in dev or on EasyAuth misconfiguration.
     const clientIp = getClientIp(request);
-    const anonLimit = checkRateLimit(`anon:${clientIp}`, ANON_RATE_LIMIT_MAX_REQUESTS, ANON_RATE_LIMIT_WINDOW_MS);
+    const anonLimit = checkRateLimit(
+      getRateLimitKey('getGuestSponsors', `anon:${clientIp}`),
+      ANON_RATE_LIMIT_MAX_REQUESTS,
+      ANON_RATE_LIMIT_WINDOW_MS
+    );
     if (!anonLimit.allowed) {
       context.warn('Anonymous caller rate-limited', {
         reasonCode: 'AUTH_RATE_LIMITED',
@@ -1020,7 +1032,11 @@ export async function getGuestSponsors(
 
   const rateLimitConfig = getRateLimitConfig();
   if (rateLimitConfig.enabled) {
-    const rateLimitResult = checkRateLimit(callerOid, rateLimitConfig.maxRequests, rateLimitConfig.windowMs);
+    const rateLimitResult = checkRateLimit(
+      getRateLimitKey('getGuestSponsors', callerOid),
+      rateLimitConfig.maxRequests,
+      rateLimitConfig.windowMs
+    );
     if (!rateLimitResult.allowed) {
       const response = jsonErrorResponse(
         request,
@@ -1747,7 +1763,7 @@ export async function getPresence(
   if (!callerOid) {
     const clientIp = getClientIp(request);
     const anonLimit = checkRateLimit(
-      `anon:${clientIp}`,
+      getRateLimitKey('getPresence', `anon:${clientIp}`),
       ANON_RATE_LIMIT_MAX_REQUESTS,
       ANON_RATE_LIMIT_WINDOW_MS
     );
@@ -1824,7 +1840,11 @@ export async function getPresence(
 
   const rateLimitConfig = getRateLimitConfig();
   if (rateLimitConfig.enabled) {
-    const rateLimitResult = checkRateLimit(callerOid, rateLimitConfig.maxRequests, rateLimitConfig.windowMs);
+    const rateLimitResult = checkRateLimit(
+      getRateLimitKey('getPresence', callerOid),
+      rateLimitConfig.maxRequests,
+      rateLimitConfig.windowMs
+    );
     if (!rateLimitResult.allowed) {
       const response = jsonErrorResponse(
         request,
@@ -1920,10 +1940,10 @@ export async function getPresence(
           .slice(0, MAX_SPONSORS);
         authorizedIds = new Set(graphIds);
       } catch (sponsorError) {
-        // Fail-open: a transient Graph error should not permanently block presence
-        // polls.  Log and treat all requested IDs as authorized for this call only.
-        context.warn('getPresence: sponsor validation lookup failed — failing open for this request', sponsorError);
-        authorizedIds = new Set(ids);
+        // Fail closed: if we cannot confirm the caller's sponsor set, return no
+        // presence data for this poll rather than authorizing arbitrary IDs.
+        context.warn('getPresence: sponsor validation lookup failed — returning empty presences', sponsorError);
+        return jsonResponse({ presences: [] }, 200, request, correlationId);
       }
     }
 
@@ -2110,7 +2130,7 @@ export async function getPhoto(
   if (!callerOid) {
     const clientIp = getClientIp(request);
     const anonLimit = checkRateLimit(
-      `anon:${clientIp}`,
+      getRateLimitKey('getPhoto', `anon:${clientIp}`),
       ANON_RATE_LIMIT_MAX_REQUESTS,
       ANON_RATE_LIMIT_WINDOW_MS
     );
@@ -2154,7 +2174,11 @@ export async function getPhoto(
 
   const rateLimitConfig = getRateLimitConfig();
   if (rateLimitConfig.enabled) {
-    const rateLimitResult = checkRateLimit(callerOid, rateLimitConfig.maxRequests, rateLimitConfig.windowMs);
+    const rateLimitResult = checkRateLimit(
+      getRateLimitKey('getPhoto', callerOid),
+      rateLimitConfig.maxRequests,
+      rateLimitConfig.windowMs
+    );
     if (!rateLimitResult.allowed) {
       const resp = jsonErrorResponse(
         request, 429, correlationId,
@@ -2225,10 +2249,15 @@ export async function getPhoto(
       }
       authorizedIds = new Set(expandedIds);
     } catch (err) {
-      // Fail-open for transient errors only — the photo remains unavailable for
-      // callers who cannot be validated; better than silently leaking photos.
-      context.warn('getPhoto: sponsor validation lookup failed — failing open for this request', err);
-      authorizedIds = new Set([userId]);
+      // Fail closed: if caller-to-user authorization cannot be validated, do not
+      // fetch the photo with application permissions.
+      context.warn('getPhoto: sponsor validation lookup failed — denying photo request', err);
+      return jsonErrorResponse(
+        request, 503, correlationId,
+        'Failed to validate photo access.', 'PHOTO_VALIDATION_FAILED',
+        'Unable to validate whether the requested photo belongs to the caller\'s authorized sponsor set',
+        true
+      );
     }
   }
 

@@ -20,6 +20,9 @@
     "ghcr.io/devcontainers/features/github-cli:1": {},
     // Azure CLI — needed for azure-function infra deployment and local az commands.
     "ghcr.io/devcontainers/features/azure-cli:1": {},
+    // Azure Developer CLI (azd) — end-to-end developer workflow for provisioning
+    // and deploying Azure resources (used by azure.yaml).
+    "ghcr.io/azure/azure-dev/azd:latest": {},
     // PowerShell Extended — installs pwsh correctly on AMD64 and ARM64, with Oh My Posh
     // prompt, PSReadLine, and optional PSGallery resources. Replaces the fragile
     // packages-microsoft-prod.deb approach that fails on ARM64/Codespaces.

@@ -34,6 +34,55 @@ const mockGetSponsors = _service.getSponsorsViaProxy;
 // DisplayMode values that match the @microsoft/sp-core-library shim (Read=1, Edit=2).
 // Imported via the shim; redefining here avoids importing the SPFx package in tests.
 const DisplayMode = { Read: 1 as never, Edit: 2 as never };
+const SESSION_CACHE_KEY_PREFIX = 'gsi:session-cache';
+const SPONSOR_CACHE_CHANNEL_PREFIX = 'gsi:sponsor-cache';
+
+class MockBroadcastChannel {
+  private static readonly channels = new Map<string, Set<MockBroadcastChannel>>();
+
+  public onmessage: ((event: MessageEvent) => void) | undefined;
+
+  public constructor(public readonly name: string) {
+    const listeners = MockBroadcastChannel.channels.get(name) ?? new Set<MockBroadcastChannel>();
+    listeners.add(this);
+    MockBroadcastChannel.channels.set(name, listeners);
+  }
+
+  public postMessage(message: unknown): void {
+    const listeners = MockBroadcastChannel.channels.get(this.name);
+    if (!listeners) return;
+
+    listeners.forEach((peer) => {
+      if (peer !== this) {
+        peer.onmessage?.({ data: message } as MessageEvent);
+      }
+    });
+  }
+
+  public close(): void {
+    const listeners = MockBroadcastChannel.channels.get(this.name);
+    if (!listeners) return;
+
+    listeners.delete(this);
+    if (listeners.size === 0) {
+      MockBroadcastChannel.channels.delete(this.name);
+    }
+  }
+
+  public static reset(): void {
+    MockBroadcastChannel.channels.clear();
+  }
+}
+
+const originalBroadcastChannel = globalThis.BroadcastChannel;
+
+beforeAll(() => {
+  globalThis.BroadcastChannel = MockBroadcastChannel as unknown as typeof BroadcastChannel;
+});
+
+afterAll(() => {
+  globalThis.BroadcastChannel = originalBroadcastChannel;
+});
 
 // ─── Fixture ───────────────────────────────────────────────────────────────────
 
@@ -61,6 +110,8 @@ beforeEach(() => {
   container = document.createElement('div');
   document.body.appendChild(container);
   jest.clearAllMocks();
+  MockBroadcastChannel.reset();
+  sessionStorage.clear();
   // Default: any login name containing #EXT# is treated as a guest.
   mockIsGuestUser.mockImplementation((name: string) => name.includes('#EXT#'));
 });
@@ -87,7 +138,7 @@ function renderWebPart(overrides: Partial<IGuestSponsorInfoProps> = {}): void {
     presenceUrl: undefined,
     pingUrl: undefined,
     photoUrl: undefined,
-    functionClientId: undefined,
+    webPartClientId: undefined,
     aadHttpClient: {} as never,
     showBusinessPhones: true,
     showMobilePhone: true,
@@ -99,6 +150,7 @@ function renderWebPart(overrides: Partial<IGuestSponsorInfoProps> = {}): void {
     showState: false,
     sponsorFilter: 'teams',
     requireUserMailbox: true,
+    sessionCacheTtlMinutes: 30,
     azureMapsSubscriptionKey: undefined,
     externalMapProvider: 'bing',
     showManager: true,
@@ -127,7 +179,7 @@ function renderWebPart(overrides: Partial<IGuestSponsorInfoProps> = {}): void {
 /** Flushes all pending microtasks so async useEffect callbacks resolve. */
 async function flushAsync(): Promise<void> {
   await act(async () => {
-    await new Promise<void>(resolve => setTimeout(resolve, 0));
+    await new Promise<void>(resolve => setTimeout(resolve, 50));
   });
 }
 
@@ -201,6 +253,56 @@ describe('GuestSponsorInfo', () => {
       act(() => { renderWebPart({}); });
       await flushAsync();
       expect(mockGetSponsors).toHaveBeenCalledTimes(1);
+    });
+
+    it('reuses the sessionStorage sponsor cache and skips getSponsorsViaProxy', async () => {
+      sessionStorage.setItem(
+        `${SESSION_CACHE_KEY_PREFIX}:gsi:sponsors:guest_contoso.com#ext#@fabrikam.onmicrosoft.com:https://func.example.com/api/getguestsponsors:teams:mailbox`,
+        JSON.stringify({
+          ts: Date.now(),
+          clientVersion: '0.0.1',
+          activeSponsors: [SPONSOR],
+          unavailableSponsors: [],
+          sponsorOrder: [SPONSOR.id],
+        })
+      );
+
+      act(() => { renderWebPart({}); });
+      await flushAsync();
+
+      expect(container.textContent).toContain('Alice Smith');
+      expect(mockGetSponsors).not.toHaveBeenCalled();
+    });
+
+    it('hydrates sponsor cache from another tab via BroadcastChannel and skips getSponsorsViaProxy', async () => {
+      const cacheKey = 'gsi:sponsors:guest_contoso.com#ext#@fabrikam.onmicrosoft.com:https://func.example.com/api/getguestsponsors:teams:mailbox';
+      const peerChannel = new MockBroadcastChannel(`${SPONSOR_CACHE_CHANNEL_PREFIX}:${cacheKey}`);
+
+      peerChannel.onmessage = (event) => {
+        const message = event.data as { type: string; requestId?: string; cacheKey?: string };
+        if (message.type !== 'request' || !message.requestId || !message.cacheKey) return;
+
+        peerChannel.postMessage({
+          type: 'response',
+          cacheKey: message.cacheKey,
+          requestId: message.requestId,
+          payload: {
+            ts: Date.now(),
+            clientVersion: '0.0.1',
+            activeSponsors: [SPONSOR],
+            unavailableSponsors: [],
+            sponsorOrder: [SPONSOR.id],
+          },
+        });
+      };
+
+      act(() => { renderWebPart({}); });
+      await flushAsync();
+
+      expect(container.textContent).toContain('Alice Smith');
+      expect(mockGetSponsors).not.toHaveBeenCalled();
+
+      peerChannel.close();
     });
 
     it('renders sponsor cards when getSponsorsViaProxy resolves with active sponsors', async () => {
