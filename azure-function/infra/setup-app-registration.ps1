@@ -480,6 +480,10 @@ Install-RequiredModule -Name 'Microsoft.Graph.Authentication'
 #endregion
 
 #region Parameter collection
+Write-Host ''
+Write-Host "  Guest Sponsor Info  $(if ($_u) { [string][char]0x00B7 } else { '|' })  Step 1 of 3: App Registration" -ForegroundColor DarkCyan
+Write-Host $_sep -ForegroundColor DarkGray
+
 # ── Interactive parameter prompts ─────────────────────────────────────────────
 # Each prompt shows a title, a short description, and where to find the value,
 # then re-prompts until a valid GUID is entered.
@@ -907,6 +911,11 @@ else {
 if ($clientId -ne '<not-created-in-WhatIf-mode>') {
   $Global:GsiSetup_WebPartClientId = $clientId
 }
+# Signal to deploy-azure.ps1 that the App Registration step is complete.
+# This flag is intentionally separate from GsiSetup_TenantId — the tenant ID
+# is also set by az login in deploy-azure.ps1 and is therefore not a reliable
+# indicator that this script actually ran.
+$Global:GsiSetup_AppRegistrationDone = $true
 
 # Detect whether setup-graph-permissions.ps1 lives next to this script.
 # $PSScriptRoot is empty when the script was run via iwr (scriptblock

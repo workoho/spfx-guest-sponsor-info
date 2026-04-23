@@ -491,6 +491,17 @@ Install-RequiredModule -Name 'Microsoft.Graph.Authentication'
 #endregion
 
 #region Parameter collection
+Write-Host ''
+# Show "Step 3 of 3" only when both previous steps were completed in this
+# session. Otherwise the script may be running standalone (re-run, repair,
+# or first-time without the other scripts) — in that case no step label
+# is shown so we don't make a wrong claim about the overall flow.
+$_step1Done = [bool]$Global:GsiSetup_AppRegistrationDone
+$_step2Done = [bool]$Global:GsiSetup_ManagedIdentityObjectId
+$_stepLabel = if ($_step1Done -and $_step2Done) { 'Step 3 of 3: Graph Permissions' } else { 'Graph Permissions' }
+Write-Host "  Guest Sponsor Info  $(if ($_u) { [string][char]0x00B7 } else { '|' })  $_stepLabel" -ForegroundColor DarkCyan
+Write-Host $_sep -ForegroundColor DarkGray
+
 # ── Interactive parameter prompts ─────────────────────────────────────────────
 # Each prompt shows a title, a short description, and where to find the value,
 # then re-prompts until a valid GUID is entered.

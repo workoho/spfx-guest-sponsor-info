@@ -15,7 +15,7 @@
       "value": "${AZURE_WEB_PART_CLIENT_ID}"
     },
     "enableMonitoring": {
-      "value": false
+      "value": true
     },
     "deployAzureMaps": {
       "value": true

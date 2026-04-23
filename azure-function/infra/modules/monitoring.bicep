@@ -27,7 +27,7 @@ param enableNewReleaseAlert bool = true
 @description('Enable operational alert when a hard-deleted Entra object remains referenced as a sponsor (Graph 404).')
 param enableBrokenSponsorAlert bool = false
 
-@description('Enable the automatic Application Insights Failure Anomalies smart detector rule. Default: false, so the rule is deployed in Disabled state unless explicitly activated.')
+@description('Deploy and enable the Application Insights Failure Anomalies smart detector rule. Default: false, so this AlertsManagement resource is only created when explicitly requested.')
 param enableFailureAnomaliesAlert bool = false
 
 // ── Alert timing ─────────────────────────────────────────────────────────────
@@ -320,7 +320,7 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   }
 }
 
-resource failureAnomaliesAlert 'microsoft.alertsManagement/smartDetectorAlertRules@2021-04-01' = {
+resource failureAnomaliesAlert 'microsoft.alertsManagement/smartDetectorAlertRules@2021-04-01' = if (enableFailureAnomaliesAlert) {
   name: 'Failure Anomalies - ${appInsights.name}'
   location: 'global'
   tags: tags
@@ -328,7 +328,7 @@ resource failureAnomaliesAlert 'microsoft.alertsManagement/smartDetectorAlertRul
     actionGroups: {
       groupIds: effectiveOperationalActionGroupIds
     }
-    description: 'Application Insights Failure Anomalies smart detector. Deployed disabled by default and only enabled when explicitly requested.'
+    description: 'Application Insights Failure Anomalies smart detector. Created only when explicitly requested.'
     detector: {
       id: 'FailureAnomaliesDetector'
     }
@@ -337,7 +337,7 @@ resource failureAnomaliesAlert 'microsoft.alertsManagement/smartDetectorAlertRul
       appInsights.id
     ]
     severity: 'Sev2'
-    state: enableFailureAnomaliesAlert ? 'Enabled' : 'Disabled'
+    state: 'Enabled'
   }
 }
 

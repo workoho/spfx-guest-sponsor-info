@@ -458,13 +458,12 @@ What the wrapper does:
   is run via `iwr` instead of from a local clone.
 
 The template now manages the Application Insights `Failure Anomalies` smart
-detector explicitly. It is deployed in **Disabled** state by default. To enable
-it, set `enableFailureAnomaliesAlert=true` explicitly.
+detector explicitly. It is **not** deployed by default. To enable it, set
+`enableFailureAnomaliesAlert=true` explicitly.
 
-The broader monitoring stack is also **opt-in** now. Set
-`enableMonitoring=true` when you want Log Analytics, Application Insights, and
-the alert resources. Leaving it at the default `false` avoids the
-`Microsoft.AlertsManagement` / smart-detector path entirely.
+The broader monitoring stack remains enabled by default. Log Analytics,
+Application Insights, action groups, and the repository's KQL-based alerts are
+still provisioned normally.
 
 How the default suggestion is chosen:
 

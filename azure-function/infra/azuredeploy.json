@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "1692661561310541058"
+      "templateHash": "16086054910493006561"
     },
     "name": "Guest Sponsor API for Microsoft Entra B2B",
     "description": "Deploys an Azure Function App that acts as a Graph API proxy for the Guest Sponsor Info for Microsoft Entra B2B SharePoint web part. Includes a Storage Account, App Service Plan, EasyAuth configuration, Managed Identity role assignments, Log Analytics Workspace, and Application Insights.",
@@ -149,10 +149,10 @@
     },
     "enableMonitoring": {
       "type": "bool",
-      "defaultValue": false,
+      "defaultValue": true,
       "metadata": {
         "category": "Monitoring",
-        "description": "Deploy the monitoring stack (Log Analytics, Application Insights, action groups, KQL alerts, and managed Failure Anomalies rule). Default: false so infrastructure-only deployments can succeed without Azure Monitor provider registration."
+        "description": "Deploy the monitoring stack (Log Analytics, Application Insights, action groups, and KQL alerts). Default: true."
       }
     },
     "enableAuthConfigRegressionAlert": {
@@ -919,7 +919,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "10027959118118662473"
+              "templateHash": "9261263988806336922"
             },
             "name": "Guest Sponsor API for Microsoft Entra B2B - Monitoring",
             "description": "Log Analytics Workspace, Application Insights, Action Groups, and KQL alert rules."
@@ -982,7 +982,7 @@
               "type": "bool",
               "defaultValue": false,
               "metadata": {
-                "description": "Enable the automatic Application Insights Failure Anomalies smart detector rule. Default: false, so the rule is deployed in Disabled state unless explicitly activated."
+                "description": "Deploy and enable the Application Insights Failure Anomalies smart detector rule. Default: false, so this AlertsManagement resource is only created when explicitly requested."
               }
             },
             "alertEvaluationFrequencyInMinutes": {
@@ -1210,6 +1210,7 @@
               ]
             },
             {
+              "condition": "[parameters('enableFailureAnomaliesAlert')]",
               "type": "microsoft.alertsManagement/smartDetectorAlertRules",
               "apiVersion": "2021-04-01",
               "name": "[format('Failure Anomalies - {0}', variables('appInsightsResourceName'))]",
@@ -1219,14 +1220,14 @@
                 "actionGroups": {
                   "groupIds": "[variables('effectiveOperationalActionGroupIds')]"
                 },
-                "description": "Application Insights Failure Anomalies smart detector. Deployed disabled by default and only enabled when explicitly requested.",
+                "description": "Application Insights Failure Anomalies smart detector. Created only when explicitly requested.",
                 "detector": {
                   "id": "FailureAnomaliesDetector"
                 },
                 "frequency": "PT1M",
                 "scope": ["[resourceId('Microsoft.Insights/components', variables('appInsightsResourceName'))]"],
                 "severity": "Sev2",
-                "state": "[if(parameters('enableFailureAnomaliesAlert'), 'Enabled', 'Disabled')]"
+                "state": "Enabled"
               },
               "dependsOn": [
                 "[resourceId('Microsoft.Insights/components', variables('appInsightsResourceName'))]",

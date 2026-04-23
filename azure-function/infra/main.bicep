@@ -89,8 +89,8 @@ param azureMapsLocation string = 'westeurope'
 param enableServiceOutageAlert bool = true
 
 @metadata({ category: 'Monitoring' })
-@description('Deploy the monitoring stack (Log Analytics, Application Insights, action groups, KQL alerts, and managed Failure Anomalies rule). Default: false so infrastructure-only deployments can succeed without Azure Monitor provider registration.')
-param enableMonitoring bool = false
+@description('Deploy the monitoring stack (Log Analytics, Application Insights, action groups, and KQL alerts). Default: true.')
+param enableMonitoring bool = true
 
 @metadata({ category: 'Monitoring' })
 @description('Enable operational email alert for auth/config regressions (AUTH_CONFIG_* reason codes).')
