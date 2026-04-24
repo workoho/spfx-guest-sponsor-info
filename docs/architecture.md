@@ -173,8 +173,8 @@ The `setup-graph-permissions.ps1` script (and the `azd` post-provision hook)
 configure this automatically:
 
 1. Expose a `user_impersonation` delegated scope on the App Registration.
-2. Add both known SharePoint Online Web Client Extensibility app IDs as
-   pre-authorized applications for that scope.
+2. Add the SharePoint Online Web Client Extensibility app ID as a
+  pre-authorized application for that scope.
 3. Set `appRoleAssignmentRequired = false` on the Service Principal so all
    tenant users (including guests) can acquire tokens without individual
    assignment.
@@ -214,7 +214,7 @@ Timeout app settings: `SPONSOR_LOOKUP_TIMEOUT_MS`, `BATCH_TIMEOUT_MS`,
 > RBAC propagation can take 1–2 min after deploy. Wait and retry if errors appear
 > immediately. Deployer needs **Owner** role on the resource group.
 
-Manual fallback: `infra/setup-app-registration.ps1` + `infra/setup-graph-permissions.ps1`.
+Manual fallback: `infra/setup-graph-permissions.ps1` (for role assignment only; App Registration is always created by Bicep).
 
 ### Hosting Plan Options
 
@@ -227,7 +227,6 @@ The `hostingPlan` parameter controls the Azure Functions pricing tier:
 | Cold starts | ~2–5 s after ~20 min idle | Greatly reduced; eliminated with `alwaysReadyInstances=1` |
 | OS | Windows | Linux only |
 | ZIP deployment | `WEBSITE_RUN_FROM_PACKAGE` (GitHub URL) | Blob container (AZD / az CLI) |
-| "Deploy to Azure" button | Supported | Not supported |
 | Cost guard | `dailyMemoryTimeQuota` (GB-s budget) | `maximumFlexInstances` (hard instance cap, required) |
 | Estimated cost | Free (within grant) | ~€2–5/month with 1 warm instance |
 

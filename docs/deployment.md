@@ -21,10 +21,12 @@ For security and telemetry details, see
   - [Step 3 - Verify guest access to the landing page site](#step-3---verify-guest-access-to-the-landing-page-site)
   - [Step 4 - Ensure external sharing is enabled](#step-4---ensure-external-sharing-is-enabled)
 - [Guest Sponsor API](#guest-sponsor-api)
-  - [Pre-step: create the App Registration](#pre-step-create-the-app-registration)
-  - [Step 1 - Deploy to Azure](#step-1---deploy-to-azure)
-  - [Step 2 - Note deployment outputs](#step-2---note-deployment-outputs)
-  - [Step 3 - Grant Graph permissions and configure the app registration](#step-3---grant-graph-permissions-and-configure-the-app-registration)
+  - [Standard deployment](#standard-deployment)
+  - [Manual deployment from infra ZIP](#manual-deployment-from-infra-zip)
+  - [Required roles](#required-roles)
+  - [Hosting plan options](#hosting-plan-options)
+  - [Deployment outputs](#deployment-outputs)
+  - [Deploying from a Privileged Access Workstation (PAW)](#deploying-from-a-privileged-access-workstation-paw)
 - [Administration and Operations](#administration-and-operations)
 
 ---
@@ -59,7 +61,9 @@ All Graph data is fetched server-side by the companion Azure Function using
 its Managed Identity.
 
 ---
+
 #### Option B — Use a Tenant App Catalog
+
 **This option does not use the Microsoft commercial marketplace.** Download the
 `.sppkg` from
 [GitHub Releases](https://github.com/workoho/spfx-guest-sponsor-info/releases)
@@ -304,7 +308,6 @@ Add-PnPGroupMember -LoginName "c:0(.s|true" -Group "App Catalog Visitors"
 > full invitation) cannot load the bundle. The Public CDN (Option A) does not
 > have this limitation.
 
-
 ### Step 3 - Verify guest access to the landing page site
 
 If your landing page site is already in use, Visitor access for guests is most
@@ -418,204 +421,167 @@ in the Microsoft documentation.
 > The [Setup diagram](architecture-diagram.md#setup--two-admin-roles-recommended-path)
 > gives a visual overview of all admin roles and deployment steps involved.
 
-### Pre-step: create the App Registration
+### Standard deployment
 
-The Azure Function uses [EasyAuth](https://learn.microsoft.com/azure/app-service/overview-authentication-authorization)
-(Azure App Service Authentication). EasyAuth needs an Entra App Registration
-as its identity provider.
+The `install.ps1` script is the recommended entry point. It downloads the
+latest infra bundle from GitHub Releases, runs the interactive deployment
+wizard (`deploy-azure.ps1`), and cleans up afterwards. No local repository
+clone is required.
 
-**Option A — run directly from the web** (no clone required,
-[PowerShell 7+](https://learn.microsoft.com/powershell/scripting/install/installing-powershell)):
+**Prerequisites:**
 
-```powershell
-& ([scriptblock]::Create((iwr 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/main/azure-function/infra/setup-app-registration.ps1').Content))
-```
+- [PowerShell 7+](https://learn.microsoft.com/powershell/scripting/install/installing-powershell)
+- The required Azure and Entra roles (see [Required roles](#required-roles) below)
 
-**Option B — from a local clone:**
-
-```powershell
-./azure-function/infra/setup-app-registration.ps1
-```
-
-<details>
-<summary>Option C — download and run manually</summary>
+Run this command in PowerShell 7+:
 
 ```powershell
-# Download the script first, then review and execute it.
-Invoke-WebRequest `
-  'https://github.com/workoho/spfx-guest-sponsor-info/releases/latest/download/setup-app-registration.ps1' `
-  -OutFile setup-app-registration.ps1
-
-# Review the script content before running it:
-Get-Content setup-app-registration.ps1
-
-# Run it (prompts interactively for any required values):
-./setup-app-registration.ps1
+& ([scriptblock]::Create((iwr 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/main/azure-function/infra/install.ps1').Content))
 ```
 
-</details>
+[Azure Developer CLI (azd)](https://aka.ms/azd) is installed automatically if
+not already present. The wizard walks through selecting a subscription and
+resource group, creates the Entra App Registration, deploys all Azure
+infrastructure, and assigns Microsoft Graph permissions.
 
-Copy the **Client ID** printed at the end.
+---
 
-<details>
-<summary>Option D — manual alternative (Azure Portal)</summary>
+### Manual deployment from infra ZIP
 
-1. **Microsoft Entra admin center → App registrations → New registration**.
-2. Name: `Guest Sponsor Info - SharePoint Web Part Auth`; Supported
-   account types: *Accounts in this organizational directory only*.
-3. **Expose an API → Set** Application ID URI:
-   `api://guest-sponsor-info-proxy/<clientId>`.
-4. Copy the **Client ID** — this is used as `ALLOWED_AUDIENCE`.
+If you prefer to inspect or customise the deployment files before running
+them, download the `guest-sponsor-info-infra.zip` from
+[GitHub Releases](https://github.com/workoho/spfx-guest-sponsor-info/releases),
+extract it to a local directory, and run `deploy-azure.ps1` directly:
 
-</details>
+```powershell
+# Extract the ZIP (example):
+Expand-Archive -Path guest-sponsor-info-infra.zip -DestinationPath ./infra
 
-### Step 1 - Deploy to Azure
-
-Click the button to start the deployment:
-
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fworkoho%2Fspfx-guest-sponsor-info%2Fmain%2Fazure-function%2Finfra%2Fazuredeploy.json)
-
-Or from [Azure Cloud Shell](https://shell.azure.com) (no local tooling
-required; also works for updates — ARM deployments are idempotent):
-
-```bash
-az deployment group create \
-  --resource-group <your-resource-group> \
-  --template-uri https://github.com/workoho/spfx-guest-sponsor-info/releases/latest/download/azuredeploy.json \
-  --parameters \
-      tenantId=<your-tenant-id> \
-      tenantName=<your-tenant-name> \
-      functionAppName=<globally-unique-name> \
-      webPartClientId=<client-id-from-pre-step>
+# Run the wizard from the extracted directory:
+Set-Location ./infra
+./deploy-azure.ps1
 ```
 
-<details>
-<summary>Optional: deploy as a Deployment Stack (recommended for long-term
-CLI management)</summary>
+The wizard behaviour is identical to the `install.ps1` path — the ZIP simply
+provides the files locally so you can review them first.
 
-[Azure Deployment Stacks](https://learn.microsoft.com/azure/azure-resource-manager/bicep/deployment-stacks)
-track all resources as a managed set. Removed resources are automatically
-deleted; clean teardown requires a single command.
+---
 
-```bash
-az stack group create \
-  --name guest-sponsor-info \
-  --resource-group <your-resource-group> \
-  --template-uri https://github.com/workoho/spfx-guest-sponsor-info/releases/latest/download/azuredeploy.json \
-  --parameters \
-      tenantId=<your-tenant-id> \
-      tenantName=<your-tenant-name> \
-      functionAppName=<globally-unique-name> \
-      webPartClientId=<client-id-from-pre-step> \
-  --action-on-unmanage deleteResources \
-  --deny-settings-mode none
-```
+### Required roles
 
-Use the same `az stack group create` command for updates and initial
-deployment.
+The deploying account needs:
 
-</details>
-
-#### Required parameters
-
-| Parameter | Description |
+| Scope | Required role |
 |---|---|
-| `tenantId` | Your Entra tenant ID (GUID) |
-| `tenantName` | Tenant name without domain suffix, e.g. `contoso` |
-| `functionAppName` | Globally unique name for the Function App |
-| `webPartClientId` | Client ID from the pre-step |
-| `appVersion` | `"latest"` (default) or pinned SemVer without `v`, e.g. `"1.4.2"` |
-| `location` | Azure region |
+| Resource group | **Contributor** |
+| Resource group | **Owner** (or User Access Administrator) — for Managed Identity role assignments |
+| Entra ID | **Cloud Application Administrator** — to create and configure the App Registration |
+| Entra ID | **Privileged Role Administrator** — to assign Graph app roles to the Managed Identity |
 
-#### Optional hosting plan parameters
+> **Global Administrator** replaces both Entra requirements with a single role.
+> The Azure **Contributor** and **Owner** roles on the resource group are still
+> required separately and cannot be substituted by any Entra directory role.
 
-| Parameter | Description |
-|---|---|
-| `hostingPlan` | `Consumption` (default) or `FlexConsumption`. See below. |
-| `alwaysReadyInstances` | Pre-warmed instances (Flex only). `1` eliminates cold starts. Default: `1`. |
-| `maximumFlexInstances` | **Required for Flex.** Hard upper bound on scale-out (cost ceiling). 1-1000. |
-| `instanceMemoryMB` | `512` or `2048` (Flex only). Default: `2048`. |
-| `dailyMemoryTimeQuotaGBs` | Daily GB-s budget (Consumption only). Default: `10000`. |
+If your organisation uses
+[PIM](https://learn.microsoft.com/entra/id-governance/privileged-identity-management/pim-configure),
+activate the Entra roles before running the script. The pre-provision hook
+checks your active directory roles and warns if any are missing.
 
-#### Flex Consumption plan
-
-Check [aka.ms/flex-region](https://aka.ms/flex-region) first to confirm
-regional support. Add the extra parameters:
-
-```bash
-az deployment group create \
-  --resource-group <your-resource-group> \
-  --template-uri https://github.com/workoho/spfx-guest-sponsor-info/releases/latest/download/azuredeploy.json \
-  --parameters \
-      tenantId=<your-tenant-id> \
-      tenantName=<your-tenant-name> \
-      functionAppName=<globally-unique-name> \
-      webPartClientId=<client-id-from-pre-step> \
-      hostingPlan=FlexConsumption \
-      maximumFlexInstances=10
-```
-
-The initial ZIP upload is automated via a short-lived Azure CLI container
-(~2-5 min). The provisioning script resource is retained for 2 hours for
-troubleshooting, then removed automatically.
+### Hosting plan options
 
 | | **Consumption** (default) | **Flex Consumption** |
 |---|---|---|
 | Free tier | 1M exec + 400K GB-s/month | None |
 | Cold starts | ~2-5 s after ~20 min idle | Eliminated with `alwaysReadyInstances=1` |
 | OS | Windows | Linux only |
-| Deploy to Azure button | Supported | Supported |
 | Cost guard | `dailyMemoryTimeQuota` | `maximumFlexInstances` |
 | Estimated cost | Free (within grant) | ~€2-5/month with 1 warm instance |
 
-### Step 2 - Note Deployment outputs
+#### Optional hosting plan parameters
 
-After deployment, open **Resource Group → Deployments → select deployment template →
-Outputs**:
-
-| Output | Used for |
+| Parameter | Description |
 |---|---|
-| `managedIdentityObjectId` | Required for `setup-graph-permissions.ps1` (next step) |
-| `functionAppUrl` | Web part property pane → **Guest Sponsor API Base URL** |
-| `sponsorApiUrl` | Full endpoint URL (for curl/Postman health checks) |
+| `hostingPlan` | `Consumption` (default) or `FlexConsumption`. |
+| `alwaysReadyInstances` | Pre-warmed instances (Flex only). `1` eliminates cold starts. Default: `1`. |
+| `maximumFlexInstances` | **Required for Flex.** Hard upper bound on scale-out (cost ceiling). 1-1000. |
+| `instanceMemoryMB` | `512` or `2048` (Flex only). Default: `2048`. |
+| `dailyMemoryTimeQuotaGBs` | Daily GB-s budget (Consumption only). Default: `10000`. |
 
-### Step 3 - Grant Graph permissions and configure the App Registration
+Check [aka.ms/flex-region](https://aka.ms/flex-region) for Flex Consumption
+regional availability.
 
-**Option A — run directly from the web** (no clone required,
-[PowerShell 7+](https://learn.microsoft.com/powershell/scripting/install/installing-powershell)):
+### Deployment outputs
+
+At the end of the run, `deploy-azure.ps1` prints:
+
+| Value | Used for |
+|---|---|
+| **Guest Sponsor API Base URL** (`functionAppUrl`) | Web part property pane → **Guest Sponsor API Base URL** |
+| **Web Part Client ID** (`webPartClientId`) | Web part property pane → **Guest Sponsor API Client ID** |
+
+You can also retrieve them later:
 
 ```powershell
-& ([scriptblock]::Create((iwr 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/main/azure-function/infra/setup-graph-permissions.ps1').Content))
+azd env get-values
 ```
 
-**Option B — from a local clone:**
+---
+
+### Deploying from a Privileged Access Workstation (PAW)
+
+On PAW environments where **Privileged Role Administrator** cannot be
+activated (required to assign Graph app roles to Managed Identities), the
+standard single-step `deploy-azure.ps1` path can still create the App
+Registration via Bicep — you only need to defer the Graph role assignments.
+
+> **Note:** The App Registration is always created by Bicep. Only the Graph
+> app role assignment step (which requires Privileged Role Administrator) can
+> be deferred. Cloud Application Administrator is always required for the
+> Bicep deployment to succeed.
+
+**Prerequisites (standard machine):**
+
+- PowerShell 7+
+- Azure Contributor + Owner on the resource group
+- Entra **Cloud Application Administrator** (for Bicep to create the App Registration)
+
+#### Step A — Run the deployment with role assignments deferred
 
 ```powershell
-./azure-function/infra/setup-graph-permissions.ps1
+& ([scriptblock]::Create((iwr 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/main/azure-function/infra/install.ps1').Content)) -SkipGraphRoleAssignments $true
 ```
 
-This script:
+The pre-provision hook will display a confirmation that role assignments are
+deferred. The NEXT STEPS box at the end shows the Managed Identity Object ID
+and the command to run in Step B.
 
-1. **Managed Identity Graph permissions** — assigns `User.Read.All`,
-   `Presence.Read.All` (optional; requires Microsoft Teams), and
-   `MailboxSettings.Read` (optional; filters shared/room/equipment mailboxes).
-2. **App Registration setup for silent token acquisition** — exposes a
-   `user_impersonation` scope and
-   [pre-authorizes](https://learn.microsoft.com/entra/identity-platform/permissions-consent-overview#preauthorization)
-   *SharePoint Online Web Client Extensibility* so the web part can acquire
-   tokens silently without consent prompts or page reloads. See
-   [Silent Token Acquisition and Pre-Authorization](architecture.md#silent-token-acquisition-and-pre-authorization)
-   in the architecture guide for the full explanation.
+**Required Azure roles:** Contributor + Owner on the resource group
+**Required Entra roles:** Cloud Application Administrator (Bicep creates App Registration)
 
-### Step 5 - Configure the web part
+#### Step B — On the PAW: assign Graph permissions
 
-In the property pane (**Guest Sponsor API** group):
+Download `setup-graph-permissions.ps1` from
+[GitHub Releases](https://github.com/workoho/spfx-guest-sponsor-info/releases)
+(or copy it from an extracted infra ZIP), transfer it to the PAW, and run it
+with the values from Step A:
 
-- **Base URL** — e.g.
-  `https://guest-sponsor-info-xyz.azurewebsites.net`
-- **Application (client) ID** — the Client ID from the
-  App Registration named **"Guest Sponsor Info - SharePoint Web Part Auth"**
-  in your Entra tenant (created in the pre-step)
+```powershell
+./setup-graph-permissions.ps1 `
+    -ManagedIdentityObjectId <object-id-from-step-a> `
+    -TenantId <your-tenant-id>
+```
+
+This script assigns Microsoft Graph application permissions to the Managed
+Identity: `User.Read.All`, `Presence.Read.All` (optional),
+`MailboxSettings.Read` (optional), `TeamMember.Read.All` (optional).
+
+**Required Entra roles on the PAW account:**
+`Privileged Role Administrator` (to assign Graph app roles)
+
+> **Tip:** After initial setup, you can delegate **Owner on the Managed
+> Identity** to a regular (non-PAW) account. This allows future role
+> assignment updates to be performed without re-activating the Privileged
+> Role Administrator role.
 
 ---
 

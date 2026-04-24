@@ -151,7 +151,7 @@ define([], function () {
     ProxyStatusError: "Anslutning misslyckades",
     PpSetupIntro: "Nödvändig konfiguration:",
     PpSetupRerunHint:
-      "Anslutningsproblem? Installationsskripten är idempotenta \u2014 att köra dem igen med samma parametrar löser de flesta problem.",
+      "Anslutningsproblem? Installationsskriptet är idempotent — att köra det igen med samma parametrar löser de flesta problem.",
     CopyToClipboardLabel: "Kopiera",
     CopiedToClipboardLabel: "Kopierat!",
     AuthorSectionGroupName: "Om",
@@ -232,7 +232,7 @@ define([], function () {
       "Fullständig upplevelse via en Azure Function. Kräver engångskonfiguration i Azure — rekommenderas för produktion.",
     WelcomeDialogOptionApiDocsLabel: "Visa installationsguide",
     WelcomeDialogSetupGuideNote:
-      "Dessa steg är en genväg. Läs installationsguiden innan du kör skript — så att du förstår vad varje kommando gör.",
+      "Det här kommandot är en genväg. Läs installationsguiden innan du kör det — så att du förstår vad det gör.",
     WelcomeDialogDeployToAzureLabel: "Distribuera API:et till Azure",
     WelcomeDialogDeployNote:
       "Det här alternativet kräver att Guest Sponsor API distribueras till din Azure-prenumeration. Du kan göra det här \u2014 det tar bara några minuter.",

@@ -157,7 +157,7 @@ define([], function () {
     ProxyStatusError: "Kapcsolat sikertelen",
     PpSetupIntro: "Szükséges beállítás:",
     PpSetupRerunHint:
-      "Kapcsolódási probléma? A beállítási szkriptek idempotensek — azonos paraméterekkel újrafuttatva a legtöbb problémát megoldják.",
+      "Kapcsolódási probléma? A beállítási szkript idempotens — azonos paraméterekkel újrafuttatva a legtöbb problémát megoldja.",
     CopyToClipboardLabel: "Másolás",
     CopiedToClipboardLabel: "Másolva!",
     AuthorSectionGroupName: "Névjegy",
@@ -239,7 +239,7 @@ define([], function () {
       "Teljes funkcionalitású élmény Azure Function által biztosítva. Egyszeri Azure-beállítást igényel — éles környezethez ajánlott.",
     WelcomeDialogOptionApiDocsLabel: "Beállítási útmutató megtekintése",
     WelcomeDialogSetupGuideNote:
-      "Ezek a lépések egy parancsikon. Szkriptek futtatása előtt olvassa el a beállítási útmutatót, hogy megértse, mit csinál minden parancs.",
+      "Ez a parancs egy parancsikon. A futtatás előtt olvassa el a beállítási útmutatót, hogy megértse, mit csinál.",
     WelcomeDialogDeployToAzureLabel: "API telepítése Azure-ba",
     WelcomeDialogDeployNote:
       "Ehhez a lehetőséghez szükséges, hogy a Guest Sponsor API-t telepítse az Azure-előfizetésébe. Ezt közvetlenül innen is megteheti — csak néhány percet vesz igénybe.",

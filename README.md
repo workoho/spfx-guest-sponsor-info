@@ -199,23 +199,15 @@ The Graph `/me/sponsors` API requires a directory role — impractical for
 guests at scale. The included **Guest Sponsor API** calls Graph with application
 permissions instead (powered by a custom Azure Function).
 
-Create the App Registration
-([PowerShell 7+](https://learn.microsoft.com/powershell/scripting/install/installing-powershell)
-required — no clone needed):
+Run the following command in PowerShell 7+ to deploy everything in one step:
 
 ```powershell
-& ([scriptblock]::Create((iwr 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/main/azure-function/infra/setup-app-registration.ps1').Content))
+& ([scriptblock]::Create((iwr 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/main/azure-function/infra/install.ps1').Content))
 ```
 
-Then click the button to deploy to Azure:
-
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fworkoho%2Fspfx-guest-sponsor-info%2Fmain%2Fazure-function%2Finfra%2Fazuredeploy.json)
-
-After deployment, grant Graph permissions and configure the App Registration:
-
-```powershell
-& ([scriptblock]::Create((iwr 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/main/azure-function/infra/setup-graph-permissions.ps1').Content))
-```
+The wizard creates the Entra App Registration, deploys all Azure infrastructure,
+and assigns Microsoft Graph permissions automatically. No local repository clone
+is required.
 
 In the web part property pane, open the **Guest Sponsor API** section and enter
 the **Guest Sponsor API Base URL** and the **Guest Sponsor API Client ID

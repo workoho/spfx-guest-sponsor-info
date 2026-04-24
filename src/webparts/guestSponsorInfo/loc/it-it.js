@@ -154,7 +154,7 @@ define([], function () {
     ProxyStatusError: "Connessione non riuscita",
     PpSetupIntro: "Configurazione necessaria:",
     PpSetupRerunHint:
-      "Problema di connessione? Gli script di configurazione sono idempotenti \u2014 rieseguirli con gli stessi parametri risolve la maggior parte dei problemi.",
+      "Problema di connessione? Lo script di configurazione è idempotente — rieseguirlo con gli stessi parametri risolve la maggior parte dei problemi.",
     CopyToClipboardLabel: "Copia",
     CopiedToClipboardLabel: "Copiato!",
     AuthorSectionGroupName: "Informazioni",
@@ -236,7 +236,7 @@ define([], function () {
       "Esperienza completa alimentata da una Azure Function. Richiede una configurazione Azure una tantum — consigliato per la produzione.",
     WelcomeDialogOptionApiDocsLabel: "Visualizza la guida di configurazione",
     WelcomeDialogSetupGuideNote:
-      "Questi passaggi sono un collegamento rapido. Prima di eseguire uno script, leggi la guida di configurazione per capire cosa fa ogni comando.",
+      "Questo comando è un collegamento rapido. Prima di eseguirlo, leggi la guida di configurazione per capire cosa fa.",
     WelcomeDialogDeployToAzureLabel: "Distribuire l'API in Azure",
     WelcomeDialogDeployNote:
       "Questa opzione richiede che la Guest Sponsor API sia distribuita nella tua sottoscrizione Azure. Puoi farlo direttamente qui \u2014 bastano pochi minuti.",

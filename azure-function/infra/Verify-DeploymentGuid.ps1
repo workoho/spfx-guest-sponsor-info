@@ -7,8 +7,9 @@
 #
 # PURPOSE
 # -------
-# After deploying the ARM template, use this script to verify that Azure
-# correctly correlated the Customer Usage Attribution (CUA) deployment
+# After deploying via deploy-azure.ps1 / install.ps1, use this script to
+# verify that Azure correctly correlated the Customer Usage Attribution (CUA)
+# deployment
 # (pid-18fb4033-c9f3-41fa-a5db-e3a03b012939) with the actual resources.
 #
 # The script follows the correlationId of the pid-* deployment and lists every
@@ -33,8 +34,8 @@
 #
 # WHEN TO RUN
 # -----------
-# Run this after every fresh deployment of azuredeploy.json (or the
-# "Deploy to Azure" button) to confirm attribution before a Partner Center
+# Run this after every fresh Bicep/azd deployment (via install.ps1 or
+# deploy-azure.ps1) to confirm attribution before a Partner Center
 # reporting period. Not needed for day-to-day development.
 
 Param(
@@ -45,7 +46,7 @@ Param(
 )
 
 # Retrieve the correlationId that Azure assigned to the pid-* deployment.
-# All resources deployed in the same ARM deployment share this correlationId.
+# All resources deployed in the same Bicep/azd deployment share this correlationId.
 $correlationId = (Get-AzResourceGroupDeployment `
     -ResourceGroupName $resourceGroupName `
     -Name "$deploymentName").correlationId

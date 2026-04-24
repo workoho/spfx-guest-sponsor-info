@@ -116,7 +116,7 @@ in the table above.
 
 ## Telemetry & Customer Usage Attribution
 
-The ARM template for the Azure Function includes a
+The Bicep template for the Azure Function includes a
 [Customer Usage Attribution (CUA)](https://learn.microsoft.com/en-us/partner-center/marketplace-offers/azure-partner-customer-usage-attribution)
 tracking resource. When the template is deployed, Azure creates an empty
 nested deployment named `pid-18fb4033-c9f3-41fa-a5db-e3a03b012939` in your

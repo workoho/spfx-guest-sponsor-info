@@ -152,7 +152,7 @@ define([], function () {
     ProxyStatusError: "Tilkobling mislyktes",
     PpSetupIntro: "Nødvendig oppsett:",
     PpSetupRerunHint:
-      "Tilkoblingsproblem? Oppsetsskriptene er idempotente \u2014 å kjøre dem på nytt med de samme parameterne løser de fleste problemer.",
+      "Tilkoblingsproblem? Oppsetsskriptet er idempotent — å kjøre det på nytt med de samme parameterne løser de fleste problemer.",
     CopyToClipboardLabel: "Kopier",
     CopiedToClipboardLabel: "Kopiert!",
     AuthorSectionGroupName: "Om",
@@ -233,7 +233,7 @@ define([], function () {
       "Fullt utstyrt opplevelse via en Azure Function. Krever engangsoppsett i Azure — anbefales for produksjon.",
     WelcomeDialogOptionApiDocsLabel: "Se oppsettsveiledningen",
     WelcomeDialogSetupGuideNote:
-      "Disse trinnene er en snarvei. Les oppsettsveiledningen før du kjører skript — så du forstår hva hver kommando gjør.",
+      "Denne kommandoen er en snarvei. Les oppsettsveiledningen før du kjører den — så du forstår hva den gjør.",
     WelcomeDialogDeployToAzureLabel: "Distribuer API-en til Azure",
     WelcomeDialogDeployNote:
       "Dette alternativet krever at Guest Sponsor API er distribuert i Azure-abonnementet ditt. Du kan gjøre det her \u2014 det tar bare noen minutter.",

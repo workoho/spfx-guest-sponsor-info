@@ -201,10 +201,8 @@ to Azure CLI (`az login`) or a service principal when `AZURE_CLIENT_ID`,
 | File | Purpose |
 |---|---|
 | `src/getGuestSponsors.ts` | Single function entry point — all logic |
-| `infra/setup-app-registration.ps1` | Creates the EasyAuth App Registration |
-| `infra/setup-graph-permissions.ps1` | Grants Graph permissions to the Managed Identity |
-| `infra/main.bicep` | Azure infrastructure (Function App, Storage, MI, EasyAuth, Alerts) |
-| `infra/azuredeploy.json` | ARM template compiled from Bicep (used by "Deploy to Azure" button) |
+| `infra/setup-graph-permissions.ps1` | Assigns Graph app roles to the Managed Identity |
+| `infra/main.bicep` | Azure infrastructure (Function App, Storage, MI, EasyAuth, App Registration, Alerts) |
 | `local.settings.json.example` | Template for local development settings |
 
 ## License

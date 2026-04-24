@@ -26,7 +26,7 @@ no guaranteed response time or service-level agreement.
 
 Before opening an issue, please:
 
-- Review the [Setup Guide](/en/setup/) and [Operations Guide](/en/operations/)
+- Review the [Setup Guide](/en/setup/)
   for common configuration steps
 - Search
   [existing issues](https://github.com/workoho/spfx-guest-sponsor-info/issues)
@@ -45,7 +45,7 @@ professional services:
 
 - **Deployment & Setup** — guided end-to-end installation in your Microsoft
   365 and Azure tenant
-- **Azure Infrastructure** — ARM/Bicep deployment, app registration setup,
+- **Azure Infrastructure** — Bicep/azd deployment, app registration setup,
   and managed identity configuration
 - **Customization** — adapting the web part to your organization's specific
   requirements

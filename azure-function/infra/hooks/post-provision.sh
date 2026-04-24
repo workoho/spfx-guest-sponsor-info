@@ -4,17 +4,18 @@
 # SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
 #
 # Post-provision hook for Azure Developer CLI (azd).
-# Runs after Bicep deployment to grant the Function App's Managed Identity
-# the required Microsoft Graph application roles:
-#   - User.Read.All        (required; read any user's sponsors, profile, and photos)
-#   - Presence.Read.All    (optional; requires Microsoft Teams)
-#   - MailboxSettings.Read (optional; filters shared/room/equipment mailboxes)
+# Runs after Bicep deployment to:
+#   - Restart the Function App so the Managed Identity token cache picks up
+#     the Graph application permissions that Bicep just assigned.
+#   - Print the web part configuration values.
 #
-# Role GUIDs are resolved dynamically from the Graph service principal so that
-# no hardcoded IDs need to be maintained here.
+# The Entra App Registration and all Microsoft Graph application role
+# assignments (User.Read.All, Presence.Read.All, MailboxSettings.Read,
+# TeamMember.Read.All) are now managed by the Bicep template via the
+# Microsoft Graph Bicep extension v1.0 — no manual permission grants here.
 #
-# Bicep outputs (managedIdentityObjectId, sponsorApiUrl) are available
-# as environment variables via 'azd env get-values' after provisioning.
+# Bicep outputs (functionAppUrl, webPartClientId) are available as environment
+# variables via 'azd env get-values' after provisioning.
 #
 # All operations are idempotent — safe to re-run.
 
@@ -27,88 +28,58 @@ source <(azd env get-values)
 # preloads them into the hook process environment with the same casing.
 # Create SCREAMING_SNAKE_CASE aliases so the rest of this script uses a
 # consistent naming convention alongside the AZURE_* env vars.
-MANAGED_IDENTITY_OBJECT_ID="${managedIdentityObjectId:-${MANAGED_IDENTITY_OBJECT_ID:-}}"
-SPONSOR_API_URL="${sponsorApiUrl:-${SPONSOR_API_URL:-}}"
+FUNCTION_APP_URL="${functionAppUrl:-${FUNCTION_APP_URL:-}}"
+if [[ -z "${FUNCTION_APP_URL:-}" && -n "${sponsorApiEndpointUrl:-}" ]]; then
+  FUNCTION_APP_URL="$(printf '%s' "${sponsorApiEndpointUrl}" | sed 's#/api/getGuestSponsors$##')"
+fi
+if [[ -z "${FUNCTION_APP_URL:-}" && -n "${sponsorApiUrl:-}" ]]; then
+  FUNCTION_APP_URL="$(printf '%s' "${sponsorApiUrl}" | sed 's#/api/getGuestSponsors$##')"
+fi
+WEB_PART_CLIENT_ID="${webPartClientId:-${WEB_PART_CLIENT_ID:-}}"
+# functionAppName is now a Bicep output (camelCase); fall back to the azd env
+# var for deployments that still have AZURE_FUNCTION_APP_NAME persisted.
+FUNCTION_APP_NAME="${functionAppName:-${AZURE_FUNCTION_APP_NAME:-}}"
 
-MANAGED_IDENTITY_OBJECT_ID="${MANAGED_IDENTITY_OBJECT_ID:?Bicep output managedIdentityObjectId missing — did provisioning succeed?}"
-
-GRAPH_APP_ID="00000003-0000-0000-c000-000000000000"
-
-echo "Resolving Microsoft Graph service principal..."
-GRAPH_SP_ID=$(az ad sp show --id "${GRAPH_APP_ID}" --query "id" -o tsv)
-
-NEW_ROLES_ASSIGNED=false
-
-# Resolve a Graph app role ID by permission name (Application type only).
-resolve_role_id() {
-  az rest \
-    --method GET \
-    --url "https://graph.microsoft.com/v1.0/servicePrincipals/${GRAPH_SP_ID}/appRoles" \
-    --query "value[?value=='${1}' && contains(allowedMemberTypes, 'Application')].id | [0]" \
-    -o tsv 2>/dev/null || true
-}
-
-# Assign a Graph app role to the Managed Identity; skip if already assigned.
-# Usage: assign_role <name> [optional=false]
-assign_role() {
-  local ROLE_NAME="${1}"
-  local OPTIONAL="${2:-false}"
-  local ROLE_ID
-  ROLE_ID=$(resolve_role_id "${ROLE_NAME}")
-
-  if [ -z "${ROLE_ID:-}" ]; then
-    if [ "${OPTIONAL}" = "true" ]; then
-      echo "  ⚠ ${ROLE_NAME} not found in this tenant — skipping (optional)."
-      return
-    else
-      echo "  ✗ Required role ${ROLE_NAME} not found on the Graph service principal." >&2
-      exit 1
+# azd can retain a stale webPartClientId in the env file. Resolve the EasyAuth
+# App Registration directly by its deterministic uniqueName and sync the azd
+# environment so both this hook and deploy-azure.ps1 print the real client ID.
+if [[ -n "${FUNCTION_APP_NAME:-}" ]]; then
+  app_reg_unique_name="guest-sponsor-info-proxy-${FUNCTION_APP_NAME}"
+  if resolved_client_id="$(az ad app list --filter "uniqueName eq '${app_reg_unique_name}'" --query '[0].appId' -o tsv 2>/dev/null)"; then
+    if [[ -n "${resolved_client_id}" && "${resolved_client_id}" != "null" ]]; then
+      existing_env_client_id="${webPartClientId:-}"
+      WEB_PART_CLIENT_ID="${resolved_client_id}"
+      export WEB_PART_CLIENT_ID
+      export webPartClientId="${resolved_client_id}"
+      if [[ "${AZURE_WEB_PART_CLIENT_ID:-}" != "${resolved_client_id}" ]]; then
+        azd env set AZURE_WEB_PART_CLIENT_ID "${resolved_client_id}" >/dev/null
+        export AZURE_WEB_PART_CLIENT_ID="${resolved_client_id}"
+      fi
+      if [[ "${existing_env_client_id}" != "${resolved_client_id}" ]]; then
+        azd env set webPartClientId "${resolved_client_id}" >/dev/null
+      fi
     fi
   fi
+fi
 
-  echo "Checking app role ${ROLE_NAME}..."
-  EXISTING=$(az rest \
-    --method GET \
-    --url "https://graph.microsoft.com/v1.0/servicePrincipals/${MANAGED_IDENTITY_OBJECT_ID}/appRoleAssignments" \
-    --query "value[?appRoleId=='${ROLE_ID}'].id | [0]" \
-    -o tsv 2>/dev/null || true)
-
-  if [ -n "${EXISTING:-}" ]; then
-    echo "  ${ROLE_NAME} already assigned — skipping."
-  else
-    az rest \
-      --method POST \
-      --url "https://graph.microsoft.com/v1.0/servicePrincipals/${MANAGED_IDENTITY_OBJECT_ID}/appRoleAssignments" \
-      --body "{\"principalId\":\"${MANAGED_IDENTITY_OBJECT_ID}\",\"resourceId\":\"${GRAPH_SP_ID}\",\"appRoleId\":\"${ROLE_ID}\"}" \
-      >/dev/null
-    echo "  ${ROLE_NAME} assigned."
-    NEW_ROLES_ASSIGNED=true
-  fi
-}
-
-assign_role "User.Read.All"
-assign_role "Presence.Read.All" "true"
-assign_role "MailboxSettings.Read" "true"
-
-# ── Restart Function App if new permissions were granted ─────────────────────
-# New Graph app role assignments are not picked up until the managed identity
-# token cache is cleared — a restart is the fastest way to do that.
-if [ "${NEW_ROLES_ASSIGNED}" = "true" ]; then
-  # AZURE_FUNCTION_APP_NAME is set by the pre-provision hook.
-  # AZURE_RESOURCE_GROUP is set by azd from the environment configuration.
-  if [ -n "${AZURE_FUNCTION_APP_NAME:-}" ] && [ -n "${AZURE_RESOURCE_GROUP:-}" ]; then
-    echo ""
-    echo "Restarting Function App '${AZURE_FUNCTION_APP_NAME}' to activate new Graph permissions..."
-    az functionapp restart \
-      --name "${AZURE_FUNCTION_APP_NAME}" \
-      --resource-group "${AZURE_RESOURCE_GROUP}" \
-      >/dev/null
-    echo "  Function App restarted."
-  else
-    echo ""
-    echo "Note: New Graph permissions were granted. Restart the Function App manually"
-    echo "to activate them (AZURE_FUNCTION_APP_NAME or AZURE_RESOURCE_GROUP not set)."
-  fi
+# ── Restart Function App ──────────────────────────────────────────────────────
+# Bicep assigns Graph app roles as part of the deployment.  A restart ensures
+# the Managed Identity token cache is cleared and the new permissions are
+# activated immediately.  Without this, the first invocations after a
+# fresh deployment may fail until the token naturally expires.
+if [ -n "${FUNCTION_APP_NAME:-}" ] && [ -n "${AZURE_RESOURCE_GROUP:-}" ]; then
+  echo ""
+  echo "Restarting Function App '${FUNCTION_APP_NAME}' to activate Graph permissions..."
+  az functionapp restart \
+    --name "${FUNCTION_APP_NAME}" \
+    --resource-group "${AZURE_RESOURCE_GROUP}" \
+    >/dev/null
+  echo "  Function App restarted."
+else
+  echo ""
+  echo "Note: Could not restart the Function App automatically"
+  echo "(functionAppName output or AZURE_RESOURCE_GROUP not set)."
+  echo "Restart it manually to ensure Graph permissions are activated."
 fi
 
 # ── Print web part configuration values ──────────────────────────────────────
@@ -116,9 +87,26 @@ echo ""
 echo "Paste these values into the SPFx web part property pane"
 echo "(Edit web part → Guest Sponsor API):"
 echo ""
-echo "  Guest Sponsor API Base URL              : ${SPONSOR_API_URL}"
-echo "  Guest Sponsor API Client ID (App Reg.)  : ${AZURE_WEB_PART_CLIENT_ID}"
+echo "  Guest Sponsor API Base URL              : ${FUNCTION_APP_URL}"
+echo "  Guest Sponsor API Client ID (App Reg.)  : ${WEB_PART_CLIENT_ID}"
 echo ""
 echo "Note: Storage role assignment propagation can take 1–2 minutes."
 echo "If the function returns errors immediately after deployment,"
 echo "wait a moment and retry — no redeployment is needed."
+
+# ── Deferred Graph permissions reminder ───────────────────────────────────────
+# When deploy-azure.ps1 was used with SkipGraphRoleAssignments, the Bicep
+# parameter skipGraphRoleAssignments=true was passed and
+# AZURE_SKIP_GRAPH_ROLE_ASSIGNMENTS was written to the azd env.
+# Remind the operator to run the follow-up script.
+if [ "${AZURE_SKIP_GRAPH_ROLE_ASSIGNMENTS:-false}" = "true" ]; then
+  echo ""
+  echo "IMPORTANT: Graph role assignments are DEFERRED."
+  echo "The Function App Managed Identity does not yet have the Microsoft Graph"
+  echo "application permissions it needs. Run setup-graph-permissions.ps1 to assign them:"
+  echo ""
+  echo "  -ManagedIdentityObjectId : ${managedIdentityObjectId:-<see azd env get-values>}"
+  echo "  -TenantId                : ${AZURE_TENANT_ID:-<see azd env get-values>}"
+  echo ""
+  echo "The web part will return errors until those permissions are assigned."
+fi

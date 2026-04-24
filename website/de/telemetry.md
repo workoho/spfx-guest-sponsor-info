@@ -15,7 +15,7 @@ github_doc: telemetry.md
 
 ## Was bei der Bereitstellung passiert
 
-Wenn Sie die Azure Function mit der mitgelieferten ARM-Vorlage
+Wenn Sie die Azure Function mit der mitgelieferten Bicep-Vorlage und azd
 bereitstellen, wird ein kleiner Tracking-Marker in Ihrer
 Ressourcengruppe angelegt:
 
@@ -57,22 +57,17 @@ Ressourcengruppe.
 
 ## So deaktivieren Sie die Telemetrie
 
-Setzen Sie `enableTelemetry=false` bei der Bereitstellung:
+Übergeben Sie `-EnableTelemetry $false` an den Bereitstellungs-Assistenten:
 
-```bash
-az deployment group create \
-  --resource-group <ihre-ressourcengruppe> \
-  --template-uri https://github.com/workoho/spfx-guest-sponsor-info/releases/latest/download/azuredeploy.json \
-  --parameters \
-      tenantId=<ihre-tenant-id> \
-      tenantName=<ihr-tenant-name> \
-      functionAppName=<global-eindeutiger-name> \
-      webPartClientId=<client-id-aus-vorbereitung> \
-      enableTelemetry=false
+```powershell
+& ([scriptblock]::Create((iwr 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/main/azure-function/infra/install.ps1').Content)) -EnableTelemetry $false
 ```
 
-Oder über die **Deploy to Azure**-Schaltfläche: Erweitern Sie *Telemetry*
-im Parameterformular und deaktivieren Sie *Enable Telemetry*.
+Oder direkt über `deploy-azure.ps1` aus einem entpackten Infra-ZIP:
+
+```powershell
+./deploy-azure.ps1 -EnableTelemetry $false
+```
 
 ## Kontakt
 

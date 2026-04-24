@@ -1,6 +1,6 @@
 # Terms of Use
 
-**Product:** Guest Sponsor Info for SharePoint Online\
+**Product:** Guest Sponsor Info for Microsoft Entra B2B\
 **Publisher:** Workoho GmbH\
 **Author:** Julian Pawlowski\
 **Effective date:** 2026-03-26

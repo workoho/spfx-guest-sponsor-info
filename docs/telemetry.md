@@ -8,7 +8,7 @@
 > privacy policies, located at
 > [https://www.microsoft.com/trustcenter](https://www.microsoft.com/trustcenter).
 
-The ARM template uses Microsoft's
+The Bicep template uses Microsoft's
 [Customer Usage Attribution (CUA)](https://aka.ms/partnercenter-attribution)
 mechanism. When the template is deployed, Azure creates an empty nested
 deployment in your resource group:
@@ -43,22 +43,17 @@ attribution for that resource group.
 
 ## Opt Out
 
-Set `enableTelemetry=false` during deployment:
+Pass `-EnableTelemetry $false` to the deployment wizard:
 
-```bash
-az deployment group create \
-  --resource-group <your-resource-group> \
-  --template-uri https://github.com/workoho/spfx-guest-sponsor-info/releases/latest/download/azuredeploy.json \
-  --parameters \
-      tenantId=<your-tenant-id> \
-      tenantName=<your-tenant-name> \
-      functionAppName=<globally-unique-name> \
-      webPartClientId=<client-id-from-pre-step> \
-      enableTelemetry=false
+```powershell
+& ([scriptblock]::Create((iwr 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/main/azure-function/infra/install.ps1').Content)) -EnableTelemetry $false
 ```
 
-Or via the [Deploy to Azure](../README.md#deploy-to-azure) button: expand
-Telemetry in the parameter form and uncheck Enable Telemetry.
+Or, when running `deploy-azure.ps1` directly from an extracted infra ZIP:
+
+```powershell
+./deploy-azure.ps1 -EnableTelemetry $false
+```
 
 ## Contact
 

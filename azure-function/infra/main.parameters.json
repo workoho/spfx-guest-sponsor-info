@@ -2,23 +2,32 @@
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "functionAppName": {
-      "value": "${AZURE_FUNCTION_APP_NAME}"
-    },
     "tenantId": {
       "value": "${AZURE_TENANT_ID}"
     },
     "tenantName": {
       "value": "${AZURE_SHAREPOINT_TENANT_NAME}"
     },
-    "webPartClientId": {
-      "value": "${AZURE_WEB_PART_CLIENT_ID}"
+    "environment": {
+      "value": "${AZURE_TAG_ENVIRONMENT}"
+    },
+    "criticality": {
+      "value": "${AZURE_TAG_CRITICALITY}"
+    },
+    "alwaysReadyInstances": {
+      "value": "${AZURE_ALWAYS_READY_INSTANCES}"
+    },
+    "maximumFlexInstances": {
+      "value": "${AZURE_MAXIMUM_FLEX_INSTANCES}"
+    },
+    "instanceMemoryMB": {
+      "value": "${AZURE_INSTANCE_MEMORY_MB}"
     },
     "enableMonitoring": {
-      "value": true
+      "value": "${AZURE_ENABLE_MONITORING}"
     },
     "deployAzureMaps": {
-      "value": true
+      "value": "${AZURE_DEPLOY_AZURE_MAPS}"
     },
     "azureMapsAccountName": {
       "value": ""
@@ -27,7 +36,7 @@
       "value": ""
     },
     "enableFailureAnomaliesAlert": {
-      "value": false
+      "value": "${AZURE_ENABLE_FAILURE_ANOMALIES_ALERT}"
     },
     "defaultOperationalActionGroupShortName": {
       "value": "GSIOps"
@@ -36,13 +45,10 @@
       "value": "GSIInfo"
     },
     "hostingPlan": {
-      "value": "Consumption"
+      "value": "${AZURE_HOSTING_PLAN}"
     },
     "appVersion": {
-      "value": "latest"
-    },
-    "maximumFlexInstances": {
-      "value": 10
+      "value": "${AZURE_APP_VERSION}"
     }
   }
 }

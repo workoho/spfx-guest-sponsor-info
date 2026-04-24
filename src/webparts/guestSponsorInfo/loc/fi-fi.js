@@ -152,7 +152,7 @@ define([], function () {
     ProxyStatusError: "Yhteys epäonnistui",
     PpSetupIntro: "Tarvittavat asetukset:",
     PpSetupRerunHint:
-      "Yhteysongelma? Asennusskriptit ovat idempotentteja \u2014 niiden uudelleenajo samoilla parametreilla korjaa useimmat ongelmat.",
+      "Yhteysongelma? Asennusskripti on idempotenttiinen — sen uudelleenajo samoilla parametreilla korjaa useimmat ongelmat.",
     CopyToClipboardLabel: "Kopioi",
     CopiedToClipboardLabel: "Kopioitu!",
     AuthorSectionGroupName: "Tietoja",
@@ -233,7 +233,7 @@ define([], function () {
       "Täysimittainen kokemus Azure-funktion avulla. Vaatii kertaluonteisen Azure-määrityksen — suositellaan tuotantokäyttöön.",
     WelcomeDialogOptionApiDocsLabel: "Katso asennusopas",
     WelcomeDialogSetupGuideNote:
-      "Nämä vaiheet ovat pikakuvake. Lue asennusopas ennen komentosarjojen suorittamista — jotta ymmärrät, mitä kukin komento tekee.",
+      "Tämä komento on pikakuvake. Lue asennusopas ennen sen suorittamista — jotta ymmärrät, mitä se tekee.",
     WelcomeDialogDeployToAzureLabel: "Ota API käyttöön Azuressa",
     WelcomeDialogDeployNote:
       "Tämä vaihtoehto edellyttää, että Guest Sponsor -ohjelmointirajapinta on otettu käyttöön Azure-tilaussasi. Voit tehdä sen tässä \u2014 se vie vain muutaman minuutin.",

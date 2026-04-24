@@ -152,7 +152,7 @@ define([], function () {
     ProxyStatusError: "Forbindelse mislykkedes",
     PpSetupIntro: "Påkrævet opsætning:",
     PpSetupRerunHint:
-      "Forbindelsesproblem? Opsætningsscripterne er idempotente \u2014 kør dem igen med samme parametre for at løse de fleste problemer.",
+      "Forbindelsesproblem? Opsætningsscriptet er idempotent — kør det igen med samme parametre for at løse de fleste problemer.",
     CopyToClipboardLabel: "Kopiér",
     CopiedToClipboardLabel: "Kopieret!",
     AuthorSectionGroupName: "Om",
@@ -233,7 +233,7 @@ define([], function () {
       "Fuld funktionsrig oplevelse via en Azure Function. Kræver engangsopsætning i Azure — anbefales til produktion.",
     WelcomeDialogOptionApiDocsLabel: "Se installationsvejledningen",
     WelcomeDialogSetupGuideNote:
-      "Disse trin er en genvej. Læs installationsvejledningen, inden du kører scripts — så du forstår, hvad hvert kommando gør.",
+      "Denne kommando er en genvej. Læs installationsvejledningen, inden du kører den — så du forstår, hvad den gør.",
     WelcomeDialogDeployToAzureLabel: "Installer API'en i Azure",
     WelcomeDialogDeployNote:
       "Denne mulighed kræver, at Guest Sponsor API er installeret i dit Azure-abonnement. Du kan gøre det her \u2014 det tager kun få minutter.",

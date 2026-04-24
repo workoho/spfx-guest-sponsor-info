@@ -1770,7 +1770,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                     wrapper.style.alignItems = 'flex-start';
                     wrapper.style.gap = '4px';
 
-                    // Show the 3-step overview when unconfigured or on error
+                    // Show setup hint when unconfigured or on error
                     if (!isOk) {
                       const stepsIntro = document.createElement('div');
                       stepsIntro.style.fontSize = '12px';
@@ -1779,19 +1779,12 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                       stepsIntro.textContent = strings.PpSetupIntro;
                       wrapper.appendChild(stepsIntro);
 
-                      const steps = [
-                        strings.WelcomeDialogSetupStep1Label,
-                        strings.WelcomeDialogDeployToAzureLabel,
-                        strings.WelcomeDialogSetupStep3Label,
-                      ];
-                      steps.forEach((text, i) => {
-                        const step = document.createElement('div');
-                        step.style.fontSize = '12px';
-                        step.style.fontWeight = '600';
-                        step.style.color = subtextColor;
-                        step.textContent = `${i + 1}. ${text}`;
-                        wrapper.appendChild(step);
-                      });
+                      const step = document.createElement('div');
+                      step.style.fontSize = '12px';
+                      step.style.fontWeight = '600';
+                      step.style.color = subtextColor;
+                      step.textContent = strings.WelcomeDialogDeployToAzureLabel;
+                      wrapper.appendChild(step);
                     }
 
                     // Re-run hint — shown only on error

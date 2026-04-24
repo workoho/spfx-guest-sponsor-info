@@ -7,8 +7,14 @@
 # Runs before Bicep deployment to:
 #   1. Derive a default Function App name from the azd environment name.
 #   2. Detect or prompt for the SharePoint tenant name.
-#   3. Create (or reuse) the Entra App Registration required for EasyAuth,
-#      and store its client ID as AZURE_WEB_PART_CLIENT_ID in the azd environment.
+#
+# The Entra App Registration and Microsoft Graph permission assignments are
+# now managed declaratively by the Bicep template (Microsoft Graph Bicep
+# extension v1.0).  The deploying principal needs:
+#   - Application.ReadWrite.All  (Cloud Application Administrator,
+#                                  Application Administrator, or Global Administrator)
+#   - AppRoleAssignment.ReadWrite.All  (Privileged Role Administrator
+#                                        or Global Administrator)
 #
 # All operations are idempotent — safe to re-run on 'azd provision' or 'azd up'.
 
@@ -17,9 +23,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 cd "${REPO_ROOT}"
-
-APP_DISPLAY_NAME="Guest Sponsor Info - SharePoint Web Part Auth"
-APP_DESCRIPTION="EasyAuth identity provider for the \"Guest Sponsor Info\" SharePoint Online web part (SPFx). Authenticates requests from the web part to the Azure Function proxy, which calls Microsoft Graph on behalf of signed-in guest users to retrieve their Entra sponsor information. Tokens are acquired silently via pre-authorized SharePoint Online Web Client Extensibility. Source: https://github.com/workoho/spfx-guest-sponsor-info"
 
 # ── 0a. Check Azure RBAC permission ─────────────────────────────────────────
 # Contributor (or Owner) on the subscription is needed to register resource
@@ -62,9 +65,14 @@ fi
 echo ''
 
 # ── 0. Validate required Azure resource providers ───────────────────────────
-# Keep these defaults aligned with azure-function/infra/main.parameters.json.
-HOSTING_PLAN='Consumption'
-DEPLOY_AZURE_MAPS='true'
+# Read from azd env — set by deploy-azure.ps1 via 'azd env set' before running provision.
+# Fall back to main.parameters.json defaults when running azd directly without the wizard.
+_ENV_VALUES="$(azd env get-values 2>/dev/null || true)"
+HOSTING_PLAN="$(echo "${_ENV_VALUES}" | grep '^AZURE_HOSTING_PLAN=' | cut -d'=' -f2 | tr -d '"' || true)"
+# Default to Consumption when the variable is absent (direct azd invocation).
+HOSTING_PLAN="${HOSTING_PLAN:-Consumption}"
+DEPLOY_AZURE_MAPS="$(echo "${_ENV_VALUES}" | grep '^AZURE_DEPLOY_AZURE_MAPS=' | cut -d'=' -f2 | tr -d '"' || true)"
+DEPLOY_AZURE_MAPS="${DEPLOY_AZURE_MAPS:-true}"
 REQUIRED_PROVIDERS=(
   'Microsoft.AlertsManagement'
   'Microsoft.Authorization'
@@ -130,15 +138,7 @@ else
   echo '  ✓ All required resource providers are ready.'
 fi
 
-# ── 1. Derive a default Function App name ────────────────────────────────────
-if ! azd env get-values | grep -q "^AZURE_FUNCTION_APP_NAME="; then
-  ENV_NAME=$(azd env get-values | grep "^AZURE_ENV_NAME=" | cut -d'=' -f2 | tr -d '"')
-  DEFAULT_APP_NAME="guest-sponsor-${ENV_NAME}"
-  echo "Function App name not set — using: ${DEFAULT_APP_NAME}"
-  azd env set AZURE_FUNCTION_APP_NAME "${DEFAULT_APP_NAME}"
-fi
-
-# ── 2. Detect or prompt for SharePoint tenant name ───────────────────────────
+# ── 1. Detect or prompt for SharePoint tenant name ──────────────────────────
 if ! azd env get-values | grep -q "^AZURE_SHAREPOINT_TENANT_NAME="; then
   # Try to derive from the default verified domain (e.g. contoso.onmicrosoft.com → contoso).
   DERIVED=$(az rest \
@@ -156,101 +156,107 @@ if ! azd env get-values | grep -q "^AZURE_SHAREPOINT_TENANT_NAME="; then
   fi
 fi
 
-# ── 3. Create or reuse the App Registration ───────────────────────────────────
-# ── 3a. Check Entra role for App Registration ────────────────────────────────
-# Creating or modifying an App Registration requires an active Entra admin
-# role.  'az rest' reuses the already-authenticated az CLI session to query
-# the current user's directory role memberships.  The check is informational
-# — a missing role does not abort the script, but it surfaces the gap early
-# so the operator can activate an eligible PIM role before proceeding.
+if ! azd env get-values | grep -q '^AZURE_HOSTING_PLAN='; then
+  azd env set AZURE_HOSTING_PLAN 'Consumption'
+fi
+
+if ! azd env get-values | grep -q '^AZURE_DEPLOY_AZURE_MAPS='; then
+  azd env set AZURE_DEPLOY_AZURE_MAPS 'true'
+fi
+
+if ! azd env get-values | grep -q '^AZURE_TAG_ENVIRONMENT='; then
+  azd env set AZURE_TAG_ENVIRONMENT ''
+fi
+
+if ! azd env get-values | grep -q '^AZURE_TAG_CRITICALITY='; then
+  azd env set AZURE_TAG_CRITICALITY ''
+fi
+
+if ! azd env get-values | grep -q '^AZURE_APP_VERSION='; then
+  azd env set AZURE_APP_VERSION 'latest'
+fi
+
+if ! azd env get-values | grep -q '^AZURE_ENABLE_MONITORING='; then
+  azd env set AZURE_ENABLE_MONITORING 'true'
+fi
+
+if ! azd env get-values | grep -q '^AZURE_ENABLE_FAILURE_ANOMALIES_ALERT='; then
+  azd env set AZURE_ENABLE_FAILURE_ANOMALIES_ALERT 'false'
+fi
+
+if ! azd env get-values | grep -q '^AZURE_ALWAYS_READY_INSTANCES='; then
+  azd env set AZURE_ALWAYS_READY_INSTANCES '1'
+fi
+
+if ! azd env get-values | grep -q '^AZURE_MAXIMUM_FLEX_INSTANCES='; then
+  azd env set AZURE_MAXIMUM_FLEX_INSTANCES '10'
+fi
+
+if ! azd env get-values | grep -q '^AZURE_INSTANCE_MEMORY_MB='; then
+  azd env set AZURE_INSTANCE_MEMORY_MB '2048'
+fi
+
+# ── 3. Entra role check ──────────────────────────────────────────────────────
+# Cloud Application Administrator (or Application Administrator / Global Admin)
+# is always required — Bicep creates and manages the App Registration.
+#
+# Privileged Role Administrator (or Global Admin) is required for Graph app role
+# assignments to the Managed Identity. If that role is not available, defer by
+# setting AZURE_SKIP_GRAPH_ROLE_ASSIGNMENTS=true before running azd provision:
+#
+#   azd env set AZURE_SKIP_GRAPH_ROLE_ASSIGNMENTS true
+#
+# Then run setup-graph-permissions.ps1 after deployment with the
+# managedIdentityObjectId Bicep output (azd env get-values).
 echo ''
-echo 'Checking Entra role for App Registration...'
+echo 'Checking Entra roles...'
 ENTRA_ROLES="$(az rest \
   --method GET \
   --url "https://graph.microsoft.com/v1.0/me/transitiveMemberOf/microsoft.graph.directoryRole?\$select=displayName" \
   --query 'value[*].displayName' \
   -o tsv 2>/dev/null || true)"
+SKIP_ROLE_ASSIGNMENTS="${AZURE_SKIP_GRAPH_ROLE_ASSIGNMENTS:-}"
 if [[ -n "${ENTRA_ROLES:-}" ]]; then
-  # Filter to only the roles relevant to App Registration management.
-  ACTIVE_ADMIN_ROLES="$(echo "${ENTRA_ROLES}" | grep -E \
-    '^(Cloud Application Administrator|Application Administrator|Global Administrator)$' || true)"
-  if [[ -n "${ACTIVE_ADMIN_ROLES:-}" ]]; then
-    ACTIVE_LIST="$(echo "${ACTIVE_ADMIN_ROLES}" | tr '\n' ',' | sed 's/,$//' | sed 's/,/, /g')"
-    echo "  ✓ Entra role: ${ACTIVE_LIST} — active."
-  else
-    echo '  ! Entra role: no required admin role is active for your account.'
-    echo '    Required (one of):'
-    echo '      Cloud Application Administrator'
-    echo '      Application Administrator'
-    echo '      Global Administrator'
-    echo '    If your role is eligible (PIM): activate it before continuing.'
+  HAS_APP_REG_ROLE="$(echo "${ENTRA_ROLES}" | grep -E \
+    '^(Cloud Application Administrator|Application Administrator|Global Administrator)$' | head -1 || true)"
+  HAS_ASSIGNMENT_ROLE=''
+  if [[ "${SKIP_ROLE_ASSIGNMENTS}" != 'true' ]]; then
+    HAS_ASSIGNMENT_ROLE="$(echo "${ENTRA_ROLES}" | grep -E \
+      '^(Privileged Role Administrator|Global Administrator)$' | head -1 || true)"
+  fi
+  if [[ -z "${HAS_APP_REG_ROLE:-}" ]]; then
+    echo '  ! Missing: Cloud Application Administrator, Application Administrator,'
+    echo '    or Global Administrator — required to create/update the App Registration.'
+    echo '    Bicep will fail without this role. Activate via PIM before re-running:'
+    echo '    https://entra.microsoft.com/#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/aadRoles'
+  fi
+  if [[ "${SKIP_ROLE_ASSIGNMENTS}" != 'true' && -z "${HAS_ASSIGNMENT_ROLE:-}" ]]; then
+    echo '  ! Missing: Privileged Role Administrator (or Global Administrator) —'
+    echo '    needed to assign Graph app roles to the Managed Identity.'
+    echo '    Either activate the role via PIM, or defer the assignments:'
+    echo '      azd env set AZURE_SKIP_GRAPH_ROLE_ASSIGNMENTS true'
+    echo '    Then run setup-graph-permissions.ps1 after deployment.'
     echo '    PIM → My roles → Entra roles:'
     echo '    https://entra.microsoft.com/#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/aadRoles'
-    echo '    The App Registration step below will fail without one of these roles.'
+  fi
+  if [[ -n "${HAS_APP_REG_ROLE:-}" ]]; then
+    if [[ "${SKIP_ROLE_ASSIGNMENTS}" == 'true' ]]; then
+      echo "  ✓ Entra role: ${HAS_APP_REG_ROLE} — App Registration management covered."
+      echo '    Graph role assignments: deferred to setup-graph-permissions.ps1.'
+    elif [[ -n "${HAS_ASSIGNMENT_ROLE:-}" ]]; then
+      if [[ "${HAS_APP_REG_ROLE}" == "${HAS_ASSIGNMENT_ROLE}" ]]; then
+        echo "  ✓ Entra role: ${HAS_APP_REG_ROLE} — covers both required permissions."
+      else
+        echo "  ✓ Entra roles: ${HAS_APP_REG_ROLE} + ${HAS_ASSIGNMENT_ROLE} — both required roles active."
+      fi
+    fi
   fi
 else
-  echo '  ! Entra role: check could not be completed — continuing anyway.'
-  echo '    Required (one of): Cloud Application Administrator,'
-  echo '    Application Administrator, or Global Administrator.'
+  echo '  ! Entra role check could not be completed — continuing anyway.'
+  echo '    Required: Cloud Application Administrator (or similar).'
+  if [[ "${SKIP_ROLE_ASSIGNMENTS}" != 'true' ]]; then
+    echo '    Also required: Privileged Role Administrator (or Global Administrator).'
+    echo '    To defer Graph role assignments: azd env set AZURE_SKIP_GRAPH_ROLE_ASSIGNMENTS true'
+  fi
 fi
 echo ''
-
-echo "Checking for existing App Registration '${APP_DISPLAY_NAME}'..."
-
-# Helper: show a clear, actionable error when an App Registration az command
-# fails — commonly caused by a missing or inactive Entra admin role.
-_app_reg_fail() {
-  echo '' >&2
-  echo 'ERROR: App Registration step failed.' >&2
-  echo '  If the output above shows "Insufficient privileges" or "Forbidden",' >&2
-  echo '  your account lacks the required Entra admin role. Required (one of):' >&2
-  echo '    Cloud Application Administrator' >&2
-  echo '    Application Administrator' >&2
-  echo '    Global Administrator' >&2
-  echo '' >&2
-  echo '  If your role is eligible (PIM): activate it, then re-run azd provision.' >&2
-  echo '  PIM → My roles → Entra roles:' >&2
-  echo '  https://entra.microsoft.com/#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/aadRoles' >&2
-  exit 1
-}
-
-EXISTING_CLIENT_ID="$(az ad app list \
-  --display-name "${APP_DISPLAY_NAME}" \
-  --query "[0].appId" \
-  -o tsv 2>/dev/null)" || _app_reg_fail
-
-if [[ -n "${EXISTING_CLIENT_ID:-}" ]]; then
-  echo "App Registration already exists. Client ID: ${EXISTING_CLIENT_ID}"
-  CLIENT_ID="${EXISTING_CLIENT_ID}"
-else
-  echo "Creating App Registration '${APP_DISPLAY_NAME}'..."
-  CLIENT_ID="$(az ad app create \
-    --display-name "${APP_DISPLAY_NAME}" \
-    --sign-in-audience "AzureADMyOrg" \
-    --description "${APP_DESCRIPTION}" \
-    --query "appId" \
-    -o tsv)" || _app_reg_fail
-
-  APP_ID_URI="api://guest-sponsor-info-proxy/${CLIENT_ID}"
-  az ad app update \
-    --id "${CLIENT_ID}" \
-    --identifier-uris "${APP_ID_URI}" || _app_reg_fail
-
-  echo "App Registration created. App ID URI: ${APP_ID_URI}"
-fi
-
-# Ensure accessTokenAcceptedVersion is set to 2 (v2 tokens — aud = bare clientId).
-CURRENT_VERSION="$(az ad app show \
-  --id "${CLIENT_ID}" \
-  --query "api.requestedAccessTokenVersion" \
-  -o tsv 2>/dev/null || true)"
-
-if [[ "${CURRENT_VERSION:-}" != "2" ]]; then
-  echo "Setting accessTokenAcceptedVersion to 2..."
-  az rest --method PATCH \
-    --url "https://graph.microsoft.com/v1.0/applications(appId='${CLIENT_ID}')" \
-    --body '{"api":{"requestedAccessTokenVersion":2}}' || _app_reg_fail
-fi
-
-azd env set AZURE_WEB_PART_CLIENT_ID "${CLIENT_ID}"
-echo "AZURE_WEB_PART_CLIENT_ID set to ${CLIENT_ID}"

@@ -236,7 +236,7 @@ define([], function () {
       "Azure Function を利用した本格的なエクスペリエンスです。Azure の初回セットアップが必要です — 本番環境に推奨。",
     WelcomeDialogOptionApiDocsLabel: "セットアップ ガイドを表示",
     WelcomeDialogSetupGuideNote:
-      "この手順はクイックスタートのショートカットです。スクリプトを実行する前に、各コマンドの内容を理解するためセットアップ ガイドをお読みください。",
+      "このコマンドはクイックスタートのショートカットです。実行する前に、内容を理解するためセットアップ ガイドをお読みください。",
     WelcomeDialogDeployToAzureLabel: "API を Azure にデプロイ",
     WelcomeDialogDeployNote:
       "このオプションには、Azure サブスクリプションへの Guest Sponsor API のデプロイが必要です。ここから数分で完了できます。",

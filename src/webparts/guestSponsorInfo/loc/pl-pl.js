@@ -155,7 +155,7 @@ define([], function () {
     ProxyStatusError: "Połączenie nieudane",
     PpSetupIntro: "Wymagana konfiguracja:",
     PpSetupRerunHint:
-      "Problem z połączeniem? Skrypty konfiguracji są idempotentne \u2014 ponowne uruchomienie z tymi samymi parametrami naprawia większość problemów.",
+      "Problem z połączeniem? Skrypt konfiguracji jest idempotentny — ponowne uruchomienie z tymi samymi parametrami naprawia większość problemów.",
     CopyToClipboardLabel: "Kopiuj",
     CopiedToClipboardLabel: "Skopiowano!",
     AuthorSectionGroupName: "O aplikacji",
@@ -237,7 +237,7 @@ define([], function () {
       "Pełne możliwości dzięki Azure Function. Wymaga jednorazowej konfiguracji Azure — zalecane do produkcji.",
     WelcomeDialogOptionApiDocsLabel: "Wyświetl przewodnik konfiguracji",
     WelcomeDialogSetupGuideNote:
-      "Te kroki to skrót do szybkiej konfiguracji. Przed uruchomieniem skryptów przeczytaj przewodnik, aby zrozumieć, co robi każde polecenie.",
+      "To polecenie to skrót do szybkiej konfiguracji. Przed uruchomieniem przeczytaj przewodnik, aby zrozumieć, co robi.",
     WelcomeDialogDeployToAzureLabel: "Wdróż API na platformie Azure",
     WelcomeDialogDeployNote:
       "Ta opcja wymaga wdrożenia Guest Sponsor API w subskrypcji Azure. Możesz to zrobić tutaj \u2014 zajmuje to tylko kilka minut.",

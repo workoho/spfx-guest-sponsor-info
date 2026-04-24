@@ -153,7 +153,7 @@ define([], function () {
     ProxyStatusError: "Připojení selhalo",
     PpSetupIntro: "Požadované nastavení:",
     PpSetupRerunHint:
-      "Problém s připojením? Instalační skripty jsou idempotentní — opětovné spuštění se stejnými parametry vyřeší většinu problémů.",
+      "Problém s připojením? Instalační skript je idempotentí — opětné spuštění se stejnými parametry vyřeší většinu problémů.",
     CopyToClipboardLabel: "Kopírovat",
     CopiedToClipboardLabel: "Zkopírováno!",
     AuthorSectionGroupName: "O aplikaci",
@@ -235,7 +235,7 @@ define([], function () {
       "Plnohodnotné prostředí využívající Azure Function. Vyžaduje jednorázové nastavení Azure — doporučeno pro produkci.",
     WelcomeDialogOptionApiDocsLabel: "Zobrazit průvodce nastavením",
     WelcomeDialogSetupGuideNote:
-      "Tyto kroky jsou zkrácený postup. Před spuštěním skriptů si přečtěte průvodce nastavením — abyste rozuměli tomu, co každý příkaz dělá.",
+      "Tento příkaz je zkrácený postup. Před spuštěním si přečtěte průvodce nastavením — abyste rozuměli, co příkaz dělá.",
     WelcomeDialogDeployToAzureLabel: "Nasadit API do Azure",
     WelcomeDialogDeployNote:
       "Tato možnost vyžaduje nasazení Guest Sponsor API ve vašem předplatném Azure. Můžete to provést přímo zde — zabere to jen pár minut.",

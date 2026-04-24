@@ -161,7 +161,7 @@ define([], function () {
     ProxyStatusError: "Connection failed",
     PpSetupIntro: "Required setup:",
     PpSetupRerunHint:
-      "Connection problem? The setup scripts are idempotent \u2014 re-running them with the same parameters fixes most issues.",
+      "Connection problem? The setup script is idempotent — re-running it with the same parameters fixes most issues.",
     CopyToClipboardLabel: "Copy",
     CopiedToClipboardLabel: "Copied!",
     AuthorSectionGroupName: "About",
@@ -246,7 +246,7 @@ define([], function () {
       "Full-featured experience powered by an Azure Function. Requires one-time Azure setup — recommended for production.",
     WelcomeDialogOptionApiDocsLabel: "View setup guide",
     WelcomeDialogSetupGuideNote:
-      "These steps are a quick-start shortcut. Before running any script, read the setup guide to understand what each command does.",
+      "This command is a quick-start shortcut. Before running it, read the setup guide to understand what it does.",
     WelcomeDialogDeployToAzureLabel: "Deploy the API to Azure",
     WelcomeDialogDeployNote:
       "This option requires the Guest Sponsor API to be deployed to your Azure subscription. You can do this right here \u2014 it only takes a few minutes.",

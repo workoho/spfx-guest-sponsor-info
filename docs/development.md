@@ -77,7 +77,7 @@ Only needed for specific workflows.
 | Tool | Install | Purpose |
 |---|---|---|
 | **Azure CLI** (`az`) | [docs.microsoft.com/cli/azure](https://learn.microsoft.com/cli/azure/install-azure-cli) | Authenticate against Azure for local Function development and infra deployments. |
-| **PowerShell** (`pwsh`) | [github.com/PowerShell](https://github.com/PowerShell/PowerShell#get-powershell) | Run the infra setup scripts (`setup-app-registration.ps1`, `setup-graph-permissions.ps1`) on macOS / Linux. |
+| **PowerShell** (`pwsh`) | [github.com/PowerShell](https://github.com/PowerShell/PowerShell#get-powershell) | Run the infra setup script (`setup-graph-permissions.ps1`) on macOS / Linux. |
 | **GitHub CLI** (`gh`) | [cli.github.com](https://cli.github.com) | Manage PRs, issues, and CI runs from the terminal; used by `./scripts/release-notes.sh`. |
 
 ---
@@ -339,7 +339,7 @@ The VS Code task "npm watch (functions)" also provides this.
 
 ### Verify Attribution (Workoho developers only)
 
-After a fresh ARM deployment, run
+After a fresh Bicep/azd deployment (via install.ps1 or deploy-azure.ps1), run
 [`Verify-DeploymentGuid.ps1`](../azure-function/infra/Verify-DeploymentGuid.ps1)
 to confirm that Azure correlated the `pid-*` deployment with your real
 resources:

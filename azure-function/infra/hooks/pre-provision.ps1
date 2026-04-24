@@ -7,8 +7,14 @@
 # Runs before Bicep deployment to:
 #   1. Derive a default Function App name from the azd environment name.
 #   2. Detect or prompt for the SharePoint tenant name.
-#   3. Create (or reuse) the Entra App Registration required for EasyAuth,
-#      and store its client ID as AZURE_WEB_PART_CLIENT_ID in the azd environment.
+#
+# The Entra App Registration and Microsoft Graph permission assignments are
+# now managed declaratively by the Bicep template (Microsoft Graph Bicep
+# extension v1.0).  The deploying principal needs:
+#   - Application.ReadWrite.All  (Cloud Application Administrator,
+#                                  Application Administrator, or Global Administrator)
+#   - AppRoleAssignment.ReadWrite.All  (Privileged Role Administrator
+#                                        or Global Administrator)
 #
 # All operations are idempotent — safe to re-run on 'azd provision' or 'azd up'.
 
@@ -16,16 +22,6 @@ $ErrorActionPreference = 'Stop'
 
 Set-Location -Path (Resolve-Path -Path (Join-Path -Path $PSScriptRoot -ChildPath '../../..')).Path
 
-$APP_DISPLAY_NAME = 'Guest Sponsor Info - SharePoint Web Part Auth'
-$APP_DESCRIPTION = @(
-  'EasyAuth identity provider for the "Guest Sponsor Info"',
-  'SharePoint Online web part (SPFx). Authenticates requests from the',
-  'web part to the Azure Function proxy, which calls Microsoft Graph on',
-  'behalf of signed-in guest users to retrieve their Entra sponsor',
-  'information. Tokens are acquired silently via pre-authorized',
-  'SharePoint Online Web Client Extensibility.',
-  'Source: https://github.com/workoho/spfx-guest-sponsor-info'
-) -join ' '
 $envValues = azd env get-values
 
 # ── 0a. Check Azure RBAC permission ─────────────────────────────────────────
@@ -83,9 +79,12 @@ else {
 Write-Host ''
 
 # ── 0. Validate required Azure resource providers ───────────────────────────
-# Keep these defaults aligned with azure-function/infra/main.parameters.json.
-$hostingPlan = 'Consumption'
-$deployAzureMaps = $true
+# Read from azd env — set by deploy-azure.ps1 via 'azd env set' before running provision.
+# Fall back to main.parameters.json defaults when running azd directly without the wizard.
+$_planMatch = ($envValues | Select-String '^AZURE_HOSTING_PLAN="?([^"]+)"?').Matches
+$hostingPlan = if ($_planMatch -and $_planMatch.Count -gt 0) { $_planMatch[0].Groups[1].Value } else { 'Consumption' }
+$_mapsMatch = ($envValues | Select-String '^AZURE_DEPLOY_AZURE_MAPS="?([^"]+)"?').Matches
+$deployAzureMaps = -not ($_mapsMatch -and $_mapsMatch.Count -gt 0 -and $_mapsMatch[0].Groups[1].Value -eq 'false')
 $requiredProviders = @(
   'Microsoft.AlertsManagement',
   'Microsoft.Authorization',
@@ -159,15 +158,7 @@ else {
   Write-Host '  + All required resource providers are ready.'
 }
 
-# ── 1. Derive a default Function App name ────────────────────────────────────
-if ($envValues -notmatch 'AZURE_FUNCTION_APP_NAME=') {
-  $envName = ($envValues | Select-String '^AZURE_ENV_NAME=(.+)$').Matches[0].Groups[1].Value.Trim('"')
-  $defaultAppName = "guest-sponsor-$envName"
-  Write-Host "Function App name not set — using: $defaultAppName"
-  azd env set AZURE_FUNCTION_APP_NAME $defaultAppName
-}
-
-# ── 2. Detect or prompt for SharePoint tenant name ───────────────────────────
+# ── 1. Detect or prompt for SharePoint tenant name ──────────────────────────
 if ($envValues -notmatch 'AZURE_SHAREPOINT_TENANT_NAME=') {
   $derived = $null
   try {
@@ -194,20 +185,63 @@ if ($envValues -notmatch 'AZURE_SHAREPOINT_TENANT_NAME=') {
   }
 }
 
-# ── 3. Create or reuse the App Registration ──────────────────────────────────
-# ── 3a. Check Entra role for App Registration ────────────────────────────────
-# Creating or modifying an App Registration requires an active Entra admin
-# role.  'az rest' reuses the already-authenticated az CLI session to query
-# the current user's directory role memberships.  The check is informational
-# — a missing role does not abort the script, but it surfaces the gap early
-# so the operator can activate an eligible PIM role before proceeding.
+if ($envValues -notmatch 'AZURE_HOSTING_PLAN=') {
+  azd env set AZURE_HOSTING_PLAN 'Consumption'
+}
+
+if ($envValues -notmatch 'AZURE_DEPLOY_AZURE_MAPS=') {
+  azd env set AZURE_DEPLOY_AZURE_MAPS 'true'
+}
+
+if ($envValues -notmatch 'AZURE_TAG_ENVIRONMENT=') {
+  azd env set AZURE_TAG_ENVIRONMENT ''
+}
+
+if ($envValues -notmatch 'AZURE_TAG_CRITICALITY=') {
+  azd env set AZURE_TAG_CRITICALITY ''
+}
+
+if ($envValues -notmatch 'AZURE_APP_VERSION=') {
+  azd env set AZURE_APP_VERSION 'latest'
+}
+
+if ($envValues -notmatch 'AZURE_ENABLE_MONITORING=') {
+  azd env set AZURE_ENABLE_MONITORING 'true'
+}
+
+if ($envValues -notmatch 'AZURE_ENABLE_FAILURE_ANOMALIES_ALERT=') {
+  azd env set AZURE_ENABLE_FAILURE_ANOMALIES_ALERT 'false'
+}
+
+if ($envValues -notmatch 'AZURE_ALWAYS_READY_INSTANCES=') {
+  azd env set AZURE_ALWAYS_READY_INSTANCES '1'
+}
+
+if ($envValues -notmatch 'AZURE_MAXIMUM_FLEX_INSTANCES=') {
+  azd env set AZURE_MAXIMUM_FLEX_INSTANCES '10'
+}
+
+if ($envValues -notmatch 'AZURE_INSTANCE_MEMORY_MB=') {
+  azd env set AZURE_INSTANCE_MEMORY_MB '2048'
+}
+
+# ── 3. Entra role check ──────────────────────────────────────────────────────
+# Cloud Application Administrator (or Application Administrator / Global Admin)
+# is always required — Bicep creates and manages the App Registration.
+#
+# Privileged Role Administrator (or Global Admin) is required for Graph app role
+# assignments to the Managed Identity. If that role is not available, defer by
+# setting AZURE_SKIP_GRAPH_ROLE_ASSIGNMENTS=true before running azd provision:
+#
+#   azd env set AZURE_SKIP_GRAPH_ROLE_ASSIGNMENTS true
+#
+# Then run setup-graph-permissions.ps1 after deployment with the
+# managedIdentityObjectId Bicep output (azd env get-values).
 Write-Host ''
-Write-Host 'Checking Entra role for App Registration...'
-$_requiredEntraRoles = @(
-  'Cloud Application Administrator'
-  'Application Administrator'
-  'Global Administrator'
-)
+Write-Host 'Checking Entra roles...'
+$_appRegRoles = @('Cloud Application Administrator', 'Application Administrator', 'Global Administrator')
+$_assignmentRoles = @('Privileged Role Administrator', 'Global Administrator')
+$_skipRoleAssignments = $env:AZURE_SKIP_GRAPH_ROLE_ASSIGNMENTS -eq 'true'
 try {
   $_entraRaw = az rest `
     --method GET `
@@ -215,91 +249,58 @@ try {
     --query 'value[*].displayName' `
     -o tsv 2>$null
   if ($LASTEXITCODE -eq 0) {
-    $_activeEntraRoles = @(
+    $_activeRoles = @(
       $_entraRaw -split "`n" |
-        Where-Object { $_ } |
-        ForEach-Object { $_.Trim() } |
-        Where-Object { $_requiredEntraRoles -contains $_ }
+      Where-Object { $_ } |
+      ForEach-Object { $_.Trim() }
     )
-    if ($_activeEntraRoles.Count -gt 0) {
-      Write-Host "  + Entra role: $($_activeEntraRoles -join ', ') — active."
+    $_hasAppRegRole = @($_activeRoles | Where-Object { $_appRegRoles -contains $_ })
+    $_hasAssignmentRole = @($_activeRoles | Where-Object { $_assignmentRoles -contains $_ })
+    if (-not $_hasAppRegRole) {
+      Write-Host '  ! Missing: Cloud Application Administrator, Application Administrator,'
+      Write-Host '    or Global Administrator — required to create/update the App Registration.'
+      Write-Host '    Bicep will fail without this role. Activate via PIM before re-running:'
+      Write-Host '    https://entra.microsoft.com/#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/aadRoles'
     }
-    else {
-      Write-Host '  ! Entra role: no required admin role is active for your account.'
-      Write-Host '    Required (one of):'
-      Write-Host '      Cloud Application Administrator'
-      Write-Host '      Application Administrator'
-      Write-Host '      Global Administrator'
-      Write-Host '    If your role is eligible (PIM): activate it before continuing.'
+    if (-not $_skipRoleAssignments -and -not $_hasAssignmentRole) {
+      Write-Host '  ! Missing: Privileged Role Administrator (or Global Administrator) —'
+      Write-Host '    needed to assign Graph app roles to the Managed Identity.'
+      Write-Host '    Either activate the role via PIM, or defer the assignments:'
+      Write-Host '      azd env set AZURE_SKIP_GRAPH_ROLE_ASSIGNMENTS true'
+      Write-Host '    Then run setup-graph-permissions.ps1 after deployment.'
       Write-Host '    PIM → My roles → Entra roles:'
       Write-Host '    https://entra.microsoft.com/#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/aadRoles'
-      Write-Host '    The App Registration step below will fail without one of these roles.'
+    }
+    if ($_hasAppRegRole) {
+      if ($_skipRoleAssignments) {
+        Write-Host "  + Entra role: $($_hasAppRegRole[0]) — App Registration management covered."
+        Write-Host '    Graph role assignments: deferred to setup-graph-permissions.ps1.'
+      }
+      elseif ($_hasAssignmentRole) {
+        if ($_hasAppRegRole[0] -eq $_hasAssignmentRole[0]) {
+          Write-Host "  + Entra role: $($_hasAppRegRole[0]) — covers both required permissions."
+        }
+        else {
+          Write-Host "  + Entra roles: $($_hasAppRegRole[0]) + $($_hasAssignmentRole[0]) — both required roles active."
+        }
+      }
     }
   }
   else {
-    Write-Host '  ! Entra role: check returned an error — continuing anyway.'
-    Write-Host '    Required (one of): Cloud Application Administrator,'
-    Write-Host '    Application Administrator, or Global Administrator.'
+    Write-Host '  ! Entra role check returned an error — continuing anyway.'
+    Write-Host '    Required: Cloud Application Administrator (or similar).'
+    if (-not $_skipRoleAssignments) {
+      Write-Host '    Also required: Privileged Role Administrator (or Global Administrator).'
+      Write-Host '    To defer Graph role assignments: azd env set AZURE_SKIP_GRAPH_ROLE_ASSIGNMENTS true'
+    }
   }
 }
 catch {
-  Write-Host '  ! Entra role: check encountered an error — continuing anyway.'
-  Write-Host '    Required (one of): Cloud Application Administrator,'
-  Write-Host '    Application Administrator, or Global Administrator.'
+  Write-Host '  ! Entra role check encountered an error — continuing anyway.'
+  Write-Host '    Required: Cloud Application Administrator (or similar).'
+  if (-not $_skipRoleAssignments) {
+    Write-Host '    Also required: Privileged Role Administrator (or Global Administrator).'
+    Write-Host '    To defer Graph role assignments: azd env set AZURE_SKIP_GRAPH_ROLE_ASSIGNMENTS true'
+  }
 }
 Write-Host ''
-
-Write-Host "Checking for existing App Registration '$APP_DISPLAY_NAME'..."
-try {
-  $existingClientId = az ad app list `
-    --display-name $APP_DISPLAY_NAME `
-    --query '[0].appId' `
-    -o tsv 2>$null
-
-  if ($existingClientId) {
-    Write-Host "App Registration already exists. Client ID: $existingClientId"
-    $clientId = $existingClientId
-  }
-  else {
-    Write-Host "Creating App Registration '$APP_DISPLAY_NAME'..."
-    $clientId = az ad app create `
-      --display-name $APP_DISPLAY_NAME `
-      --sign-in-audience 'AzureADMyOrg' `
-      --description $APP_DESCRIPTION `
-      --query 'appId' `
-      -o tsv
-
-    $appIdUri = "api://guest-sponsor-info-proxy/$clientId"
-    az ad app update --id $clientId --identifier-uris $appIdUri | Out-Null
-    Write-Host "App Registration created. App ID URI: $appIdUri"
-  }
-
-  # Ensure accessTokenAcceptedVersion is set to 2 (v2 tokens — aud = bare clientId).
-  $appObj = az ad app show --id $clientId --query 'api.requestedAccessTokenVersion' -o tsv 2>$null
-  if ($appObj -ne '2') {
-    Write-Host "Setting accessTokenAcceptedVersion to 2..."
-    az rest --method PATCH `
-      --url "https://graph.microsoft.com/v1.0/applications(appId='$clientId')" `
-      --body '{"api":{"requestedAccessTokenVersion":2}}' | Out-Null
-  }
-
-  azd env set AZURE_WEB_PART_CLIENT_ID $clientId
-  Write-Host "AZURE_WEB_PART_CLIENT_ID set to $clientId"
-}
-catch {
-  $_errMsg = if ($_.Exception -and $_.Exception.Message) { $_.Exception.Message } else { [string]$_ }
-  if ($_errMsg -match 'Authorization_RequestDenied|Forbidden|Unauthorized|insufficient.privilege|403|401') {
-    Write-Host ''
-    Write-Host 'ERROR: App Registration step failed — your account lacks the required Entra role.' -ForegroundColor Red
-    Write-Host '  Required (one of):' -ForegroundColor Red
-    Write-Host '    Cloud Application Administrator' -ForegroundColor Red
-    Write-Host '    Application Administrator' -ForegroundColor Red
-    Write-Host '    Global Administrator' -ForegroundColor Red
-    Write-Host ''
-    Write-Host '  If your role is eligible (PIM): activate it, then re-run azd provision.' -ForegroundColor Yellow
-    Write-Host '  PIM → My roles → Entra roles:' -ForegroundColor Yellow
-    Write-Host '  https://entra.microsoft.com/#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/aadRoles' -ForegroundColor Yellow
-    exit 1
-  }
-  throw
-}

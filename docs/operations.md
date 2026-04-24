@@ -38,7 +38,7 @@ required when the site's permission model restricts App Catalog library access.
 
 ## Inline Address Map (Azure Maps)
 
-The ARM template deploys an Azure Maps account by default
+The Bicep template deploys an Azure Maps account by default
 (`deployAzureMaps=true`).
 
 ### Enable map rendering
@@ -95,20 +95,16 @@ Or from the Azure Portal: Function App -> Overview -> Restart.
 
 ### Flex Consumption plan
 
-Re-deploy the ARM template with a pinned `appVersion`:
+Re-run the deployment wizard with a pinned `appVersion`:
 
-```bash
-az deployment group create \
-  --resource-group <your-resource-group> \
-  --template-uri https://github.com/workoho/spfx-guest-sponsor-info/releases/latest/download/azuredeploy.json \
-  --parameters \
-      tenantId=<your-tenant-id> \
-      tenantName=<your-tenant-name> \
-      functionAppName=<your-function-app-name> \
-      webPartClientId=<your-client-id> \
-      hostingPlan=FlexConsumption \
-      maximumFlexInstances=10 \
-      appVersion=1.x.y
+```powershell
+& ([scriptblock]::Create((iwr 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/main/azure-function/infra/install.ps1').Content)) -AppVersion 1.x.y
+```
+
+Or, when running `deploy-azure.ps1` directly:
+
+```powershell
+./deploy-azure.ps1 -AppVersion 1.x.y
 ```
 
 <details>
@@ -142,18 +138,17 @@ az storage blob upload \
 <details>
 <summary>Infrastructure changed? Re-run the full deployment</summary>
 
-If a release states that Azure infrastructure was updated, re-run the ARM
-deployment (idempotent):
+If a release states that Azure infrastructure was updated, re-run the
+deployment wizard (idempotent):
 
-```bash
-az deployment group create \
-  --resource-group <your-resource-group> \
-  --template-uri https://github.com/workoho/spfx-guest-sponsor-info/releases/latest/download/azuredeploy.json \
-  --parameters \
-      tenantId=<your-tenant-id> \
-      tenantName=<your-tenant-name> \
-      functionAppName=<your-function-app-name> \
-      webPartClientId=<your-client-id>
+```powershell
+& ([scriptblock]::Create((iwr 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/main/azure-function/infra/install.ps1').Content))
+```
+
+Or, when running `deploy-azure.ps1` directly from an extracted infra ZIP:
+
+```powershell
+./deploy-azure.ps1
 ```
 
 For Deployment Stacks, use `az stack group create` with the same parameters.

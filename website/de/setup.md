@@ -19,15 +19,15 @@ Das Setup von Guest Sponsor Info umfasst drei Phasen:
 | Phase | Wo | Mindestrolle |
 |---|---|---|
 | 1 — SharePoint | SharePoint Admin Center + Landingpage-Site | SharePoint-Administrator |
-| 2 — Guest Sponsor API | Azure-Portal / Cloud Shell / PowerShell | Azure-Mitwirkender + Entra-Admin |
+| 2 — Guest Sponsor API | PowerShell (`deploy-azure.ps1`) | Azure-Mitwirkender + Besitzer + Entra-Rollen via PIM |
 | 3 — Web Part | SharePoint-Landingpage (Bearbeitungsmodus) | Websitebesitzer |
 
 > **Das Web Part enthält einen integrierten Setup-Assistenten**
 >
 > Wenn Sie das Web Part zum ersten Mal auf einer Seite platzieren, öffnet
 > sich automatisch ein **Setup-Assistent**. Er führt Sie durch die Auswahl
-> zwischen Produktionsmodus (Guest Sponsor API) und Demo-Modus, zeigt die
-> Azure-Setup-Befehle inline mit Kopier-Buttons an und lässt Sie am Ende
+> zwischen Produktionsmodus (Guest Sponsor API) und Demo-Modus, zeigt den
+> Deploy-Befehl mit Kopier-Button an und lässt Sie am Ende
 > die API-Zugangsdaten eingeben. Diese Seite ist die vollständige Referenz,
 > auf die der Assistent verweist — arbeiten Sie Phasen 1 und 2 durch, bevor
 > oder parallel zum Ausführen des Assistenten, und schließen Sie Phase 3
@@ -176,147 +176,85 @@ sich über
 und die Function fragt Graph über ihre eigene Managed Identity ab — Gäste
 benötigen keinerlei Verzeichnisberechtigungen in Ihrem Mandanten.
 
-Der Setup-Assistent zeigt diese drei Schritte inline mit kopierbaren Befehlen.
-Die folgenden Abschnitte sind die vollständige Referenz für jeden Schritt.
+Das Skript `deploy-azure.ps1` übernimmt die vollständige Bereitstellung in
+einem einzigen Schritt: Es erstellt die Entra-App-Registrierung, stellt die
+gesamte Azure-Infrastruktur bereit und weist die erforderlichen Microsoft
+Graph-Berechtigungen zu — gestützt auf die
+[Microsoft Graph Bicep-Erweiterung](https://learn.microsoft.com/azure/templates/microsoft.graph/applications).
 
-### Schritt 1: App-Registrierung erstellen
+Für eingeschränkte Umgebungen (Privileged Access Workstations), in denen die
+für die Bicep Graph-Erweiterung erforderlichen Entra-Verzeichnisrollen nicht
+aktiviert werden können, lesen Sie
+[Bereitstellen von einer PAW](https://github.com/workoho/spfx-guest-sponsor-info/blob/main/docs/deployment.md#deploying-from-a-privileged-access-workstation-paw)
+in der Deployment-Dokumentation.
 
-EasyAuth benötigt eine Entra App-Registrierung als Identitätsanbieter für
-die Azure Function.
+### Bereitstellen mit deploy-azure.ps1
 
-**Option A — direkt aus dem Web ausführen**
-([PowerShell 7+](https://learn.microsoft.com/powershell/scripting/install/installing-powershell)):
+Führen Sie aus einem lokalen Klon des Repositorys aus:
 
 ```powershell
-& ([scriptblock]::Create((iwr 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/main/azure-function/infra/setup-app-registration.ps1').Content))
+./deploy-azure.ps1
 ```
 
-**Option B — aus einem lokalen Klon:**
+[Azure Developer CLI (azd)](https://aka.ms/azd) wird automatisch installiert,
+falls noch nicht vorhanden. Das Skript führt durch die Auswahl von Abonnement
+und Ressourcengruppe, führt eine Pre-Provision-Prüfung und die Bicep-Bereitstellung
+aus und gibt am Ende die Web-Part-Konfigurationswerte aus.
 
-```powershell
-./azure-function/infra/setup-app-registration.ps1
-```
+#### Was das Skript ausführt
 
-Kopieren Sie die am Ende angezeigte **Client ID** — Sie benötigen sie in
-Schritt 3 und bei der Konfiguration des Web Parts.
+- **Erstellt die Entra-App-Registrierung** —
+  `Guest Sponsor Info - SharePoint Web Part Auth`
+  (via [Microsoft Graph Bicep-Erweiterung](https://learn.microsoft.com/azure/templates/microsoft.graph/applications))
+- **Stellt Azure-Infrastruktur bereit** — Function App, Storage Account, App Service Plan
+- **Weist Microsoft Graph-Berechtigungen** der Managed Identity zu:
+  `User.Read.All`, `Presence.Read.All` (optional), `MailboxSettings.Read`
+  (optional), `TeamMember.Read.All` (optional)
+- **Konfiguriert EasyAuth** auf der Function App mit der App-Registrierung
+- **Gibt die Web-Part-Konfigurationswerte** am Ende aus
 
-### Schritt 2: In Azure bereitstellen
+#### Erforderliche Azure- und Entra-Rollen
 
-Klicken Sie auf die Schaltfläche:
-
-[![In Azure bereitstellen](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fworkoho%2Fspfx-guest-sponsor-info%2Fmain%2Fazure-function%2Finfra%2Fazuredeploy.json)
-
-Oder aus der [Azure Cloud Shell](https://shell.azure.com):
-
-```bash
-az deployment group create \
-  --resource-group <ihre-ressourcengruppe> \
-  --template-uri https://github.com/workoho/spfx-guest-sponsor-info/releases/latest/download/azuredeploy.json \
-  --parameters \
-      tenantId=<ihre-tenant-id> \
-      tenantName=<ihr-tenant-name> \
-      functionAppName=<global-eindeutiger-name> \
-      webPartClientId=<client-id-aus-schritt-1>
-```
-
-<details>
-<summary>Optional: als Deployment Stack bereitstellen</summary>
-
-[Deployment Stacks](https://learn.microsoft.com/azure/azure-resource-manager/bicep/deployment-stacks)
-verwalten alle Ressourcen als verwaltetes Set. Das vollständige Entfernen
-erfordert nur einen einzigen Befehl.
-
-```bash
-az stack group create \
-  --name guest-sponsor-info \
-  --resource-group <ihre-ressourcengruppe> \
-  --template-uri https://github.com/workoho/spfx-guest-sponsor-info/releases/latest/download/azuredeploy.json \
-  --parameters \
-      tenantId=<ihre-tenant-id> \
-      tenantName=<ihr-tenant-name> \
-      functionAppName=<global-eindeutiger-name> \
-      webPartClientId=<client-id-aus-schritt-1> \
-  --action-on-unmanage deleteResources \
-  --deny-settings-mode none
-```
-
-</details>
-
-#### Erforderliche Parameter
-
-| Parameter | Beschreibung |
+| Bereich | Erforderliche Rolle |
 |---|---|
-| `tenantId` | Ihre Entra-Mandanten-ID (GUID) |
-| `tenantName` | Mandantenname ohne Domain-Suffix, z.B. `contoso` |
-| `functionAppName` | Global eindeutiger Name für die Function App |
-| `webPartClientId` | Client ID aus Schritt 1 |
-| `appVersion` | `"latest"` (Standard) oder feste SemVer ohne `v` |
-| `location` | Azure-Region |
+| Ressourcengruppe | **Mitwirkender** |
+| Ressourcengruppe | **Besitzer** (oder Benutzerzugriffsadministrator) — für Managed Identity-Rollenzuweisungen |
+| Entra ID | **Cloud-Anwendungsadministrator** — zum Erstellen und Konfigurieren der App-Registrierung |
+| Entra ID | **Administrator für privilegierte Rollen** — zum Zuweisen von Graph-App-Rollen an die Managed Identity |
+
+> **PIM-Hinweis:** Wenn Ihre Organisation
+> [Privileged Identity Management (PIM)](https://learn.microsoft.com/entra/id-governance/privileged-identity-management/pim-configure)
+> verwendet, aktivieren Sie die erforderlichen Entra-Rollen vor dem Ausführen
+> des Skripts. Der Pre-Provision-Hook prüft Ihre aktiven Verzeichnisrollen und
+> warnt, falls eine fehlt.
+>
+> *Alternativ* ersetzt der **Globale Administrator** beide Entra-Rollen durch
+> eine einzige Rolle — die Azure-Rollen **Mitwirkender** und **Besitzer** auf
+> der Ressourcengruppe werden jedoch weiterhin separat benötigt.
 
 #### Hosting-Plan-Optionen
 
 | | **Consumption** (Standard) | **Flex Consumption** |
 |---|---|---|
-| Free Tier | 1M Ausführungen + 400K GB-s/Monat | 250K Ausführungen + 100K GB-s/Monat (On-Demand) |
-| Kaltstarts | ~2-5 s nach ~20 Min. Inaktivität | Eliminiert mit `alwaysReadyInstances=1` |
+| Kostenloser Tarif | 1 Mio. Ausführungen + 400K GB-s/Monat | 250K Ausführungen + 100K GB-s/Monat (On-Demand) |
+| Kaltstarts | ~2–5 s nach ~20 Min. Inaktivität | Eliminiert mit `alwaysReadyInstances=1` |
 | Betriebssystem | Windows | Nur Linux |
-| Deploy to Azure Button | Unterstützt | Unterstützt |
 | Kostenschutz | `dailyMemoryTimeQuota` | `maximumFlexInstances` |
-| Geschätzte Kosten | Kostenlos (innerhalb des Free Tiers) | ~€2-5/Monat mit 1 warmer Instanz |
+| Geschätzte Kosten | Kostenlos (innerhalb des Free Tiers) | ~2–5 €/Monat mit 1 warmer Instanz |
 
 Prüfen Sie die [Liste der unterstützten Regionen](https://learn.microsoft.com/en-us/azure/azure-functions/flex-consumption-how-to#view-currently-supported-regions)
-für die Verfügbarkeit von Flex Consumption. Zusätzliche Parameter für Flex:
-
-```bash
-az deployment group create \
-  --resource-group <ihre-ressourcengruppe> \
-  --template-uri https://github.com/workoho/spfx-guest-sponsor-info/releases/latest/download/azuredeploy.json \
-  --parameters \
-      tenantId=<ihre-tenant-id> \
-      tenantName=<ihr-tenant-name> \
-      functionAppName=<global-eindeutiger-name> \
-      webPartClientId=<client-id-aus-schritt-1> \
-      hostingPlan=FlexConsumption \
-      maximumFlexInstances=10
-```
+für die Verfügbarkeit von Flex Consumption.
 
 #### Bereitstellungsausgaben
 
-Nach der Bereitstellung: **Ressourcengruppe → Bereitstellungen → Ausgaben**:
+Am Ende des Laufs gibt `deploy-azure.ps1` aus:
 
-| Ausgabe | Verwendung |
+| Wert | Verwendung |
 |---|---|
-| `managedIdentityObjectId` | Benötigt für Schritt 3 |
-| `functionAppUrl` | Web-Part-Eigenschaftenbereich → **Guest Sponsor API Base URL** |
-| `sponsorApiUrl` | Vollständige Endpunkt-URL (für Integritätsprüfungen) |
+| **Guest Sponsor API Base URL** | Web-Part-Eigenschaftenbereich → **Guest Sponsor API Base URL** |
+| **Web Part Client ID** | Web-Part-Eigenschaftenbereich → **Guest Sponsor API Client ID** |
 
-### Schritt 3: Graph-Berechtigungen erteilen
-
-**Option A — direkt aus dem Web ausführen:**
-
-```powershell
-& ([scriptblock]::Create((iwr 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/main/azure-function/infra/setup-graph-permissions.ps1').Content))
-```
-
-**Option B — aus einem lokalen Klon:**
-
-```powershell
-./azure-function/infra/setup-graph-permissions.ps1
-```
-
-Dieses Skript:
-
-1. **Managed Identity Graph-Berechtigungen** — weist
-  [`User.Read.All`](https://learn.microsoft.com/en-us/graph/permissions-reference#userreadall),
-  [`Presence.Read.All`](https://learn.microsoft.com/en-us/graph/permissions-reference#presencereadall)
-  (optional),
-  [`MailboxSettings.Read`](https://learn.microsoft.com/en-us/graph/permissions-reference#mailboxsettingsread)
-  (optional) und
-  [`TeamMember.Read.All`](https://learn.microsoft.com/en-us/graph/permissions-reference#teammemberreadall)
-  (optional) zu.
-2. **App-Registrierung einrichten** — stellt einen `user_impersonation`-Scope
-   bereit und autorisiert *SharePoint Online Web Client Extensibility* vorab,
-   damit das Web Part Token lautlos abrufen kann.
+Sie können diese Werte auch später abrufen mit `azd env get-values`.
 
 ---
 
@@ -329,10 +267,11 @@ Der **Setup-Assistent** öffnet sich automatisch (er erscheint, sobald die API-U
 noch nicht konfiguriert ist). Wählen Sie **Guest Sponsor API** und gehen Sie
 durch die Schritte des Assistenten bis zum **Verbinden**-Bildschirm. Geben Sie ein:
 
-- **Guest Sponsor API Base URL** — die `functionAppUrl` aus den
-  Bereitstellungsausgaben (Phase 2, Schritt 2),
+- **Guest Sponsor API Base URL** — die Base URL, die am Ende von
+  `deploy-azure.ps1` ausgegeben wird (oder aus `azd env get-values`),
   z.B. `https://guest-sponsor-info-xyz.azurewebsites.net`
-- **Guest Sponsor API Client ID** — die Client ID aus Phase 2, Schritt 1
+- **Guest Sponsor API Client ID** — die Web Part Client ID, die am Ende von
+  `deploy-azure.ps1` ausgegeben wird (oder aus `azd env get-values`)
 
 Der Assistent prüft das Format beider Werte vor dem Speichern. Sie können den
 Assistenten auch überspringen und das Web Part manuell konfigurieren: Öffnen Sie
@@ -348,15 +287,6 @@ Sie die **Guest Sponsor API**-Gruppe direkt aus.
 > bestätigen, dass die Voraussetzungen aus Phase 1 korrekt erfüllt sind.
 
 ---
-
-## Administration und Operations
-
-Für den laufenden Betrieb siehe den separaten
-[Operations Guide]({{ '/de/operations/' | relative_url }}):
-
-- [Web Part aktualisieren]({{ '/de/operations/' | relative_url }}#web-part-aktualisieren)
-- [Inline-Adresskarte konfigurieren]({{ '/de/operations/' | relative_url }}#inline-adresskarte-azure-maps)
-- [Function aktualisieren]({{ '/de/operations/' | relative_url }}#function-aktualisieren)
 
 Für Sicherheitsbewertung und Vertrauensannahmen siehe die
 [Sicherheitsbewertung auf GitHub](https://github.com/workoho/spfx-guest-sponsor-info/blob/main/docs/security-assessment.md).

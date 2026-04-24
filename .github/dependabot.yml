@@ -75,7 +75,7 @@ updates:
     ignore:
       # @types/node major upgrades require a coordinated change across multiple
       # files (engines.node in package.json, WEBSITE_NODE_DEFAULT_VERSION in
-      # main.bicep/azuredeploy.json, and the Azure Function runtime setting).
+      # main.bicep, and the Azure Function runtime setting).
       # Block major bumps here and do Node runtime upgrades fully manually.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]

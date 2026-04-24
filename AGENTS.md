@@ -348,7 +348,7 @@ return <FluentProvider theme={v9Theme}>{children}</FluentProvider>;
 
 ## Key Files for Reference
 
-- **Lint config** → `config/` directory + `.markdownlint.json`
+- **Lint config** → `config/` directory + `.markdownlint.json` + `.markdownlint-cli2.jsonc`
 - **Locale strings** → `src/webparts/guestSponsorInfo/loc/*.js` (UTF-8 native characters, no `\uXXXX` escapes)
 - **Components** → `src/webparts/guestSponsorInfo/components/`
 - **Services** → `src/webparts/guestSponsorInfo/services/` (Graph API calls in `SponsorService.ts`)
@@ -362,26 +362,24 @@ container) and an active `Connect-AzAccount` session.
 
 | Script | When to run |
 |---|---|
-| `setup-app-registration.ps1` | Once — creates the Entra app registration before first deployment |
-| `setup-graph-permissions.ps1` | Once after deployment — grants Graph permissions to the Function's managed identity |
-| `Verify-DeploymentGuid.ps1` | After every fresh `azuredeploy.json` deployment — confirms CUA attribution works |
+| `setup-graph-permissions.ps1` | Once after deployment — assigns Graph app roles to the Function's Managed Identity |
+| `Verify-DeploymentGuid.ps1` | After every fresh Bicep/azd deployment — confirms CUA attribution works |
 
 ### Verify-DeploymentGuid.ps1
 
 Source: [bmoore-msft/Verify-DeploymentGuid.ps1](https://gist.github.com/bmoore-msft/ae6b8226311014d6e7177c5127c7eba1)
 (Microsoft Partner Center team)
 
-**Purpose:** After deploying the ARM template, this script follows the
+**Purpose:** After deploying via deploy-azure.ps1 / install.ps1, this script follows the
 `correlationId` of the `pid-18fb4033-c9f3-41fa-a5db-e3a03b012939` deployment
 and lists every Azure resource deployed in the same correlation scope. A
 non-empty list confirms that Azure will correctly attribute consumption to the
 Workoho Partner Center GUID. An empty list requires investigation (likely the
-`pid-*` deployment was created outside a real ARM deployment).
+`pid-*` deployment was not part of the same Bicep/azd correlation scope).
 
 **When to run:**
 
-- After every fresh deployment from `azuredeploy.json` or the "Deploy to
-  Azure" button
+- After every fresh Bicep/azd deployment (via install.ps1 or deploy-azure.ps1)
 - Before a Partner Center reporting period to confirm attribution is live
 - Not needed for code changes, schema updates, or configuration-only changes
 

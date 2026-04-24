@@ -29,29 +29,18 @@ footer = """
 | File | Purpose |
 |---|---|
 | `guest-sponsor-info.sppkg` | SharePoint web part — upload to App Catalog |
-| `guest-sponsor-info-function.zip` | Azure Function proxy — deploy via ARM template or Azure Portal |
-| `guest-sponsor-info-bicep.zip` | Complete Bicep source template including parameter file and modules |
-| `guest-sponsor-info-azd.zip` | Minimal azd deployment bundle with azure.yaml, Bicep files, and hooks |
-| `azuredeploy.json` | ARM template for the Azure Function proxy |
-| `setup-app-registration.ps1` | Creates the Entra App Registration for EasyAuth |
-| `setup-graph-permissions.ps1` | Grants Graph permissions and configures silent token acquisition |
+| `guest-sponsor-info-function.zip` | Azure Function package |
+| `guest-sponsor-info-infra.zip` | Full deployment bundle — Bicep, hooks, and scripts |
+| `install.ps1` | One-liner entry point: downloads the infra bundle and runs the wizard |
+| `setup-graph-permissions.ps1` | Assigns Graph permissions (PAW / deferred-rights scenario) |
 
 ### Quick setup (PowerShell 7+, no clone required)
 
 ```powershell
-# 1. Create the App Registration
 {% if version -%}
-& ([scriptblock]::Create((iwr 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/{{ version }}/azure-function/infra/setup-app-registration.ps1').Content))
+& ([scriptblock]::Create((iwr 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/{{ version }}/azure-function/infra/install.ps1').Content))
 {% else -%}
-& ([scriptblock]::Create((iwr 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/main/azure-function/infra/setup-app-registration.ps1').Content))
-{% endif %}
-# 2. Deploy to Azure (use the azuredeploy.json from this release)
-
-# 3. Grant Graph permissions
-{% if version -%}
-& ([scriptblock]::Create((iwr 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/{{ version }}/azure-function/infra/setup-graph-permissions.ps1').Content))
-{% else -%}
-& ([scriptblock]::Create((iwr 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/main/azure-function/infra/setup-graph-permissions.ps1').Content))
+& ([scriptblock]::Create((iwr 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/main/azure-function/infra/install.ps1').Content))
 {% endif %}
 ```
 

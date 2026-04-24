@@ -47,21 +47,6 @@ import wizardSuccessIllustrationDark from '../assets/wizard-success-dark.svg';
 const GITHUB_SETUP_URL = 'https://guest-sponsor-info.workoho.cloud/setup';
 
 /**
- * Builds the versioned "Deploy to Azure" portal URL for a given semver string.
- * Falls back to the latest release when the version is unavailable.
- */
-function buildDeployToAzureUrl(semver: string | undefined): string {
-  // Use raw.githubusercontent.com so the Azure Portal can fetch the template
-  // without CORS issues. The releases/download redirect does not expose the
-  // required CORS headers. Pin to the matching version tag when available;
-  // fall back to main for pre-release or unknown versions.
-  const ref = semver ? `v${semver}` : 'main';
-  const templatePath =
-    `https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/${ref}/azure-function/infra/azuredeploy.json`;
-  return 'https://portal.azure.com/#create/Microsoft.Template/uri/' + encodeURIComponent(templatePath);
-}
-
-/**
  * Builds a versioned raw.githubusercontent.com URL for a setup script.
  * Falls back to the main branch when the version is unavailable.
  */
@@ -73,15 +58,9 @@ function buildScriptUrl(semver: string | undefined, scriptName: string): string 
   return `https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/${ref}/azure-function/infra/${scriptName}`;
 }
 
-/** Builds the PowerShell one-liner for the App Registration setup script. */
-function buildStep1Command(semver: string | undefined): string {
-  const url = buildScriptUrl(semver, 'setup-app-registration.ps1');
-  return `& ([scriptblock]::Create((iwr '${url}').Content))`;
-}
-
-/** Builds the PowerShell one-liner for the Graph permissions setup script. */
-function buildStep3Command(semver: string | undefined): string {
-  const url = buildScriptUrl(semver, 'setup-graph-permissions.ps1');
+/** Builds the PowerShell one-liner that downloads and runs the install wizard. */
+function buildInstallCommand(semver: string | undefined): string {
+  const url = buildScriptUrl(semver, 'install.ps1');
   return `& ([scriptblock]::Create((iwr '${url}').Content))`;
 }
 
@@ -574,8 +553,8 @@ interface IWelcomeDialogProps {
   onDismiss: () => void;
   /**
    * Semver string of the web part (e.g. "0.21.0") used to build the versioned
-   * "Deploy to Azure" portal URL in step 2. Falls back to the latest release
-   * URL when undefined.
+   * install.ps1 URL in step 2. Falls back to the latest release URL when
+   * undefined.
    */
   semver?: string;
   /** When true the wizard switches to dark-mode illustration variants. */
@@ -610,38 +589,25 @@ const Step1Welcome: React.FC<{ classes: ReturnType<typeof useStyles>; isDark?: b
 interface IStep2SetupProps {
   classes: ReturnType<typeof useStyles>;
   choice: 'api' | 'demo';
-  deployToAzureUrl: string;
   semver?: string;
   onChoiceChange: (v: 'api' | 'demo') => void;
 }
 
 /** Step 2 — Setup choice: API vs. Demo Mode. */
 const Step2Setup: React.FC<IStep2SetupProps> = ({
-  classes, choice, deployToAzureUrl, semver, onChoiceChange,
+  classes, choice, semver, onChoiceChange,
 }) => {
-  // Track which command block just had its content copied to the clipboard.
-  // Resets to null after a short delay so the "Copied!" tooltip disappears.
-  const [copiedStep, setCopiedStep] = React.useState<1 | 3 | null>(null);
+  const [copied, setCopied] = React.useState(false);
+  const installCmd = React.useMemo(() => buildInstallCommand(semver), [semver]);
+  const installTokens = React.useMemo(() => tokenizePwsh(installCmd), [installCmd]);
+  const installUrl = React.useMemo(() => buildScriptUrl(semver, 'install.ps1'), [semver]);
 
-  const step1Cmd = React.useMemo(() => buildStep1Command(semver), [semver]);
-  const step3Cmd = React.useMemo(() => buildStep3Command(semver), [semver]);
-  const step1Tokens = React.useMemo(() => tokenizePwsh(step1Cmd), [step1Cmd]);
-  const step3Tokens = React.useMemo(() => tokenizePwsh(step3Cmd), [step3Cmd]);
-  // Raw script URLs — shown in the tooltip and as "View script source" links
-  // so admins can inspect the PowerShell before running it.
-  const step1Url = React.useMemo(() => buildScriptUrl(semver, 'setup-app-registration.ps1'), [semver]);
-  const step3Url = React.useMemo(() => buildScriptUrl(semver, 'setup-graph-permissions.ps1'), [semver]);
-
-  const handleCopy = (cmd: string, step: 1 | 3): void => {
-    navigator.clipboard.writeText(cmd).then(() => {
-      setCopiedStep(step);
-      setTimeout(() => setCopiedStep(null), 2000);
+  const handleCopy = (): void => {
+    navigator.clipboard.writeText(installCmd).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }).catch(() => { /* clipboard unavailable — silent */ });
   };
-
-  const [openStep, setOpenStep] = React.useState<number | null>(null);
-  const toggleStep = (n: number): void =>
-    setOpenStep(prev => (prev === n ? null : n));
 
   return (
     <>
@@ -668,7 +634,6 @@ const Step2Setup: React.FC<IStep2SetupProps> = ({
 
         {/* Deploy panel — slides out from under the API option card when selected */}
         <div className={mergeClasses(classes.deployPanel, choice === 'api' && classes.deployPanelExpanded)}>
-          {/* Setup guide note — shown first so admins read it before running scripts */}
           <Text size={100} block className={classes.muted}>{strings.WelcomeDialogSetupGuideNote}</Text>
           <Link
             href={GITHUB_SETUP_URL}
@@ -679,144 +644,45 @@ const Step2Setup: React.FC<IStep2SetupProps> = ({
             {strings.WelcomeDialogOptionApiDocsLabel}
           </Link>
           <Text size={200} block className={classes.muted}>{strings.WelcomeDialogDeployNote}</Text>
-          <Text size={100} weight="semibold" block className={classes.muted}>{strings.WelcomeDialogSetupStepsOrderHint}</Text>
-
-          {/* ① Create App Registration */}
-          <button
-            type="button"
-            className={classes.stepToggle}
-            onClick={() => toggleStep(1)}
-            aria-expanded={openStep === 1}
-          >
-            <span className={classes.stepNumber}>1</span>
-            <Text size={200} weight="semibold" className={classes.stepToggleLabel}>
-              {strings.WelcomeDialogSetupStep1Label}
-            </Text>
-            <ChevronRightRegular className={mergeClasses(classes.stepChevron, openStep === 1 && classes.stepChevronOpen)} />
-          </button>
-          <div className={mergeClasses(classes.stepContent, openStep === 1 && classes.stepContentOpen)}>
-            <div className={classes.codeWrap}>
-              <div className={classes.codeLangBar}>
-                <span className={classes.codeLangLabel}>PowerShell</span>
-                <div className={classes.codeLangActions}>
-                  <Button
-                    as="a"
-                    href={step1Url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    appearance="transparent"
-                    size="small"
-                    icon={<CodeRegular />}
-                    style={{ color: '#e0e0e0' }}
-                  >
-                    {strings.ViewScriptSourceLabel}
-                  </Button>
-                  <Button
-                    appearance="transparent"
-                    size="small"
-                    icon={copiedStep === 1 ? <CheckmarkRegular /> : <CopyRegular />}
-                    className={classes.copyButton}
-                    style={{ color: '#e0e0e0' }}
-                    onClick={() => handleCopy(step1Cmd, 1)}
-                  >
-                    {copiedStep === 1 ? strings.CopiedToClipboardLabel : strings.CopyToClipboardLabel}
-                  </Button>
-                </div>
+          <div className={classes.codeWrap}>
+            <div className={classes.codeLangBar}>
+              <span className={classes.codeLangLabel}>PowerShell</span>
+              <div className={classes.codeLangActions}>
+                <Button
+                  as="a"
+                  href={installUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  appearance="transparent"
+                  size="small"
+                  icon={<CodeRegular />}
+                  style={{ color: '#e0e0e0' }}
+                >
+                  {strings.ViewScriptSourceLabel}
+                </Button>
+                <Button
+                  appearance="transparent"
+                  size="small"
+                  icon={copied ? <CheckmarkRegular /> : <CopyRegular />}
+                  className={classes.copyButton}
+                  style={{ color: '#e0e0e0' }}
+                  onClick={() => handleCopy()}
+                >
+                  {copied ? strings.CopiedToClipboardLabel : strings.CopyToClipboardLabel}
+                </Button>
               </div>
-              <code className={classes.codeBlock}>{step1Tokens.map((tok, idx) => (
-                <span key={idx} className={
-                  tok.t === 'op'     ? classes.psOp :
-                  tok.t === 'type'   ? classes.psType :
-                  tok.t === 'method' ? classes.psMethod :
-                  tok.t === 'cmdlet' ? classes.psCmdlet :
-                  tok.t === 'str'    ? classes.psStr :
-                  tok.t === 'punct'  ? classes.psPunct :
-                  undefined
-                }>{tok.v}</span>
-              ))}</code>
             </div>
-          </div>
-
-          {/* ② Deploy to Azure */}
-          <button
-            type="button"
-            className={classes.stepToggle}
-            onClick={() => toggleStep(2)}
-            aria-expanded={openStep === 2}
-          >
-            <span className={classes.stepNumber}>2</span>
-            <Text size={200} weight="semibold" className={classes.stepToggleLabel}>
-              {strings.WelcomeDialogDeployToAzureLabel}
-            </Text>
-            <ChevronRightRegular className={mergeClasses(classes.stepChevron, openStep === 2 && classes.stepChevronOpen)} />
-          </button>
-          <div className={mergeClasses(classes.stepContent, openStep === 2 && classes.stepContentOpen)}>
-            <Text size={100} block className={classes.muted}>{strings.WelcomeDialogSetupStep2Hint}</Text>
-            <Text size={100} block className={classes.muted}>{strings.DeployToAzureClickHint}</Text>
-            <Link href={deployToAzureUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex' }}>
-              <img
-                src="https://aka.ms/deploytoazurebutton"
-                alt={strings.WelcomeDialogDeployToAzureLabel}
-                style={{ display: 'block', maxWidth: '100%' }}
-              />
-            </Link>
-          </div>
-
-          {/* ③ Grant Graph permissions */}
-          <button
-            type="button"
-            className={classes.stepToggle}
-            onClick={() => toggleStep(3)}
-            aria-expanded={openStep === 3}
-          >
-            <span className={classes.stepNumber}>3</span>
-            <Text size={200} weight="semibold" className={classes.stepToggleLabel}>
-              {strings.WelcomeDialogSetupStep3Label}
-            </Text>
-            <ChevronRightRegular className={mergeClasses(classes.stepChevron, openStep === 3 && classes.stepChevronOpen)} />
-          </button>
-          <div className={mergeClasses(classes.stepContent, openStep === 3 && classes.stepContentOpen)}>
-            <Text size={100} block className={classes.muted}>{strings.WelcomeDialogSetupStep3Hint}</Text>
-            <div className={classes.codeWrap}>
-              <div className={classes.codeLangBar}>
-                <span className={classes.codeLangLabel}>PowerShell</span>
-                <div className={classes.codeLangActions}>
-                  <Button
-                    as="a"
-                    href={step3Url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    appearance="transparent"
-                    size="small"
-                    icon={<CodeRegular />}
-                    style={{ color: '#e0e0e0' }}
-                  >
-                    {strings.ViewScriptSourceLabel}
-                  </Button>
-                  <Button
-                    appearance="transparent"
-                    size="small"
-                    icon={copiedStep === 3 ? <CheckmarkRegular /> : <CopyRegular />}
-                    className={classes.copyButton}
-                    style={{ color: '#e0e0e0' }}
-                    onClick={() => handleCopy(step3Cmd, 3)}
-                  >
-                    {copiedStep === 3 ? strings.CopiedToClipboardLabel : strings.CopyToClipboardLabel}
-                  </Button>
-                </div>
-              </div>
-              <code className={classes.codeBlock}>{step3Tokens.map((tok, idx) => (
-                <span key={idx} className={
-                  tok.t === 'op'     ? classes.psOp :
-                  tok.t === 'type'   ? classes.psType :
-                  tok.t === 'method' ? classes.psMethod :
-                  tok.t === 'cmdlet' ? classes.psCmdlet :
-                  tok.t === 'str'    ? classes.psStr :
-                  tok.t === 'punct'  ? classes.psPunct :
-                  undefined
-                }>{tok.v}</span>
-              ))}</code>
-            </div>
+            <code className={classes.codeBlock}>{installTokens.map((tok, idx) => (
+              <span key={idx} className={
+                tok.t === 'op'     ? classes.psOp :
+                tok.t === 'type'   ? classes.psType :
+                tok.t === 'method' ? classes.psMethod :
+                tok.t === 'cmdlet' ? classes.psCmdlet :
+                tok.t === 'str'    ? classes.psStr :
+                tok.t === 'punct'  ? classes.psPunct :
+                undefined
+              }>{tok.v}</span>
+            ))}</code>
           </div>
         </div>
 
@@ -985,9 +851,6 @@ const WelcomeDialog: React.FC<IWelcomeDialogProps> = ({ open, onCommit, onSkip, 
   // True when the user reached Done by skipping the API credentials step.
   const [skippedApiCreds, setSkippedApiCreds] = React.useState(false);
 
-  // Build once — semver is stable for the lifetime of the wizard.
-  const deployToAzureUrl = buildDeployToAzureUrl(semver);
-
   // Derived validation state — computed from current field values so errors
   // appear immediately as the user types, with no extra state needed.
   const trimmedUrl = apiUrl.trim();
@@ -1109,7 +972,6 @@ const WelcomeDialog: React.FC<IWelcomeDialogProps> = ({ open, onCommit, onSkip, 
           <Step2Setup
             classes={classes}
             choice={choice}
-            deployToAzureUrl={deployToAzureUrl}
             semver={semver}
             onChoiceChange={setChoice}
           />

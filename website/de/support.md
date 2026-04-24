@@ -26,7 +26,7 @@ es gibt keine garantierte Reaktionszeit und kein Service-Level-Agreement.
 
 Vor dem Eröffnen eines Issues empfehlen wir:
 
-- [Setup-Anleitung](/de/setup/) und [Operations Guide](/de/operations/)
+- [Setup-Anleitung](/de/setup/)
   für häufige Konfigurationsschritte zu prüfen
 - [Bestehende Issues](https://github.com/workoho/spfx-guest-sponsor-info/issues)
   nach bekannten Problemen und Workarounds zu durchsuchen
@@ -45,7 +45,7 @@ Workoho professionelle Dienstleistungen an:
 
 - **Deployment & Einrichtung** — geführte End-to-End-Installation in Ihrem
   Microsoft 365 und Azure Tenant
-- **Azure-Infrastruktur** — ARM/Bicep-Bereitstellung, App-Registrierung
+- **Azure-Infrastruktur** — Bicep/azd-Bereitstellung, App-Registrierung
   und Managed Identity-Konfiguration
 - **Anpassung** — Anpassung des Web Parts an die spezifischen Anforderungen
   Ihres Unternehmens

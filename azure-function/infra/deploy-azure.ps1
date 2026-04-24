@@ -2,63 +2,89 @@
 
 <#
 .SYNOPSIS
-    Guided console deployment for the Guest Sponsor Info Azure infrastructure.
+    Interactive deployment wizard for Guest Sponsor Info Azure infrastructure.
 
 .DESCRIPTION
-    Detects which deployment tools are already available locally and then offers
-    three console-based deployment paths:
+    Guided console wizard that collects all required deployment parameters and
+    deploys the Guest Sponsor Info Azure infrastructure via Azure Developer CLI
+    (azd). All parameters can be provided on the command line for unattended
+    operation.
 
-      - azd provision  (preferred when azd and Azure CLI are already available)
-      - Bicep via Azure CLI
-      - ARM JSON via Azure CLI
+    The script must be run from the azure-function/infra/ directory inside the
+    repository or an extracted infra package. It uses azd exclusively and
+    installs Azure CLI and Azure Developer CLI automatically when missing.
 
-    The default suggestion balances the preferred modern workflow with the
-    tools that are already installed, so users can avoid unnecessary setup.
+    To download the infra package and run this wizard without cloning the
+    repository, use the installer wrapper:
 
-    When the script is run via iwr, required repository assets are downloaded
-    temporarily from GitHub and removed again when the script finishes.
+      & ([scriptblock]::Create((iwr 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/main/azure-function/infra/install.ps1').Content))
 
-.PARAMETER Mode
-    Auto (default), Azd, Bicep, or ArmJson.
+.PARAMETER AzdEnvironmentName
+    azd environment name (stored under .azure/<name>/ in the repository root).
+    Defaults to "guest-sponsor-info" when not specified.
 
 .PARAMETER ResourceGroupName
-    Target resource group for the direct Bicep and ARM JSON paths.
+    Azure resource group to deploy into. Created when it does not exist yet.
+    Defaults to rg-<AzdEnvironmentName>.
+
+.PARAMETER AzureLocation
+    Azure region for all resources (e.g. "westeurope", "eastus2").
+    Defaults to "westeurope" when not specified.
 
 .PARAMETER TenantName
-    SharePoint tenant name without the .sharepoint.com suffix.
+    SharePoint tenant short name — the part before .sharepoint.com
+    (e.g. "contoso" for contoso.sharepoint.com).
 
 .PARAMETER FunctionAppName
-    Globally unique Function App name.
-
-.PARAMETER WebPartClientId
-    Existing EasyAuth App Registration client ID. If omitted, the script can
-    create or reuse the registration by calling setup-app-registration.ps1.
+    Globally unique Function App name (2-58 characters). Bicep auto-generates
+    one (e.g. "gsi-a1b2c3d4") when left blank.
 
 .PARAMETER HostingPlan
     Consumption (default) or FlexConsumption.
 
 .PARAMETER DeployAzureMaps
-    Include Azure Maps in the deployment.
+    Deploy an Azure Maps account for address map rendering. Defaults to true.
 
 .PARAMETER AppVersion
-    Function package version. Defaults to latest.
+    Function package version tag. Defaults to "latest".
+
+.PARAMETER Environment
+    Optional workload environment tag. The wizard suggests "prod" by default.
+    Enter an empty string on the command line or "-" in the wizard to omit it.
+
+.PARAMETER Criticality
+    Optional workload criticality tag. The wizard suggests "low" by default.
+    Enter an empty string on the command line or "-" in the wizard to omit it.
 
 .PARAMETER EnableMonitoring
-  Deploy Log Analytics, Application Insights, managed Failure Anomalies rule,
-  and the repository's KQL alert resources. Defaults to true.
+    Deploy Log Analytics workspace, Application Insights, and alert resources.
+    Defaults to true.
 
 .PARAMETER EnableFailureAnomaliesAlert
-  Enable the Application Insights Failure Anomalies smart detector alert
-  rule. Defaults to false.
+    Enable the Application Insights Failure Anomalies smart detector alert rule.
+    Defaults to false.
 
 .PARAMETER MaximumFlexInstances
     Hard scale-out cap for Flex Consumption. Defaults to 10.
 
-.EXAMPLE
-    ./azure-function/infra/deploy-azure.ps1
+.PARAMETER AlwaysReadyInstances
+  Number of always-ready (pre-warmed) instances for Flex Consumption. Defaults to 1.
+
+.PARAMETER InstanceMemoryMB
+  Memory size per Flex Consumption instance in MB. Defaults to 2048.
+
+.PARAMETER SkipGraphRoleAssignments
+    Defer Microsoft Graph app role assignments to setup-graph-permissions.ps1.
+    Requires Privileged Role Administrator. Default: false (assign now).
 
 .EXAMPLE
-    & ([scriptblock]::Create((iwr 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/main/azure-function/infra/deploy-azure.ps1').Content))
+    ./deploy-azure.ps1
+
+.EXAMPLE
+    ./deploy-azure.ps1 -ResourceGroupName rg-gsi -TenantName contoso
+
+.EXAMPLE
+    ./deploy-azure.ps1 -SkipGraphRoleAssignments $true -AzureLocation eastus2
 
 .NOTES
     Copyright 2026 Workoho GmbH <https://workoho.com>
@@ -71,39 +97,53 @@
 #Requires -Version 5.1
 [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Medium')]
 param(
-  [ValidateSet('Auto', 'Azd', 'Bicep', 'ArmJson')]
-  [string]$Mode = 'Auto',
+  [string]$AzdEnvironmentName,
   [string]$ResourceGroupName,
+  [string]$AzureLocation,
   [string]$TenantName,
   [string]$FunctionAppName,
-  [string]$WebPartClientId,
   [ValidateSet('Consumption', 'FlexConsumption')]
   [string]$HostingPlan = 'Consumption',
   [bool]$DeployAzureMaps = $true,
   [string]$AppVersion = 'latest',
+  [AllowEmptyString()]
+  [string]$Environment = '',
+  [AllowEmptyString()]
+  [string]$Criticality = '',
   [bool]$EnableMonitoring = $true,
   [bool]$EnableFailureAnomaliesAlert = $false,
-  [int]$MaximumFlexInstances = 10
+  [int]$AlwaysReadyInstances = 1,
+  [int]$MaximumFlexInstances = 10,
+  [ValidateSet(512, 2048)]
+  [int]$InstanceMemoryMB = 2048,
+  [bool]$SkipGraphRoleAssignments = $false
 )
 
 $ErrorActionPreference = 'Stop'
 
 # Track whether any interactive prompt was shown. When all parameters were
-# pre-supplied (via the command line) we show a confirmation summary so the
-# operator can verify before the script runs.
+# pre-supplied (via the command line or the session cache) we show a
+# confirmation summary so the operator can verify before the script runs.
 $_promptsShown = $false
 # Convenience bool used throughout for WhatIf-aware fallbacks.
 $_whatIf = $WhatIfPreference -eq [System.Management.Automation.SwitchParameter]$true
 
-$script:RepoRawBaseUrl = 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/main'
 $script:AppRegistrationDisplayName = 'Guest Sponsor Info - SharePoint Web Part Auth'
-$script:TempPaths = [System.Collections.Generic.List[string]]::new()
-$script:StagedRepoRoot = $null
 $script:AzPath = $null
 $script:AzdPath = $null
 $script:SubscriptionName = ''
 $script:SubscriptionId = ''
 $script:TenantId = ''
+$script:FunctionAppNameMinLength = 2
+$script:FunctionAppNameMaxLength = 58
+$script:DeploySessionCache = if ($Global:GsiDeploy_Cache -is [hashtable]) { $Global:GsiDeploy_Cache } else { $null }
+$script:CachedDeployParameters = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+$script:ExplicitDeployParameters = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+$script:UsedDeploySessionCache = $false
+$script:ReconfigureMode = $false
+foreach ($_parameterName in $PSBoundParameters.Keys) {
+  $null = $script:ExplicitDeployParameters.Add($_parameterName)
+}
 #endregion
 
 #region Terminal initialization
@@ -241,6 +281,14 @@ function Write-Link {
 }
 #endregion
 
+function Test-FunctionAppNameLength {
+  param([string]$Value)
+
+  return -not [string]::IsNullOrWhiteSpace($Value) -and
+  $Value.Length -ge $script:FunctionAppNameMinLength -and
+  $Value.Length -le $script:FunctionAppNameMaxLength
+}
+
 #region Error handler
 # Script-level trap: on Azure CLI authorization errors (403), print role
 # guidance instead of a raw exception. Other errors re-throw normally.
@@ -337,20 +385,6 @@ function Invoke-Azd {
   & $script:AzdPath @Arguments
   if ($LASTEXITCODE -ne 0) {
     throw "Azure Developer CLI failed (exit code $LASTEXITCODE): azd $($Arguments -join ' ')"
-  }
-}
-
-function Test-BicepReady {
-  if (-not $script:AzPath) {
-    return $false
-  }
-
-  try {
-    Invoke-AzureCli -Arguments @('bicep', 'version') | Out-Null
-    return $true
-  }
-  catch {
-    return $false
   }
 }
 
@@ -478,29 +512,14 @@ function Install-AzdIfNeeded {
   Write-Host "  $_chk Azure Developer CLI is available." -ForegroundColor Green
 }
 
-function Install-BicepCliIfNeeded {
-  if (Test-BicepReady) {
-    return
-  }
-
-  $answer = (Read-Host -Prompt 'Bicep is not available yet. Install it now via az bicep install? [Y/n]').Trim()
-  if ($answer -ne '' -and $answer -notmatch '^[Yy]') {
-    throw 'The Bicep deployment path requires Bicep CLI.'
-  }
-
-  Write-Host "  $_arr Installing Bicep via Azure CLI..." -ForegroundColor Cyan
-  Invoke-AzureCli -Arguments @('bicep', 'install') | Out-Null
-  Write-Host "  $_chk Bicep CLI is available." -ForegroundColor Green
-}
-
 function Connect-AzureCliIfNeeded {
   try {
     Invoke-AzureCli -Arguments @('account', 'show', '--output', 'none') | Out-Null
   }
   catch {
     Write-Host "  $_arr No active Azure CLI session found. Starting az login..." -ForegroundColor Cyan
-    # If setup-app-registration.ps1 already ran in this session it will have
-    # stored the Entra tenant ID. Pass it as a hint so az login lands on the
+    # GsiSetup_TenantId may have been set by setup-graph-permissions.ps1 or a
+    # previous run of this script. Pass it as a hint so az login lands on the
     # right tenant without asking the operator to pick one manually.
     if ($Global:GsiSetup_TenantId) {
       Invoke-AzureCli -Arguments @('login', '--tenant', $Global:GsiSetup_TenantId) | Out-Null
@@ -519,88 +538,6 @@ function Connect-AzureCliIfNeeded {
   $Global:GsiSetup_TenantId = $script:TenantId
 }
 
-function Get-ToolState {
-  $script:AzPath = Get-AzureCliPath
-  $script:AzdPath = Get-AzdPath
-
-  $azReady = [bool]$script:AzPath
-  $bicepReady = $false
-  if ($azReady) {
-    $bicepReady = Test-BicepReady
-  }
-
-  return [pscustomobject]@{
-    AzureCliReady = $azReady
-    AzdReady      = [bool]$script:AzdPath -and $azReady
-    AzdInstalled  = [bool]$script:AzdPath
-    BicepReady    = $bicepReady
-  }
-}
-
-function Select-DefaultMode {
-  param([Parameter(Mandatory)][pscustomobject]$ToolState)
-
-  # If setup-app-registration.ps1 (Step 1) was already executed in this
-  # session the Entra App Registration is done. Recommending azd would cause
-  # the pre-provision hook to repeat Step 1 unnecessarily — prefer a direct
-  # deployment path instead.
-  # NOTE: intentionally using AppRegistrationDone, not GsiSetup_TenantId.
-  # GsiSetup_TenantId is also written by Connect-AzureCliIfNeeded in this
-  # script, so it is not a reliable indicator that Step 1 actually ran.
-  $_step1Done = [bool]$Global:GsiSetup_AppRegistrationDone
-
-  if ($ToolState.AzdReady -and -not $_step1Done) {
-    return 'Azd'
-  }
-
-  if ($ToolState.BicepReady) {
-    return 'Bicep'
-  }
-
-  if ($ToolState.AzureCliReady) {
-    return 'ArmJson'
-  }
-
-  # Fallback: Bicep (az bicep install will be offered during deployment).
-  return 'Bicep'
-}
-
-function Get-DefaultModeReason {
-  param(
-    [Parameter(Mandatory)][string]$SelectedMode,
-    [Parameter(Mandatory)][pscustomobject]$ToolState
-  )
-
-  $_step1Done = [bool]$Global:GsiSetup_AppRegistrationDone
-
-  switch ($SelectedMode) {
-    'Azd' {
-      return 'azd and Azure CLI are already available, and this repository contains an azd workflow with pre- and post-provision hooks that handle all 3 setup steps automatically.'
-    }
-    'Bicep' {
-      if ($_step1Done -and $ToolState.BicepReady) {
-        return 'Step 1 (App Registration) was already completed in this session — a direct Bicep deployment skips the pre-provision hook and avoids repeating it.'
-      }
-      if ($_step1Done) {
-        return 'Step 1 (App Registration) was already completed in this session — azd would re-run it via the pre-provision hook, so a direct path is preferred.'
-      }
-      if ($ToolState.BicepReady) {
-        return 'Azure CLI and Bicep are already available, so the preferred direct CLI path is ready immediately.'
-      }
-      return 'Azure CLI plus az bicep install is the smallest modern install path when nothing is ready yet.'
-    }
-    'ArmJson' {
-      if ($_step1Done) {
-        return 'Step 1 (App Registration) was already completed in this session — ARM JSON is the fastest direct path on this machine without Bicep.'
-      }
-      return 'Azure CLI is already available, so ARM JSON is the fastest no-install fallback on this machine.'
-    }
-    default {
-      return 'Automatic selection could not determine a better default.'
-    }
-  }
-}
-
 function Read-DefaultValue {
   param(
     [Parameter(Mandatory)][string]$Prompt,
@@ -613,6 +550,105 @@ function Read-DefaultValue {
   }
 
   return $DefaultValue
+}
+
+function Use-DeployCachedValue {
+  param(
+    [Parameter(Mandatory)][string]$Key,
+    [Parameter(Mandatory)][ref]$Target,
+    [switch]$AllowEmptyString
+  )
+
+  if (-not $script:DeploySessionCache) { return }
+  if ($script:ExplicitDeployParameters.Contains($Key)) { return }
+  if (-not $script:DeploySessionCache.ContainsKey($Key)) { return }
+
+  $_cachedValue = $script:DeploySessionCache[$Key]
+  if ($null -eq $_cachedValue) { return }
+  if (-not $AllowEmptyString -and $_cachedValue -is [string] -and $_cachedValue -eq '') { return }
+
+  $Target.Value = $_cachedValue
+  $null = $script:CachedDeployParameters.Add($Key)
+  $script:UsedDeploySessionCache = $true
+}
+
+function Test-DeployParameterProvided {
+  param([Parameter(Mandatory)][string]$Name)
+
+  return $script:ExplicitDeployParameters.Contains($Name) -or $script:CachedDeployParameters.Contains($Name)
+}
+
+function Should-PromptDeployParameter {
+  param([Parameter(Mandatory)][string]$Name)
+
+  return $script:ReconfigureMode -or -not (Test-DeployParameterProvided -Name $Name)
+}
+
+function Get-PromptDefaultValue {
+  param(
+    [AllowEmptyString()][string]$CurrentValue,
+    [Parameter(Mandatory)][string]$FallbackValue,
+    [string]$EmptyDisplay = ''
+  )
+
+  if ($script:ReconfigureMode) {
+    if ($CurrentValue -ne '') {
+      return $CurrentValue
+    }
+    if ($EmptyDisplay -ne '') {
+      return $EmptyDisplay
+    }
+  }
+
+  return $FallbackValue
+}
+
+function Save-DeploySessionCache {
+  param(
+    [Parameter(Mandatory)][string]$SubscriptionName,
+    [Parameter(Mandatory)][string]$SubscriptionId,
+    [Parameter(Mandatory)][string]$TenantId,
+    [Parameter(Mandatory)][string]$AzdEnvironmentName,
+    [Parameter(Mandatory)][string]$ResourceGroupName,
+    [Parameter(Mandatory)][string]$AzureLocation,
+    [Parameter(Mandatory)][string]$TenantName,
+    [Parameter(Mandatory)][AllowEmptyString()][string]$FunctionAppName,
+    [Parameter(Mandatory)][string]$HostingPlan,
+    [Parameter(Mandatory)][bool]$DeployAzureMaps,
+    [Parameter(Mandatory)][string]$AppVersion,
+    [Parameter(Mandatory)][AllowEmptyString()][string]$Environment,
+    [Parameter(Mandatory)][AllowEmptyString()][string]$Criticality,
+    [Parameter(Mandatory)][bool]$EnableMonitoring,
+    [Parameter(Mandatory)][bool]$EnableFailureAnomaliesAlert,
+    [Parameter(Mandatory)][int]$AlwaysReadyInstances,
+    [Parameter(Mandatory)][int]$MaximumFlexInstances,
+    [Parameter(Mandatory)][int]$InstanceMemoryMB,
+    [Parameter(Mandatory)][bool]$SkipGraphRoleAssignments
+  )
+
+  $Global:GsiDeploy_Cache = @{
+    SubscriptionName            = $SubscriptionName
+    SubscriptionId              = $SubscriptionId
+    TenantId                    = $TenantId
+    AzdEnvironmentName          = $AzdEnvironmentName
+    ResourceGroupName           = $ResourceGroupName
+    AzureLocation               = $AzureLocation
+    TenantName                  = $TenantName
+    FunctionAppName             = $FunctionAppName
+    HostingPlan                 = $HostingPlan
+    DeployAzureMaps             = $DeployAzureMaps
+    AppVersion                  = $AppVersion
+    Environment                 = $Environment
+    Criticality                 = $Criticality
+    EnableMonitoring            = $EnableMonitoring
+    EnableFailureAnomaliesAlert = $EnableFailureAnomaliesAlert
+    AlwaysReadyInstances        = $AlwaysReadyInstances
+    MaximumFlexInstances        = $MaximumFlexInstances
+    InstanceMemoryMB            = $InstanceMemoryMB
+    SkipGraphRoleAssignments    = $SkipGraphRoleAssignments
+  }
+
+  $script:DeploySessionCache = $Global:GsiDeploy_Cache
 }
 
 function Get-DetectedTenantName {
@@ -631,88 +667,29 @@ function Get-DetectedTenantName {
   }
 }
 
-function Get-LocalRepoRoot {
+function Get-RepoRoot {
+  # Supports two layouts:
+  #
+  # 1. Standalone infra package (extracted from guest-sponsor-info-infra.zip):
+  #    deploy-azure.ps1 and azure.yaml are in the same directory.
+  #    $PSScriptRoot itself is the "root" azd should run from.
+  #
+  # 2. Repository clone:
+  #    deploy-azure.ps1 lives at <repo>/azure-function/infra/
+  #    azure.yaml lives two levels up at <repo>/azure.yaml.
   if (-not $PSScriptRoot) {
-    return $null
+    throw 'Cannot determine script location: $PSScriptRoot is empty. Use install.ps1 for remote invocation — deploy-azure.ps1 must be run from a local path.'
   }
-
+  # Check layout 1: azure.yaml next to this script (standalone package).
+  if (Test-Path (Join-Path -Path $PSScriptRoot -ChildPath 'azure.yaml')) {
+    return $PSScriptRoot
+  }
+  # Check layout 2: azure.yaml two levels up (repository clone).
   $candidate = Resolve-Path -Path (Join-Path -Path $PSScriptRoot -ChildPath '../..') -ErrorAction SilentlyContinue
-  if (-not $candidate) {
-    return $null
-  }
-
-  $azureYamlPath = Join-Path -Path $candidate.Path -ChildPath 'azure.yaml'
-  $mainBicepPath = Join-Path -Path $candidate.Path -ChildPath 'azure-function/infra/main.bicep'
-  if ((Test-Path -Path $azureYamlPath) -and (Test-Path -Path $mainBicepPath)) {
+  if ($candidate -and (Test-Path (Join-Path -Path $candidate.Path -ChildPath 'azure.yaml'))) {
     return $candidate.Path
   }
-
-  return $null
-}
-
-function Save-RepoFile {
-  param(
-    [Parameter(Mandatory)][string]$RepoRoot,
-    [Parameter(Mandatory)][string]$RelativePath
-  )
-
-  $destinationPath = Join-Path -Path $RepoRoot -ChildPath $RelativePath
-  $destinationDirectory = Split-Path -Path $destinationPath -Parent
-  if (-not (Test-Path -Path $destinationDirectory)) {
-    New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
-  }
-
-  $downloadPath = $RelativePath -replace '\\', '/'
-  $downloadUrl = "$($script:RepoRawBaseUrl)/$downloadPath"
-  Write-Host "  $_arr Downloading $RelativePath from GitHub..." -ForegroundColor Cyan
-  Invoke-WebRequest -Uri $downloadUrl -OutFile $destinationPath -UseBasicParsing -ErrorAction Stop
-}
-
-function Get-RepoRoot {
-  $localRepoRoot = Get-LocalRepoRoot
-  if ($localRepoRoot) {
-    return $localRepoRoot
-  }
-
-  if ($script:StagedRepoRoot) {
-    return $script:StagedRepoRoot
-  }
-
-  $script:StagedRepoRoot = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ("gsi-infra-" + [guid]::NewGuid().ToString('n'))
-  New-Item -ItemType Directory -Path $script:StagedRepoRoot -Force | Out-Null
-  $script:TempPaths.Add($script:StagedRepoRoot)
-
-  $requiredFiles = @(
-    'azure.yaml',
-    'azure-function/infra/azuredeploy.json',
-    'azure-function/infra/deploy-azure.ps1',
-    'azure-function/infra/hooks/post-provision.ps1',
-    'azure-function/infra/hooks/post-provision.sh',
-    'azure-function/infra/hooks/pre-provision.ps1',
-    'azure-function/infra/hooks/pre-provision.sh',
-    'azure-function/infra/main.bicep',
-    'azure-function/infra/modules/monitoring.bicep',
-    'azure-function/infra/setup-app-registration.ps1'
-  )
-
-  foreach ($relativePath in $requiredFiles) {
-    Save-RepoFile -RepoRoot $script:StagedRepoRoot -RelativePath $relativePath
-  }
-
-  Write-Host "  $_chk Temporary repo assets staged at $($script:StagedRepoRoot)." -ForegroundColor Green
-  return $script:StagedRepoRoot
-}
-
-function Get-RepoFilePath {
-  param([Parameter(Mandatory)][string]$RelativePath)
-
-  $repoRoot = Get-RepoRoot
-  $resolvedPath = Join-Path -Path $repoRoot -ChildPath $RelativePath
-  if (-not (Test-Path -Path $resolvedPath)) {
-    throw "Required file not found: $RelativePath"
-  }
-
-  return (Resolve-Path -Path $resolvedPath).Path
+  throw "azure.yaml not found. Run deploy-azure.ps1 from the azure-function/infra/ directory (repo clone) or from an extracted infra package."
 }
 
 function Select-AzureSubscription {
@@ -735,6 +712,32 @@ function Select-AzureSubscription {
   }
 
   if (-not $_subs -or $_subs.Count -eq 0) { return }
+
+  if (-not $script:ReconfigureMode -and $script:DeploySessionCache -and $script:DeploySessionCache.ContainsKey('SubscriptionId')) {
+    $_cachedSubscriptionId = [string]$script:DeploySessionCache.SubscriptionId
+    if ($_cachedSubscriptionId) {
+      $_cachedSub = $null
+      foreach ($_subscription in $_subs) {
+        if ($_subscription.id -eq $_cachedSubscriptionId) {
+          $_cachedSub = $_subscription
+          break
+        }
+      }
+
+      if ($_cachedSub) {
+        if ($_cachedSub.id -ne $script:SubscriptionId) {
+          Invoke-AzureCli -Arguments @('account', 'set', '--subscription', $_cachedSub.id) | Out-Null
+        }
+        $script:SubscriptionName = $_cachedSub.name
+        $script:SubscriptionId = $_cachedSub.id
+        $script:TenantId = $_cachedSub.tenantId
+        $script:UsedDeploySessionCache = $true
+        Write-Host ''
+        Write-Host "  Using cached subscription from this session: $($script:SubscriptionName) ($($script:SubscriptionId))" -ForegroundColor DarkGray
+        return
+      }
+    }
+  }
 
   if ($_subs.Count -eq 1) {
     # Only one subscription — auto-select without prompting.
@@ -836,145 +839,26 @@ function Select-AzureSubscription {
   }
 }
 
-function Initialize-DeploymentMode {
-  param([Parameter(Mandatory)][string]$SelectedMode)
-
-  switch ($SelectedMode) {
-    'Azd' {
-      Install-AzureCliIfNeeded
-      Install-AzdIfNeeded
-      Connect-AzureCliIfNeeded
-      # Tell azd to reuse the Azure CLI token so the user is not prompted to
-      # log in a second time via a separate azd browser window.
-      Invoke-Azd -Arguments @('config', 'set', 'auth.useAzureCliCredentials', 'true')
-    }
-    'Bicep' {
-      Install-AzureCliIfNeeded
-      Connect-AzureCliIfNeeded
-      Install-BicepCliIfNeeded
-    }
-    'ArmJson' {
-      Install-AzureCliIfNeeded
-      Connect-AzureCliIfNeeded
-    }
-  }
-}
-
-function Initialize-ResourceGroup {
-  param([Parameter(Mandatory)][string]$Name)
-
-  $exists = (Invoke-AzureCli -Arguments @('group', 'exists', '--name', $Name)).Trim()
-  if ($exists -eq 'true') {
-    Write-Host "  $_chk Resource group $Name already exists." -ForegroundColor Green
-    return
-  }
-
-  if ($_whatIf) {
-    Write-Host "  [WhatIf] Would create resource group $Name." -ForegroundColor DarkGray
-    return
-  }
-
-  $location = Read-DefaultValue -Prompt 'Azure location for the new resource group' -DefaultValue 'westeurope'
-  Write-Host "  $_arr Creating resource group $Name in $location..." -ForegroundColor Cyan
-  Invoke-AzureCli -Arguments @('group', 'create', '--name', $Name, '--location', $location) | Out-Null
-  Write-Host "  $_chk Resource group $Name created." -ForegroundColor Green
-}
-
-function Invoke-ProviderPreflight {
-  param(
-    [Parameter(Mandatory)][string]$SelectedHostingPlan,
-    [Parameter(Mandatory)][bool]$DeployMaps,
-    [Parameter(Mandatory)][bool]$MonitoringEnabled
-  )
-
-  $requiredProviders = @(
-    'Microsoft.Authorization',
-    'Microsoft.ManagedIdentity',
-    'Microsoft.Resources',
-    'Microsoft.Storage',
-    'Microsoft.Web'
-  )
-
-  if ($MonitoringEnabled) {
-    $requiredProviders += @(
-      'Microsoft.AlertsManagement',
-      'Microsoft.Insights',
-      'Microsoft.OperationalInsights'
-    )
-  }
-
-  if ($SelectedHostingPlan -eq 'FlexConsumption') {
-    $requiredProviders += 'Microsoft.ContainerInstance'
-  }
-
-  if ($DeployMaps) {
-    $requiredProviders += 'Microsoft.Maps'
-  }
-
-  $requiredProviders = $requiredProviders | Sort-Object -Unique
-  $missingProviders = @()
-
-  Write-Host ''
-  Write-Host '  Provider preflight' -ForegroundColor Cyan
-  Write-Host $_sep -ForegroundColor DarkGray
-  foreach ($provider in $requiredProviders) {
-    $state = ''
-    try {
-      $state = (Invoke-AzureCli -Arguments @('provider', 'show', '--namespace', $provider, '--query', 'registrationState', '-o', 'tsv')).Trim()
-    }
-    catch {
-      $state = ''
-    }
-
-    switch ($state) {
-      'Registered' {
-        Write-Host "  $_chk $provider is registered." -ForegroundColor Green
-      }
-      'Registering' {
-        Write-Host "  $_wrn $provider is still registering. Deployment can usually continue." -ForegroundColor Yellow
-      }
-      'NotRegistered' {
-        Write-Host "  $_wrn $provider is not registered." -ForegroundColor Yellow
-        $missingProviders += $provider
-      }
-      'Unregistered' {
-        Write-Host "  $_wrn $provider is not registered." -ForegroundColor Yellow
-        $missingProviders += $provider
-      }
-      default {
-        Write-Host "  $_wrn $provider returned state: $state" -ForegroundColor Yellow
-        $missingProviders += $provider
-      }
-    }
-  }
-
-  if ($missingProviders.Count -eq 0) {
-    Write-Host "  $_chk All required resource providers are ready." -ForegroundColor Green
-    return
-  }
-
-  foreach ($provider in $missingProviders) {
-    if ($_whatIf) {
-      Write-Host "  [WhatIf] Would register $provider." -ForegroundColor DarkGray
-      continue
-    }
-    Write-Host "  $_arr Registering $provider..." -ForegroundColor Cyan
-    try {
-      Invoke-AzureCli -Arguments @('provider', 'register', '--namespace', $provider, '--wait') | Out-Null
-      Write-Host "  $_chk $provider registered." -ForegroundColor Green
-    }
-    catch {
-      Write-Failure -Lines @(
-        "Could not register $provider."
-        'This usually means your account lacks subscription-level register permission.'
-        'Minimum built-in role: Contributor. Owner also works.'
-      )
-      throw "Provider registration failed for $provider."
-    }
-  }
-}
-
 function Invoke-AzdProvision {
+  param(
+    [Parameter(Mandatory)][string]$EnvName,
+    [Parameter(Mandatory)][string]$ResourceGroup,
+    [Parameter(Mandatory)][string]$Location,
+    [Parameter(Mandatory)][string]$SharePointTenant,
+    [Parameter(Mandatory)][AllowEmptyString()][string]$Environment,
+    [Parameter(Mandatory)][AllowEmptyString()][string]$Criticality,
+    [string]$AppName,
+    [Parameter(Mandatory)][string]$Plan,
+    [Parameter(Mandatory)][bool]$Maps,
+    [Parameter(Mandatory)][string]$Version,
+    [Parameter(Mandatory)][bool]$Monitoring,
+    [Parameter(Mandatory)][bool]$FailureAlert,
+    [Parameter(Mandatory)][int]$AlwaysReadyInstances,
+    [Parameter(Mandatory)][int]$FlexInstances,
+    [Parameter(Mandatory)][int]$InstanceMemoryMB,
+    [Parameter(Mandatory)][bool]$SkipRoles
+  )
+
   $repoRoot = Get-RepoRoot
 
   Write-Host ''
@@ -986,111 +870,76 @@ function Invoke-AzdProvision {
     return
   }
 
-  # ── azd environment name ──────────────────────────────────────────────────
-  # azd uses an "environment" as a named workspace that stores deployment
-  # configuration in .azure/<name>/.env (subscription, location, parameters).
-  # We prompt for it here with a sensible default so the user does not see an
-  # unexplained prompt mid-run.
-  Write-Host '  azd stores your deployment configuration in a named environment'
-  Write-Host '  (a folder under .azure/ in this repo). Use the default or enter'
-  Write-Host '  a short name that identifies this deployment (e.g. "contoso-gsi").'
-  Write-Host ''
-  do {
-    $_envName = (Read-Host '  Environment name [guest-sponsor-info]').Trim()
-    if ($_envName -eq '') { $_envName = 'guest-sponsor-info' }
-    # azd allows letters, digits, and hyphens; must start with a letter or digit.
-    if ($_envName -notmatch '^[a-zA-Z0-9][a-zA-Z0-9\-]{0,62}$') {
-      Write-Host "  $_wrn Name must start with a letter or digit, contain only letters, digits," -ForegroundColor Yellow
-      Write-Host '        and hyphens, and be between 1 and 64 characters.' -ForegroundColor Yellow
-      $_envName = ''
-    }
-  } while (-not $_envName)
-  Write-Host ''
+  # Tell azd to reuse the Azure CLI token so the user is not prompted to
+  # log in a second time via a separate azd browser window.
+  Invoke-Azd -Arguments @('config', 'set', 'auth.useAzureCliCredentials', 'true')
 
-  # ── Resource group ────────────────────────────────────────────────────────
-  # azd creates the resource group itself (as the Bicep deployment target).
-  # The default name follows the Azure CAF pattern rg-<workload>. The operator
-  # can override — common when deploying multiple environments side by side.
-  $_rgDefault = "rg-$_envName"
-  Write-Host '  Resource Group' -ForegroundColor Cyan
-  Write-Host $_sep -ForegroundColor DarkGray
-  Write-Host '  The resource group that azd will create (or reuse) for this deployment.'
-  Write-Host '  Azure naming best practice: rg-<workload>  or  rg-<workload>-<environment>'
-  Write-Host "  Suggested: $_rgDefault" -ForegroundColor DarkGray
-  Write-Host ''
-  $_rgName = (Read-Host "  Resource group [$_rgDefault]").Trim()
-  if ($_rgName -eq '') { $_rgName = $_rgDefault }
-  Write-Host ''
-
-  # ── Azure location ────────────────────────────────────────────────────────
-  # Set AZURE_LOCATION so azd does not open an extra prompt mid-run.
-  Write-Host '  Azure Location' -ForegroundColor Cyan
-  Write-Host $_sep -ForegroundColor DarkGray
-  Write-Host '  The Azure region where all resources will be deployed.'
-  Write-Link -Url 'https://azure.microsoft.com/explore/global-infrastructure/geographies/' `
-    -Text 'Azure regions overview'
-  Write-Host ''
-  do {
-    $_location = (Read-Host '  Azure location [westeurope]').Trim()
-    if ($_location -eq '') { $_location = 'westeurope' }
-    # Basic sanity check: Azure location names are lowercase letters and digits only.
-    if ($_location -notmatch '^[a-z][a-z0-9]+$') {
-      Write-Host "  $_wrn Enter a valid Azure location name (e.g. westeurope, eastus2)." -ForegroundColor Yellow
-      $_location = ''
-    }
-  } while (-not $_location)
-  Write-Host ''
-
-  # Pre-populate all azd environment variables so azd does not open any
-  # additional interactive prompts during provision.
+  # Create or select the azd environment, then pre-populate all required env
+  # vars so azd does not open any additional interactive prompts during provision.
   #
   # IMPORTANT: setting only process env vars is NOT sufficient — azd reads
   # resource group and location from its own environment store
   # (.azure/<name>/.env), not from the calling process environment.
-  # We therefore create (or select) the azd environment first, then write
-  # all values via 'azd env set' so that 'azd provision' finds them and
-  # skips its own prompts completely.
   Push-Location -Path $repoRoot
   try {
-    $_azdEnvDir = Join-Path $repoRoot ".azure/$_envName"
+    $_azdEnvDir = Join-Path $repoRoot ".azure/$EnvName"
     if (Test-Path $_azdEnvDir) {
-      Invoke-Azd -Arguments @('env', 'select', $_envName)
+      Invoke-Azd -Arguments @('env', 'select', $EnvName)
     }
     else {
-      Invoke-Azd -Arguments @('env', 'new', $_envName)
+      Invoke-Azd -Arguments @('env', 'new', $EnvName)
     }
     Invoke-Azd -Arguments @('env', 'set', 'AZURE_SUBSCRIPTION_ID', $script:SubscriptionId)
-    Invoke-Azd -Arguments @('env', 'set', 'AZURE_RESOURCE_GROUP', $_rgName)
-    Invoke-Azd -Arguments @('env', 'set', 'AZURE_LOCATION', $_location)
+    Invoke-Azd -Arguments @('env', 'set', 'AZURE_RESOURCE_GROUP', $ResourceGroup)
+    Invoke-Azd -Arguments @('env', 'set', 'AZURE_LOCATION', $Location)
+    Invoke-Azd -Arguments @('env', 'set', 'AZURE_SHAREPOINT_TENANT_NAME', $SharePointTenant)
+    Invoke-Azd -Arguments @('env', 'set', 'AZURE_TAG_ENVIRONMENT', $Environment)
+    Invoke-Azd -Arguments @('env', 'set', 'AZURE_TAG_CRITICALITY', $Criticality)
+    Invoke-Azd -Arguments @('env', 'set', 'AZURE_APP_VERSION', $Version)
+    Invoke-Azd -Arguments @('env', 'set', 'AZURE_ENABLE_MONITORING', $Monitoring.ToString().ToLower())
+    Invoke-Azd -Arguments @('env', 'set', 'AZURE_ENABLE_FAILURE_ANOMALIES_ALERT', $FailureAlert.ToString().ToLower())
+    Invoke-Azd -Arguments @('env', 'set', 'AZURE_ALWAYS_READY_INSTANCES', $AlwaysReadyInstances.ToString())
+    Invoke-Azd -Arguments @('env', 'set', 'AZURE_MAXIMUM_FLEX_INSTANCES', $FlexInstances.ToString())
+    Invoke-Azd -Arguments @('env', 'set', 'AZURE_INSTANCE_MEMORY_MB', $InstanceMemoryMB.ToString())
+    # Store deployment params in azd env so the pre-provision hook can read
+    # them for provider preflight (hosting plan → ContainerInstance, maps → Maps).
+    Invoke-Azd -Arguments @('env', 'set', 'AZURE_HOSTING_PLAN', $Plan)
+    Invoke-Azd -Arguments @('env', 'set', 'AZURE_DEPLOY_AZURE_MAPS', $Maps.ToString().ToLower())
+    # Store the graph role assignment preference so the post-provision hook
+    # can give the correct next-steps guidance.
+    Invoke-Azd -Arguments @('env', 'set', 'AZURE_SKIP_GRAPH_ROLE_ASSIGNMENTS', $SkipRoles.ToString().ToLower())
   }
   finally {
     Pop-Location
   }
-  # Keep process env vars too — the NEXT STEPS block reads them after provision.
-  $env:AZURE_ENV_NAME = $_envName
-  $env:AZURE_SUBSCRIPTION_ID = $script:SubscriptionId
-  $env:AZURE_LOCATION = $_location
-  $env:AZURE_RESOURCE_GROUP = $_rgName
 
-  Write-Host "  $_arr Running azd provision." -ForegroundColor Cyan
-  Write-Host '       The pre-provision hook will create the Entra App Registration (Step 1),' -ForegroundColor DarkGray
-  Write-Host '       Bicep will deploy the Azure infrastructure, and the post-provision hook' -ForegroundColor DarkGray
-  Write-Host '       will grant Graph permissions to the Managed Identity (Step 3).' -ForegroundColor DarkGray
-  Write-Host '       All three setup steps run automatically in a single command.' -ForegroundColor DarkGray
-  if ($PSScriptRoot) {
-    # Only relevant when running from a local clone where the Function source
-    # code is present — azd deploy / azd up require the source tree.
-    Write-Host '       Use azd up later if you also want azd to handle future code redeploy cycles.' -ForegroundColor DarkGray
-  }
+  # Keep process env vars too — the post-provision hook and NEXT STEPS block read them.
+  $env:AZURE_ENV_NAME = $EnvName
+  $env:AZURE_SUBSCRIPTION_ID = $script:SubscriptionId
+  $env:AZURE_LOCATION = $Location
+  $env:AZURE_RESOURCE_GROUP = $ResourceGroup
+  $env:AZURE_SHAREPOINT_TENANT_NAME = $SharePointTenant
+  $env:AZURE_TAG_ENVIRONMENT = $Environment
+  $env:AZURE_TAG_CRITICALITY = $Criticality
+  $env:AZURE_APP_VERSION = $Version
+  $env:AZURE_ENABLE_MONITORING = $Monitoring.ToString().ToLower()
+  $env:AZURE_ENABLE_FAILURE_ANOMALIES_ALERT = $FailureAlert.ToString().ToLower()
+  $env:AZURE_ALWAYS_READY_INSTANCES = $AlwaysReadyInstances.ToString()
+  $env:AZURE_MAXIMUM_FLEX_INSTANCES = $FlexInstances.ToString()
+  $env:AZURE_INSTANCE_MEMORY_MB = $InstanceMemoryMB.ToString()
+  $env:AZURE_SKIP_GRAPH_ROLE_ASSIGNMENTS = $SkipRoles.ToString().ToLower()
+
+  Write-Host "  $_arr Running azd provision..." -ForegroundColor Cyan
+  Write-Host '       Bicep deploys the Azure infrastructure, creates the Entra App Registration,' -ForegroundColor DarkGray
+  Write-Host '       configures EasyAuth, and (unless deferred) assigns Graph permissions' -ForegroundColor DarkGray
+  Write-Host '       to the Managed Identity. The post-provision hook restarts the Function App.' -ForegroundColor DarkGray
+  Write-Host ''
 
   Push-Location -Path $repoRoot
   try {
     # --no-prompt: azd v1.24+ still shows a resource group picker even when
     # AZURE_RESOURCE_GROUP is written to the env file via 'azd env set'.
-    # --no-prompt tells azd to accept the stored value as the default and
-    # skip all interactive pickers.  This is safe because we pre-set every
-    # required value (AZURE_SUBSCRIPTION_ID, AZURE_LOCATION, AZURE_RESOURCE_GROUP)
-    # in the azd env immediately above, so no required value is missing.
+    # --no-prompt tells azd to accept the stored values and skip all pickers.
     Invoke-Azd -Arguments @('provision', '--no-prompt')
   }
   finally {
@@ -1098,359 +947,315 @@ function Invoke-AzdProvision {
   }
 }
 
-function Invoke-BicepDeployment {
-  param(
-    [Parameter(Mandatory)][string]$GroupName,
-    [Parameter(Mandatory)][string]$TenantShortName,
-    [Parameter(Mandatory)][string]$AppName,
-    [Parameter(Mandatory)][string]$ClientId,
-    [Parameter(Mandatory)][string]$SelectedHostingPlan,
-    [Parameter(Mandatory)][bool]$DeployMaps,
-    [Parameter(Mandatory)][string]$SelectedAppVersion,
-    [Parameter(Mandatory)][bool]$MonitoringEnabled,
-    [Parameter(Mandatory)][bool]$EnableFailureAlert,
-    [Parameter(Mandatory)][int]$FlexScaleLimit
-  )
-
-  $templateFile = Get-RepoFilePath -RelativePath 'azure-function/infra/main.bicep'
-
-  Write-Host ''
-  Write-Host '  Bicep deployment' -ForegroundColor Cyan
-  Write-Host $_sep -ForegroundColor DarkGray
-  # Use 'what-if' instead of 'create' when running in WhatIf mode — shows
-  # planned resource changes without deploying anything.
-  $_subCmd = if ($_whatIf) { 'what-if' } else { 'create' }
-  Invoke-AzureCli -Arguments @(
-    'deployment', 'group', $_subCmd,
-    '--resource-group', $GroupName,
-    '--template-file', $templateFile,
-    '--parameters',
-    "tenantId=$($script:TenantId)",
-    "tenantName=$TenantShortName",
-    "functionAppName=$AppName",
-    "webPartClientId=$ClientId",
-    "enableMonitoring=$MonitoringEnabled",
-    "deployAzureMaps=$DeployMaps",
-    "hostingPlan=$SelectedHostingPlan",
-    "appVersion=$SelectedAppVersion",
-    "enableFailureAnomaliesAlert=$EnableFailureAlert",
-    "maximumFlexInstances=$FlexScaleLimit"
-  )
-}
-
-function Invoke-ArmJsonDeployment {
-  param(
-    [Parameter(Mandatory)][string]$GroupName,
-    [Parameter(Mandatory)][string]$TenantShortName,
-    [Parameter(Mandatory)][string]$AppName,
-    [Parameter(Mandatory)][string]$ClientId,
-    [Parameter(Mandatory)][string]$SelectedHostingPlan,
-    [Parameter(Mandatory)][bool]$DeployMaps,
-    [Parameter(Mandatory)][string]$SelectedAppVersion,
-    [Parameter(Mandatory)][bool]$MonitoringEnabled,
-    [Parameter(Mandatory)][bool]$EnableFailureAlert,
-    [Parameter(Mandatory)][int]$FlexScaleLimit
-  )
-
-  $templateFile = Get-RepoFilePath -RelativePath 'azure-function/infra/azuredeploy.json'
-
-  Write-Host ''
-  Write-Host '  ARM JSON deployment' -ForegroundColor Cyan
-  Write-Host $_sep -ForegroundColor DarkGray
-  # Use 'what-if' instead of 'create' when running in WhatIf mode — shows
-  # planned resource changes without deploying anything.
-  $_subCmd = if ($_whatIf) { 'what-if' } else { 'create' }
-  Invoke-AzureCli -Arguments @(
-    'deployment', 'group', $_subCmd,
-    '--resource-group', $GroupName,
-    '--template-file', $templateFile,
-    '--parameters',
-    "tenantId=$($script:TenantId)",
-    "tenantName=$TenantShortName",
-    "functionAppName=$AppName",
-    "webPartClientId=$ClientId",
-    "enableMonitoring=$MonitoringEnabled",
-    "deployAzureMaps=$DeployMaps",
-    "hostingPlan=$SelectedHostingPlan",
-    "appVersion=$SelectedAppVersion",
-    "enableFailureAnomaliesAlert=$EnableFailureAlert",
-    "maximumFlexInstances=$FlexScaleLimit"
-  )
-}
-
 #region Main
 try {
   Write-Host ''
-  # Show a step indicator only when Step 1 was confirmed to have already
-  # run in this session. Otherwise we do not yet know if the operator will
-  # pick azd (all-in-one) or Bicep/ARM JSON (still needs step 3 after).
-  $_step1Done = [bool]$Global:GsiSetup_AppRegistrationDone
-  $_stepLabel = if ($_step1Done) { 'Step 2 of 3: Azure Deployment' } else { 'Azure Deployment' }
-  Write-Host "  Guest Sponsor Info  $(if ($_u) { [string][char]0x00B7 } else { '|' })  $_stepLabel" -ForegroundColor DarkCyan
+  Write-Host "  Guest Sponsor Info  $(if ($_u) { [string][char]0x00B7 } else { '|' })  Azure Deployment" -ForegroundColor DarkCyan
   Write-Host $_sep -ForegroundColor DarkGray
 
-  # ── Deployment method ─────────────────────────────────────────────────────
-  $toolState = Get-ToolState
-  $defaultMode = Select-DefaultMode -ToolState $toolState
-  $defaultReason = Get-DefaultModeReason -SelectedMode $defaultMode -ToolState $toolState
-
-  $selectedMode = $Mode
-  if ($selectedMode -eq 'Auto') {
-    Write-Host ''
-    Write-Host '  Deployment method' -ForegroundColor Cyan
-    Write-Host $_sep -ForegroundColor DarkGray
-
-    if (-not $_step1Done) {
-      # ── Step 1 not yet run: only azd makes sense ───────────────────────────
-      # azd provision runs all three setup steps in one go via its pre- and
-      # post-provision hooks. Offering Bicep or ARM JSON here would leave the
-      # operator without an App Registration and without Graph permissions.
-      Write-Host '  The Entra App Registration (Step 1) has not been created yet in this session.'
-      Write-Host '  azd provision is the only option here — it runs all three setup steps'
-      Write-Host '  automatically: App Registration, Azure infrastructure, and Graph permissions.'
-      Write-Host ''
-      Write-Host "    az       : $(if ($toolState.AzureCliReady) { 'ready' } else { 'not installed' })" `
-        -ForegroundColor $(if ($toolState.AzureCliReady) { 'Green' } else { 'Yellow' })
-      Write-Host "    azd      : $(if ($toolState.AzdReady) { 'ready' } elseif ($toolState.AzdInstalled) { 'installed, but Azure CLI is still missing' } else { 'not installed — will be installed automatically' })" `
-        -ForegroundColor $(if ($toolState.AzdReady) { 'Green' } else { 'Yellow' })
-      Write-Host ''
-      Write-Host '  Proceeding with azd provision.' -ForegroundColor DarkGray
-      $selectedMode = 'Azd'
-    }
-    else {
-      # ── Step 1 already done: only direct deployment paths ─────────────────
-      # The App Registration was created in this session (or passed via param).
-      # azd would re-run the pre-provision hook and repeat Step 1 unnecessarily,
-      # so it is not offered here.
-      Write-Host '  The App Registration (Step 1) was already completed. Choose a direct'
-      Write-Host '  deployment path for the Azure infrastructure — Step 3 (Graph permissions)'
-      Write-Host '  will follow as a separate script.'
-      Write-Host ''
-      Write-Host "    az       : $(if ($toolState.AzureCliReady) { 'ready' } else { 'not installed' })" `
-        -ForegroundColor $(if ($toolState.AzureCliReady) { 'Green' } else { 'Yellow' })
-      Write-Host "    az bicep : $(if ($toolState.BicepReady) { 'ready' } elseif ($toolState.AzureCliReady) { 'available after az bicep install' } else { 'Azure CLI missing' })" `
-        -ForegroundColor $(if ($toolState.BicepReady) { 'Green' } else { 'Yellow' })
-      Write-Host ''
-      Write-Host "  Suggested: $defaultMode" -ForegroundColor DarkGray
-      Write-Host "  Reason   : $defaultReason" -ForegroundColor DarkGray
-      Write-Host ''
-      Write-Host '  Options:'
-      Write-Host '    [1] Bicep     (preferred direct Azure CLI path)'
-      Write-Host '    [2] ARM JSON  (direct compatibility fallback)'
-      Write-Host ''
-      $_defaultOption = if ($defaultMode -eq 'ArmJson') { '2' } else { '1' }
-      do {
-        $_choice = (Read-Host "  Deployment method [default: $_defaultOption]").Trim()
-        if ($_choice -eq '') { $_choice = $_defaultOption }
-        if ($_choice -notin @('1', '2')) {
-          Write-Host "  $_wrn Enter 1 or 2." -ForegroundColor Yellow
-        }
-      } while ($_choice -notin @('1', '2'))
-      $selectedMode = switch ($_choice) {
-        '1' { 'Bicep' }
-        '2' { 'ArmJson' }
-      }
-    }
-    Write-Host ''
-    $_promptsShown = $true
-  }
-
-  # ── Initialize tooling and Azure CLI session ──────────────────────────────
-  Initialize-DeploymentMode -SelectedMode $selectedMode
+  # ── Install tools and connect to Azure ────────────────────────────────────
+  Install-AzureCliIfNeeded
+  Install-AzdIfNeeded
+  Connect-AzureCliIfNeeded
   # Allow the operator to confirm or switch the target subscription before any
-  # resource operations begin. An incorrect subscription would deploy into the
-  # wrong environment and is hard to undo.
+  # resource operations begin.
   Select-AzureSubscription
   Write-Host ''
   Write-Host "  $_chk Active subscription : $($script:SubscriptionName) ($($script:SubscriptionId))" -ForegroundColor Green
   Write-Host "  $_chk Tenant ID           : $($script:TenantId)" -ForegroundColor Green
 
-  if ($selectedMode -eq 'Azd') {
-    Invoke-AzdProvision
+  Use-DeployCachedValue -Key 'AzdEnvironmentName' -Target ([ref]$AzdEnvironmentName)
+  Use-DeployCachedValue -Key 'ResourceGroupName' -Target ([ref]$ResourceGroupName)
+  Use-DeployCachedValue -Key 'AzureLocation' -Target ([ref]$AzureLocation)
+  Use-DeployCachedValue -Key 'TenantName' -Target ([ref]$TenantName)
+  Use-DeployCachedValue -Key 'FunctionAppName' -Target ([ref]$FunctionAppName) -AllowEmptyString
+  Use-DeployCachedValue -Key 'HostingPlan' -Target ([ref]$HostingPlan)
+  Use-DeployCachedValue -Key 'DeployAzureMaps' -Target ([ref]$DeployAzureMaps)
+  Use-DeployCachedValue -Key 'AppVersion' -Target ([ref]$AppVersion)
+  Use-DeployCachedValue -Key 'Environment' -Target ([ref]$Environment) -AllowEmptyString
+  Use-DeployCachedValue -Key 'Criticality' -Target ([ref]$Criticality) -AllowEmptyString
+  Use-DeployCachedValue -Key 'EnableMonitoring' -Target ([ref]$EnableMonitoring)
+  Use-DeployCachedValue -Key 'EnableFailureAnomaliesAlert' -Target ([ref]$EnableFailureAnomaliesAlert)
+  Use-DeployCachedValue -Key 'AlwaysReadyInstances' -Target ([ref]$AlwaysReadyInstances)
+  Use-DeployCachedValue -Key 'MaximumFlexInstances' -Target ([ref]$MaximumFlexInstances)
+  Use-DeployCachedValue -Key 'InstanceMemoryMB' -Target ([ref]$InstanceMemoryMB)
+  Use-DeployCachedValue -Key 'SkipGraphRoleAssignments' -Target ([ref]$SkipGraphRoleAssignments)
 
-    # ── NEXT STEPS (azd path) ─────────────────────────────────────────────
-    # azd provision ran all three setup steps automatically via its hooks.
-    # Try to resolve the Function App URL so the operator can finish the
-    # web part configuration without switching to the Azure portal.
-    $_azdFunctionUrl = $null
-    if (-not $_whatIf -and $env:AZURE_RESOURCE_GROUP) {
-      try {
-        $_azdHostname = (Invoke-AzureCli -Arguments @(
-            'functionapp', 'list',
-            '--resource-group', $env:AZURE_RESOURCE_GROUP,
-            '--query', '[0].defaultHostName',
-            '-o', 'tsv'
-          )).Trim()
-        if ($_azdHostname) { $_azdFunctionUrl = "https://$_azdHostname" }
-      }
-      catch {
-        # Non-fatal — the URL can be found in the Azure portal.
-        Write-Verbose "Could not resolve Function App URL after azd provision: $_"
-      }
-    }
-    $_ns = [System.Collections.Generic.List[string]]::new()
-    $_ns.Add('All three setup steps completed successfully:')
-    $_ns.Add('')
-    $_ns.Add('  Step 1 — Entra App Registration   (pre-provision hook)')
-    $_ns.Add('  Step 2 — Azure infrastructure     (azd provision / Bicep)')
-    $_ns.Add('  Step 3 — Graph permissions        (post-provision hook)')
-    $_ns.Add('')
-    $_ns.Add('Configure the web part (SharePoint property pane → Guest Sponsor API):')
-    if ($_azdFunctionUrl) {
-      $_ns.Add("  Base URL               : $_azdFunctionUrl")
-    }
-    else {
-      $_ns.Add('  Base URL               : see Function App hostname in the Azure portal')
-      if ($env:AZURE_RESOURCE_GROUP) {
-        $_ns.Add("  Resource group         : $($env:AZURE_RESOURCE_GROUP)")
-      }
-    }
-    $_ns.Add('  Application (client) ID: see the pre-provision hook output above')
-    Write-NextStep @($_ns)
-    return
+  if ($script:UsedDeploySessionCache) {
+    Write-Host "  Using cached deployment settings from this PowerShell session." -ForegroundColor DarkGray
   }
 
-  # ── Parameter collection ──────────────────────────────────────────────────
-  if (-not $ResourceGroupName) {
-    Write-Host ''
-    Write-Host '  Required: Azure Resource Group' -ForegroundColor Cyan
-    Write-Host $_sep -ForegroundColor DarkGray
-    Write-Host '  The Azure resource group to deploy the Guest Sponsor Info resources into.'
-    Write-Host '  The group will be created in the location you specify if it does not exist yet.'
-    Write-Host '  Azure naming best practice: rg-<workload>  or  rg-<workload>-<environment>'
-    Write-Host '  Suggested: rg-guest-sponsor-info' -ForegroundColor DarkGray
-    Write-Host '  Where to find existing groups:'
-    Write-Link -Url 'https://portal.azure.com/#view/HubsExtension/BrowseResourceGroups' `
-      -Text "Azure Portal $_arr Resource groups"
-    Write-Host ''
-    do {
-      $ResourceGroupName = (Read-Host '  Resource group name [rg-guest-sponsor-info]').Trim()
-      if ($ResourceGroupName -eq '') { $ResourceGroupName = 'rg-guest-sponsor-info' }
-    } while (-not $ResourceGroupName)
-    Write-Host ''
-    $_promptsShown = $true
-  }
+  while ($true) {
+    $_promptsShown = $false
 
-  if (-not $TenantName) {
-    $_detectedTenantName = Get-DetectedTenantName
-    Write-Host ''
-    Write-Host '  Required: SharePoint Tenant Name' -ForegroundColor Cyan
-    Write-Host $_sep -ForegroundColor DarkGray
-    Write-Host '  The short name of your SharePoint Online tenant — the part before'
-    Write-Host '  .sharepoint.com  (e.g. "contoso" for contoso.sharepoint.com).'
-    if ($_detectedTenantName) {
-      Write-Host "  Detected from the tenant's verified domains: $_detectedTenantName" -ForegroundColor DarkGray
-      Write-Host '  Press Enter to accept.' -ForegroundColor DarkGray
+    if ($script:ReconfigureMode) {
+      Select-AzureSubscription
+      Write-Host ''
+      Write-Host "  $_chk Active subscription : $($script:SubscriptionName) ($($script:SubscriptionId))" -ForegroundColor Green
+      Write-Host "  $_chk Tenant ID           : $($script:TenantId)" -ForegroundColor Green
     }
-    Write-Host ''
-    do {
-      $_prompt = if ($_detectedTenantName) { "  SharePoint tenant name [$_detectedTenantName]" } else { '  SharePoint tenant name' }
-      $TenantName = (Read-Host $_prompt).Trim()
-      if (-not $TenantName -and $_detectedTenantName) { $TenantName = $_detectedTenantName }
-      if (-not $TenantName) { Write-Host "  $_wrn Value is required." -ForegroundColor Yellow }
-    } while (-not $TenantName)
-    Write-Host ''
-    $_promptsShown = $true
-  }
 
-  if (-not $FunctionAppName) {
-    Write-Host ''
-    Write-Host '  Required: Function App Name' -ForegroundColor Cyan
-    Write-Host $_sep -ForegroundColor DarkGray
-    Write-Host '  A globally unique name for the Azure Function App.'
-    Write-Host '  The name becomes part of the default hostname: <name>.azurewebsites.net'
-    Write-Host '  Allowed characters: letters, numbers, and hyphens. Max 60 characters.'
-    Write-Host ''
-    do {
-      $FunctionAppName = (Read-Host '  Function App name').Trim()
+    # ── azd environment name ──────────────────────────────────────────────────
+    if ($script:ReconfigureMode -or -not $AzdEnvironmentName) {
+      $_azdEnvironmentDefault = Get-PromptDefaultValue -CurrentValue $AzdEnvironmentName -FallbackValue 'guest-sponsor-info'
+      Write-Host ''
+      Write-Host '  azd Environment Name' -ForegroundColor Cyan
+      Write-Host $_sep -ForegroundColor DarkGray
+      Write-Host '  azd stores your deployment configuration in a named environment'
+      Write-Host '  (a folder under .azure/ in the repository root). Use the default or enter'
+      Write-Host '  a short name that identifies this deployment (e.g. "contoso-gsi").'
+      Write-Host ''
+      do {
+        $AzdEnvironmentName = (Read-Host "  Environment name [$_azdEnvironmentDefault]").Trim()
+        if ($AzdEnvironmentName -eq '') { $AzdEnvironmentName = $_azdEnvironmentDefault }
+        # azd allows letters, digits, and hyphens; must start with a letter or digit.
+        if ($AzdEnvironmentName -notmatch '^[a-zA-Z0-9][a-zA-Z0-9\-]{0,62}$') {
+          Write-Host "  $_wrn Name must start with a letter or digit, contain only letters, digits," -ForegroundColor Yellow
+          Write-Host '        and hyphens, and be between 1 and 64 characters.' -ForegroundColor Yellow
+          $AzdEnvironmentName = ''
+        }
+      } while (-not $AzdEnvironmentName)
+      Write-Host ''
+      $_promptsShown = $true
+    }
+
+    # ── Resource Group ────────────────────────────────────────────────────────
+    if ($script:ReconfigureMode -or -not $ResourceGroupName) {
+      $_rgDefault = if ($ResourceGroupName) { $ResourceGroupName } else { "rg-$AzdEnvironmentName" }
+      Write-Host ''
+      Write-Host '  Resource Group' -ForegroundColor Cyan
+      Write-Host $_sep -ForegroundColor DarkGray
+      Write-Host '  The Azure resource group that azd will create (or reuse) for this deployment.'
+      Write-Host '  Azure naming best practice: rg-<workload>  or  rg-<workload>-<environment>'
+      Write-Host "  Suggested: $_rgDefault" -ForegroundColor DarkGray
+      Write-Host ''
+      $ResourceGroupName = (Read-Host "  Resource group [$_rgDefault]").Trim()
+      if ($ResourceGroupName -eq '') { $ResourceGroupName = $_rgDefault }
+      Write-Host ''
+      $_promptsShown = $true
+    }
+
+    # ── Azure Location ────────────────────────────────────────────────────────
+    if ($script:ReconfigureMode -or -not $AzureLocation) {
+      $_azureLocationDefault = Get-PromptDefaultValue -CurrentValue $AzureLocation -FallbackValue 'westeurope'
+      Write-Host ''
+      Write-Host '  Azure Location' -ForegroundColor Cyan
+      Write-Host $_sep -ForegroundColor DarkGray
+      Write-Host '  The Azure region where all resources will be deployed.'
+      Write-Link -Url 'https://azure.microsoft.com/explore/global-infrastructure/geographies/' `
+        -Text 'Azure regions overview'
+      Write-Host ''
+      do {
+        $AzureLocation = (Read-Host "  Azure location [$_azureLocationDefault]").Trim()
+        if ($AzureLocation -eq '') { $AzureLocation = $_azureLocationDefault }
+        # Basic sanity check: Azure location names are lowercase letters and digits only.
+        if ($AzureLocation -notmatch '^[a-z][a-z0-9]+$') {
+          Write-Host "  $_wrn Enter a valid Azure location name (e.g. westeurope, eastus2)." -ForegroundColor Yellow
+          $AzureLocation = ''
+        }
+      } while (-not $AzureLocation)
+      Write-Host ''
+      $_promptsShown = $true
+    }
+
+    # ── Environment Tag ───────────────────────────────────────────────────────
+    if (Should-PromptDeployParameter -Name 'Environment') {
+      $_environmentDefault = Get-PromptDefaultValue -CurrentValue $Environment -FallbackValue 'prod' -EmptyDisplay '-'
+      Write-Host ''
+      Write-Host '  Environment Tag' -ForegroundColor Cyan
+      Write-Host $_sep -ForegroundColor DarkGray
+      Write-Host '  Optional tag for the workload environment on the resource group and all resources.'
+      Write-Host '  Press Enter to use the recommended default "prod".'
+      Write-Host '  Enter - to omit the tag entirely, or enter any custom value.'
+      Write-Host ''
+      $_environment = (Read-Host "  Environment [$_environmentDefault]").Trim()
+      if ($_environment -eq '') {
+        $_environment = $_environmentDefault
+      }
+      if ($_environment -match '^(?:-|none)$') {
+        $Environment = ''
+      }
+      else {
+        $Environment = $_environment
+      }
+      Write-Host ''
+      $_promptsShown = $true
+    }
+
+    # ── Criticality Tag ───────────────────────────────────────────────────────
+    if (Should-PromptDeployParameter -Name 'Criticality') {
+      $_criticalityDefault = Get-PromptDefaultValue -CurrentValue $Criticality -FallbackValue 'low' -EmptyDisplay '-'
+      Write-Host ''
+      Write-Host '  Criticality Tag' -ForegroundColor Cyan
+      Write-Host $_sep -ForegroundColor DarkGray
+      Write-Host '  Optional tag for the business criticality of this workload.'
+      Write-Host '  Press Enter to use the recommended default "low".'
+      Write-Host '  Enter - to omit the tag entirely, or enter any custom value.'
+      Write-Host ''
+      $_criticality = (Read-Host "  Criticality [$_criticalityDefault]").Trim()
+      if ($_criticality -eq '') {
+        $_criticality = $_criticalityDefault
+      }
+      if ($_criticality -match '^(?:-|none)$') {
+        $Criticality = ''
+      }
+      else {
+        $Criticality = $_criticality
+      }
+      Write-Host ''
+      $_promptsShown = $true
+    }
+
+    # ── SharePoint Tenant Name ────────────────────────────────────────────────
+    if ($script:ReconfigureMode -or -not $TenantName) {
+      $_detectedTenantName = Get-DetectedTenantName
+      $_tenantNameDefault = if ($TenantName) { $TenantName } elseif ($_detectedTenantName) { $_detectedTenantName } else { '' }
+      Write-Host ''
+      Write-Host '  SharePoint Tenant Name' -ForegroundColor Cyan
+      Write-Host $_sep -ForegroundColor DarkGray
+      Write-Host '  The short name of your SharePoint Online tenant — the part before'
+      Write-Host '  .sharepoint.com  (e.g. "contoso" for contoso.sharepoint.com).'
+      if ($_detectedTenantName) {
+        Write-Host "  Detected from the tenant's verified domains: $_detectedTenantName" -ForegroundColor DarkGray
+        Write-Host '  Press Enter to accept.' -ForegroundColor DarkGray
+      }
+      Write-Host ''
+      do {
+        $_prompt = if ($_tenantNameDefault) { "  SharePoint tenant name [$_tenantNameDefault]" } else { '  SharePoint tenant name' }
+        $TenantName = (Read-Host $_prompt).Trim()
+        if (-not $TenantName -and $_tenantNameDefault) { $TenantName = $_tenantNameDefault }
+        if (-not $TenantName) { Write-Host "  $_wrn Value is required." -ForegroundColor Yellow }
+      } while (-not $TenantName)
+      Write-Host ''
+      $_promptsShown = $true
+    }
+
+    # ── Function App Name ─────────────────────────────────────────────────────
+    if ($FunctionAppName -and -not (Test-FunctionAppNameLength -Value $FunctionAppName)) {
+      throw "FunctionAppName must be between $($script:FunctionAppNameMinLength) and $($script:FunctionAppNameMaxLength) characters so Bicep can derive valid resource names."
+    }
+
+    if (Should-PromptDeployParameter -Name 'FunctionAppName') {
+      $_functionAppNameDefault = Get-PromptDefaultValue -CurrentValue $FunctionAppName -FallbackValue 'auto-generate' -EmptyDisplay 'auto-generate'
+      Write-Host ''
+      Write-Host '  Function App Name  (optional)' -ForegroundColor Cyan
+      Write-Host $_sep -ForegroundColor DarkGray
+      Write-Host '  Globally unique name for the Azure Function App (2-58 chars).'
+      Write-Host '  Leave blank to let Bicep auto-generate one (e.g., "gsi-a1b2c3d4").'
+      Write-Host ''
+      $_fnName = (Read-Host "  Function App Name [$_functionAppNameDefault]").Trim()
+      if (-not $_fnName) { $_fnName = $_functionAppNameDefault }
+      if ($_fnName -and $_fnName -ne 'auto-generate') {
+        if (-not (Test-FunctionAppNameLength -Value $_fnName)) {
+          Write-Host "  $_wrn Enter 2-58 characters so derived Bicep resource names stay valid." -ForegroundColor Yellow
+          $_fnName = ''
+        }
+        else {
+          $FunctionAppName = $_fnName
+        }
+      }
+      elseif ($_fnName -eq 'auto-generate') {
+        $FunctionAppName = ''
+      }
       if (-not $FunctionAppName) {
-        Write-Host "  $_wrn Value is required." -ForegroundColor Yellow
+        Write-Host '  Auto-generation enabled — Bicep will generate a short unique name.' -ForegroundColor DarkGray
       }
-    } while (-not $FunctionAppName)
-    Write-Host ''
-    $_promptsShown = $true
-  }
+      Write-Host ''
+      $_promptsShown = $true
+    }
 
-  if (-not $PSBoundParameters.ContainsKey('HostingPlan')) {
-    Write-Host ''
-    Write-Host '  Hosting Plan' -ForegroundColor Cyan
-    Write-Host $_sep -ForegroundColor DarkGray
-    Write-Host '  Choose the Azure Functions hosting plan.'
-    Write-Host '    Consumption       — pay-per-use, cold starts possible, no VNet'
-    Write-Host '    FlexConsumption   — scale-to-zero with faster starts, VNet-ready'
-    Write-Host '  Most deployments start with Consumption.'
-    Write-Link -Url 'https://learn.microsoft.com/azure/azure-functions/functions-scale' `
-      -Text "Azure Docs $_arr Azure Functions hosting options"
-    Write-Host ''
-    do {
-      $HostingPlan = (Read-Host '  Hosting plan [Consumption]').Trim()
-      if ($HostingPlan -eq '') { $HostingPlan = 'Consumption' }
-      if ($HostingPlan -notin @('Consumption', 'FlexConsumption')) {
-        Write-Host "  $_wrn Enter Consumption or FlexConsumption." -ForegroundColor Yellow
-        $HostingPlan = ''
-      }
-    } while (-not $HostingPlan)
-    Write-Host ''
-    $_promptsShown = $true
-  }
+    # ── Hosting Plan ──────────────────────────────────────────────────────────
+    if (Should-PromptDeployParameter -Name 'HostingPlan') {
+      $_hostingPlanDefault = Get-PromptDefaultValue -CurrentValue $HostingPlan -FallbackValue 'Consumption'
+      Write-Host ''
+      Write-Host '  Hosting Plan' -ForegroundColor Cyan
+      Write-Host $_sep -ForegroundColor DarkGray
+      Write-Host '  Choose the Azure Functions hosting plan.'
+      Write-Host '    Consumption       — pay-per-use, cold starts possible, no VNet'
+      Write-Host '    FlexConsumption   — scale-to-zero with faster starts, VNet-ready'
+      Write-Host '  Most deployments start with Consumption.'
+      Write-Link -Url 'https://learn.microsoft.com/azure/azure-functions/functions-scale' `
+        -Text "Azure Docs $_arr Azure Functions hosting options"
+      Write-Host ''
+      do {
+        $_hostingPlan = (Read-Host "  Hosting plan [$_hostingPlanDefault]").Trim()
+        if ($_hostingPlan -eq '') { $_hostingPlan = $_hostingPlanDefault }
+        if ($_hostingPlan -notin @('Consumption', 'FlexConsumption')) {
+          Write-Host "  $_wrn Enter Consumption or FlexConsumption." -ForegroundColor Yellow
+          $_hostingPlan = ''
+        }
+        else {
+          $HostingPlan = $_hostingPlan
+        }
+      } while (-not $HostingPlan)
+      Write-Host ''
+      $_promptsShown = $true
+    }
 
-  if (-not $PSBoundParameters.ContainsKey('DeployAzureMaps')) {
-    Write-Host ''
-    Write-Host '  Azure Maps' -ForegroundColor Cyan
-    Write-Host $_sep -ForegroundColor DarkGray
-    Write-Host '  Deploy an Azure Maps account for rendering sponsor address maps in the web part.'
-    Write-Host '  Set to false to skip — the web part shows an external map link instead.'
-    Write-Host ''
-    do {
-      $_v = (Read-Host '  Deploy Azure Maps [true]').Trim().ToLowerInvariant()
-      if ($_v -eq '') { $_v = 'true' }
-      if ($_v -notin @('true', 'false')) {
-        Write-Host "  $_wrn Enter true or false." -ForegroundColor Yellow
-        $_v = ''
-      }
-    } while (-not $_v)
-    $DeployAzureMaps = $_v -eq 'true'
-    Write-Host ''
-    $_promptsShown = $true
-  }
+    # ── Azure Maps ────────────────────────────────────────────────────────────
+    if (Should-PromptDeployParameter -Name 'DeployAzureMaps') {
+      $_deployAzureMapsDefault = if ($DeployAzureMaps) { 'true' } else { 'false' }
+      Write-Host ''
+      Write-Host '  Azure Maps' -ForegroundColor Cyan
+      Write-Host $_sep -ForegroundColor DarkGray
+      Write-Host '  Deploy an Azure Maps account for rendering sponsor address maps in the web part.'
+      Write-Host '  Set to false to skip — the web part shows an external map link instead.'
+      Write-Host ''
+      do {
+        $_v = (Read-Host "  Deploy Azure Maps [$_deployAzureMapsDefault]").Trim().ToLowerInvariant()
+        if ($_v -eq '') { $_v = $_deployAzureMapsDefault }
+        if ($_v -notin @('true', 'false')) {
+          Write-Host "  $_wrn Enter true or false." -ForegroundColor Yellow
+          $_v = ''
+        }
+      } while (-not $_v)
+      $DeployAzureMaps = $_v -eq 'true'
+      Write-Host ''
+      $_promptsShown = $true
+    }
 
-  if (-not $PSBoundParameters.ContainsKey('AppVersion')) {
-    Write-Host ''
-    Write-Host '  Function Package Version' -ForegroundColor Cyan
-    Write-Host $_sep -ForegroundColor DarkGray
-    Write-Host '  The release tag of the Function App package to deploy.'
-    Write-Host '  Use "latest" to always pull the most recent published release.'
-    Write-Link -Url 'https://github.com/workoho/spfx-guest-sponsor-info/releases' `
-      -Text "GitHub releases $_arr workoho/spfx-guest-sponsor-info"
-    Write-Host ''
-    $AppVersion = (Read-Host '  Function package version [latest]').Trim()
-    if ($AppVersion -eq '') { $AppVersion = 'latest' }
-    Write-Host ''
-    $_promptsShown = $true
-  }
+    # ── App Version ───────────────────────────────────────────────────────────
+    if (Should-PromptDeployParameter -Name 'AppVersion') {
+      $_appVersionDefault = Get-PromptDefaultValue -CurrentValue $AppVersion -FallbackValue 'latest'
+      Write-Host ''
+      Write-Host '  Function Package Version' -ForegroundColor Cyan
+      Write-Host $_sep -ForegroundColor DarkGray
+      Write-Host '  The release tag of the Function App package to deploy.'
+      Write-Host '  Use "latest" to always pull the most recent published release.'
+      Write-Link -Url 'https://github.com/workoho/spfx-guest-sponsor-info/releases' `
+        -Text "GitHub releases $_arr workoho/spfx-guest-sponsor-info"
+      Write-Host ''
+      $AppVersion = (Read-Host "  Function package version [$_appVersionDefault]").Trim()
+      if ($AppVersion -eq '') { $AppVersion = $_appVersionDefault }
+      Write-Host ''
+      $_promptsShown = $true
+    }
 
-  if (-not $PSBoundParameters.ContainsKey('EnableMonitoring')) {
-    Write-Host ''
-    Write-Host '  Monitoring Stack' -ForegroundColor Cyan
-    Write-Host $_sep -ForegroundColor DarkGray
-    Write-Host '  Deploy Log Analytics workspace, Application Insights, and alert resources.'
-    Write-Host '  Strongly recommended for production — enables diagnostics and smart alerts.'
-    Write-Host ''
-    do {
-      $_v = (Read-Host '  Enable monitoring [true]').Trim().ToLowerInvariant()
-      if ($_v -eq '') { $_v = 'true' }
-      if ($_v -notin @('true', 'false')) {
-        Write-Host "  $_wrn Enter true or false." -ForegroundColor Yellow
-        $_v = ''
-      }
-    } while (-not $_v)
-    $EnableMonitoring = $_v -eq 'true'
-    Write-Host ''
-    $_promptsShown = $true
-  }
+    # ── Monitoring Stack ──────────────────────────────────────────────────────
+    if (Should-PromptDeployParameter -Name 'EnableMonitoring') {
+      $_enableMonitoringDefault = if ($EnableMonitoring) { 'true' } else { 'false' }
+      Write-Host ''
+      Write-Host '  Monitoring Stack' -ForegroundColor Cyan
+      Write-Host $_sep -ForegroundColor DarkGray
+      Write-Host '  Deploy Log Analytics workspace, Application Insights, and alert resources.'
+      Write-Host '  Strongly recommended for production — enables diagnostics and smart alerts.'
+      Write-Host ''
+      do {
+        $_v = (Read-Host "  Enable monitoring [$_enableMonitoringDefault]").Trim().ToLowerInvariant()
+        if ($_v -eq '') { $_v = $_enableMonitoringDefault }
+        if ($_v -notin @('true', 'false')) {
+          Write-Host "  $_wrn Enter true or false." -ForegroundColor Yellow
+          $_v = ''
+        }
+      } while (-not $_v)
+      $EnableMonitoring = $_v -eq 'true'
+      Write-Host ''
+      $_promptsShown = $true
+    }
 
-  if ($EnableMonitoring) {
-    if (-not $PSBoundParameters.ContainsKey('EnableFailureAnomaliesAlert')) {
+    # ── Failure Anomalies Alert ───────────────────────────────────────────────
+    if ($EnableMonitoring -and (Should-PromptDeployParameter -Name 'EnableFailureAnomaliesAlert')) {
+      $_failureAnomaliesDefault = if ($EnableFailureAnomaliesAlert) { 'true' } else { 'false' }
       Write-Host ''
       Write-Host '  Failure Anomalies Alert' -ForegroundColor Cyan
       Write-Host $_sep -ForegroundColor DarkGray
@@ -1458,8 +1263,8 @@ try {
       Write-Host '  Sends an email notification when the failure rate spikes unexpectedly.'
       Write-Host ''
       do {
-        $_v = (Read-Host '  Enable Failure Anomalies alert [false]').Trim().ToLowerInvariant()
-        if ($_v -eq '') { $_v = 'false' }
+        $_v = (Read-Host "  Enable Failure Anomalies alert [$_failureAnomaliesDefault]").Trim().ToLowerInvariant()
+        if ($_v -eq '') { $_v = $_failureAnomaliesDefault }
         if ($_v -notin @('true', 'false')) {
           Write-Host "  $_wrn Enter true or false." -ForegroundColor Yellow
           $_v = ''
@@ -1469,235 +1274,342 @@ try {
       Write-Host ''
       $_promptsShown = $true
     }
-  }
-  else {
-    $EnableFailureAnomaliesAlert = $false
-  }
-
-  if ($HostingPlan -eq 'FlexConsumption' -and -not $PSBoundParameters.ContainsKey('MaximumFlexInstances')) {
-    Write-Host ''
-    Write-Host '  Maximum Flex Instances' -ForegroundColor Cyan
-    Write-Host $_sep -ForegroundColor DarkGray
-    Write-Host '  Hard scale-out cap for Flex Consumption — controls the maximum number of'
-    Write-Host '  concurrent function instances allowed for this app. Default is 10.'
-    Write-Host ''
-    do {
-      $_raw = (Read-Host '  Maximum Flex instances [10]').Trim()
-      if ($_raw -eq '') { $_raw = '10' }
-      if ($_raw -match '^\d+$') {
-        $MaximumFlexInstances = [int]$_raw
-      }
-      else {
-        Write-Host "  $_wrn Enter a positive integer." -ForegroundColor Yellow
-        $_raw = ''
-      }
-    } while (-not $_raw)
-    Write-Host ''
-    $_promptsShown = $true
-  }
-
-  if (-not $WebPartClientId) {
-    Write-Host ''
-    Write-Host '  Required: Web Part Client ID' -ForegroundColor Cyan
-    Write-Host $_sep -ForegroundColor DarkGray
-    Write-Host '  The Application (client) ID of the Entra App Registration used for EasyAuth.'
-    Write-Host '  Run setup-app-registration.ps1 first if you have not created it yet.'
-    Write-Host '  Where to find it:'
-    Write-Link -Url "https://entra.microsoft.com/$($script:TenantId)/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" `
-      -Text "Entra admin center $_arr App registrations"
-    Write-Host "    'Guest Sponsor Info - SharePoint Web Part Auth' $_arr Application (client) ID"
-    if ($Global:GsiSetup_WebPartClientId) {
-      # Session cache: reuse the value set by setup-app-registration.ps1 in
-      # this PowerShell session — no interactive prompt needed.
-      $WebPartClientId = $Global:GsiSetup_WebPartClientId
-      Write-Host "  Using cached App Registration Client ID from this session: $WebPartClientId" -ForegroundColor DarkGray
+    elseif (-not $EnableMonitoring) {
+      $EnableFailureAnomaliesAlert = $false
     }
-    else {
+
+    # ── Always-Ready Instances ────────────────────────────────────────────────
+    if ($HostingPlan -eq 'FlexConsumption' -and (Should-PromptDeployParameter -Name 'AlwaysReadyInstances')) {
+      $_alwaysReadyDefault = $AlwaysReadyInstances.ToString()
       Write-Host ''
-      $_answer = (Read-Host '  Run setup-app-registration.ps1 to create or reuse it now? [Y/n]').Trim()
-      if ($_answer -eq '' -or $_answer -match '^[Yy]') {
-        if ($_whatIf) {
-          Write-Host "  [WhatIf] Would run: setup-app-registration.ps1 -TenantId $($script:TenantId)" -ForegroundColor DarkGray
-          $WebPartClientId = '00000000-0000-0000-0000-000000000000'
+      Write-Host '  Always-Ready Instances' -ForegroundColor Cyan
+      Write-Host $_sep -ForegroundColor DarkGray
+      Write-Host '  Number of pre-warmed instances kept ready for Flex Consumption.'
+      Write-Host '  0 = fully on-demand (cold starts possible), 1 = warm default for most deployments.'
+      Write-Host ''
+      do {
+        $_raw = (Read-Host "  Always-ready instances [$_alwaysReadyDefault]").Trim()
+        if ($_raw -eq '') { $_raw = $_alwaysReadyDefault }
+        if ($_raw -match '^[0-9]+$') {
+          $AlwaysReadyInstances = [int]$_raw
         }
         else {
-          $_setupScriptPath = Get-RepoFilePath -RelativePath 'azure-function/infra/setup-app-registration.ps1'
-          & $_setupScriptPath -TenantId $script:TenantId -Confirm:$false
-          # Mark Step 1 as done so the NEXT STEPS label is correct.
-          $Global:GsiSetup_AppRegistrationDone = $true
-          $WebPartClientId = (Invoke-AzureCli -Arguments @(
-              'ad', 'app', 'list',
-              '--display-name', $script:AppRegistrationDisplayName,
-              '--query', '[0].appId',
-              '-o', 'tsv'
-            )).Trim()
-          if (-not $WebPartClientId) {
-            throw 'The App Registration script completed, but no client ID could be resolved afterwards.'
-          }
+          Write-Host "  $_wrn Enter 0 or a positive integer." -ForegroundColor Yellow
+          $_raw = ''
         }
+      } while (-not $_raw)
+      Write-Host ''
+      $_promptsShown = $true
+    }
+
+    # ── Maximum Flex Instances ────────────────────────────────────────────────
+    if ($HostingPlan -eq 'FlexConsumption' -and (Should-PromptDeployParameter -Name 'MaximumFlexInstances')) {
+      $_maximumFlexInstancesDefault = $MaximumFlexInstances.ToString()
+      Write-Host ''
+      Write-Host '  Maximum Flex Instances' -ForegroundColor Cyan
+      Write-Host $_sep -ForegroundColor DarkGray
+      Write-Host '  Hard scale-out cap for Flex Consumption — controls the maximum number of'
+      Write-Host '  concurrent function instances allowed for this app. Default is 10.'
+      Write-Host ''
+      do {
+        $_raw = (Read-Host "  Maximum Flex instances [$_maximumFlexInstancesDefault]").Trim()
+        if ($_raw -eq '') { $_raw = $_maximumFlexInstancesDefault }
+        if ($_raw -match '^\d+$') {
+          $MaximumFlexInstances = [int]$_raw
+        }
+        else {
+          Write-Host "  $_wrn Enter a positive integer." -ForegroundColor Yellow
+          $_raw = ''
+        }
+      } while (-not $_raw)
+      Write-Host ''
+      $_promptsShown = $true
+    }
+
+    # ── Flex Instance Memory ──────────────────────────────────────────────────
+    if ($HostingPlan -eq 'FlexConsumption' -and (Should-PromptDeployParameter -Name 'InstanceMemoryMB')) {
+      $_instanceMemoryDefault = $InstanceMemoryMB.ToString()
+      Write-Host ''
+      Write-Host '  Flex Instance Memory' -ForegroundColor Cyan
+      Write-Host $_sep -ForegroundColor DarkGray
+      Write-Host '  Memory size per Flex Consumption instance.'
+      Write-Host '  Supported in this template: 512 or 2048 MB. Recommended default: 2048 MB.'
+      Write-Host ''
+      do {
+        $_raw = (Read-Host "  Instance memory in MB [$_instanceMemoryDefault]").Trim()
+        if ($_raw -eq '') { $_raw = $_instanceMemoryDefault }
+        if ($_raw -in @('512', '2048')) {
+          $InstanceMemoryMB = [int]$_raw
+        }
+        else {
+          Write-Host "  $_wrn Enter 512 or 2048." -ForegroundColor Yellow
+          $_raw = ''
+        }
+      } while (-not $_raw)
+      Write-Host ''
+      $_promptsShown = $true
+    }
+
+    # ── Graph Permission Assignment ───────────────────────────────────────────
+    if (Should-PromptDeployParameter -Name 'SkipGraphRoleAssignments') {
+      $_graphPermissionsDefault = if ($SkipGraphRoleAssignments) { '2' } else { '1' }
+      Write-Host ''
+      Write-Host '  Graph Permission Assignment' -ForegroundColor Cyan
+      Write-Host $_sep -ForegroundColor DarkGray
+      Write-Host '  Bicep assigns Microsoft Graph app roles to the Managed Identity during'
+      Write-Host '  deployment. This requires Privileged Role Administrator in Entra ID.'
+      Write-Host ''
+      Write-Host '    [1]  Assign now (default) — requires Privileged Role Administrator'
+      Write-Host '    [2]  Defer — run setup-graph-permissions.ps1 after deployment'
+      Write-Host '         (useful when a separate PAW or account holds that Entra role)'
+      Write-Host ''
+      do {
+        $_choice = (Read-Host "  Graph permissions [$_graphPermissionsDefault]").Trim()
+        if ($_choice -eq '') { $_choice = $_graphPermissionsDefault }
+        if ($_choice -notin @('1', '2')) {
+          Write-Host "  $_wrn Enter 1 or 2." -ForegroundColor Yellow
+        }
+      } while ($_choice -notin @('1', '2'))
+      $SkipGraphRoleAssignments = $_choice -eq '2'
+      if ($SkipGraphRoleAssignments) {
+        Write-Host '  Graph role assignments deferred to setup-graph-permissions.ps1.' -ForegroundColor DarkGray
+      }
+      Write-Host ''
+      $_promptsShown = $true
+    }
+
+    # ── Required role guidance ────────────────────────────────────────────────
+    Write-Hint @(
+      'Required Azure RBAC role:  Owner or Contributor  (on the target resource group)'
+      '  Owner is also needed for Storage role assignments. Contributor covers the rest.'
+      '  For resource provider registration: Contributor or higher at subscription level.'
+      ''
+      'Required Entra roles:'
+      '  Cloud Application Administrator — to create/update the EasyAuth App Registration'
+      $(if ($SkipGraphRoleAssignments) {
+          '  Privileged Role Administrator   — needed for Graph role assignments (deferred)'
+        }
+        else {
+          '  Privileged Role Administrator   — to assign Graph app roles to the Managed Identity'
+        })
+      ''
+      'PIM eligible roles: activate before running this script, then re-run.'
+    )
+    Write-Link -Url 'https://portal.azure.com/#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/azurerbac' `
+      -Text 'PIM → My roles → Azure resources  (activate eligible role)'
+    Write-Link -Url 'https://entra.microsoft.com/#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/aadRoles' `
+      -Text 'PIM → My roles → Entra roles  (activate eligible role)'
+
+    Save-DeploySessionCache `
+      -SubscriptionName $script:SubscriptionName `
+      -SubscriptionId $script:SubscriptionId `
+      -TenantId $script:TenantId `
+      -AzdEnvironmentName $AzdEnvironmentName `
+      -ResourceGroupName $ResourceGroupName `
+      -AzureLocation $AzureLocation `
+      -TenantName $TenantName `
+      -FunctionAppName $FunctionAppName `
+      -HostingPlan $HostingPlan `
+      -DeployAzureMaps:$DeployAzureMaps `
+      -AppVersion $AppVersion `
+      -Environment $Environment `
+      -Criticality $Criticality `
+      -EnableMonitoring:$EnableMonitoring `
+      -EnableFailureAnomaliesAlert:$EnableFailureAnomaliesAlert `
+      -AlwaysReadyInstances $AlwaysReadyInstances `
+      -MaximumFlexInstances $MaximumFlexInstances `
+      -InstanceMemoryMB $InstanceMemoryMB `
+      -SkipGraphRoleAssignments:$SkipGraphRoleAssignments
+
+    # ── Confirmation summary ──────────────────────────────────────────────────
+    # When all parameters were supplied on the command line or via the session cache (no interactive
+    # prompts shown) we display a summary so the operator can verify before
+    # the script commits any changes — unless -Confirm:$false or -WhatIf was passed.
+    if (-not $_promptsShown -and
+      $WhatIfPreference -ne [System.Management.Automation.SwitchParameter]$true -and
+      $ConfirmPreference -ne 'None') {
+      Write-Host ''
+      Write-Host '  Planned operations' -ForegroundColor Cyan
+      Write-Host $_sep -ForegroundColor DarkGray
+      Write-Host "  azd environment     : $AzdEnvironmentName"
+      Write-Host "  Subscription        : $($script:SubscriptionName) ($($script:SubscriptionId))"
+      Write-Host "  Resource group      : $ResourceGroupName"
+      Write-Host "  Azure location      : $AzureLocation"
+      Write-Host "  Environment tag     : $(if ($Environment) { $Environment } else { '(not set)' })"
+      Write-Host "  Criticality tag     : $(if ($Criticality) { $Criticality } else { '(not set)' })"
+      Write-Host "  SharePoint tenant   : $TenantName"
+      Write-Host "  Function App        : $(if ($FunctionAppName) { $FunctionAppName } else { '(auto-generated by Bicep)' })"
+      Write-Host "  Hosting plan        : $HostingPlan"
+      if ($HostingPlan -eq 'FlexConsumption') {
+        Write-Host "  Always-ready        : $AlwaysReadyInstances"
+        Write-Host "  Max flex instances  : $MaximumFlexInstances"
+        Write-Host "  Instance memory MB  : $InstanceMemoryMB"
+      }
+      Write-Host "  Azure Maps          : $DeployAzureMaps"
+      Write-Host "  Monitoring          : $EnableMonitoring"
+      Write-Host "  App version         : $AppVersion"
+      if ($SkipGraphRoleAssignments) {
+        Write-Host '  Graph roles         : deferred to setup-graph-permissions.ps1'
       }
       else {
-        do {
-          $WebPartClientId = (Read-Host '  App Registration Client ID').Trim()
-          if (-not $WebPartClientId) {
-            Write-Host "  $_wrn Value is required." -ForegroundColor Yellow
-          }
-        } while (-not $WebPartClientId)
+        Write-Host '  Graph roles         : assign during deployment'
       }
+      Write-Host ''
+      Write-Host '  Deployment: azd provision (creates or updates all Azure resources).' -ForegroundColor DarkGray
+      Write-Host '  All deployment operations are idempotent — re-running is safe.' -ForegroundColor DarkGray
+      Write-Host ''
+      do {
+        $reply = (Read-Host '  Proceed, re-configure, or abort? [Y/r/n]').Trim()
+        if (-not $reply) { $reply = 'y' }
+        if ($reply -notmatch '^(?i:y|yes|r|reconfigure|re-configure|n|no)$') {
+          Write-Host "  $_wrn Enter Y, R, or N." -ForegroundColor Yellow
+          $reply = ''
+        }
+      } while (-not $reply)
+      if ($reply -match '^(?i:r|reconfigure|re-configure)$') {
+        $script:ReconfigureMode = $true
+        Write-Host ''
+        continue
+      }
+      if ($reply -notmatch '^(?i:y|yes)$') {
+        Write-Host 'Aborted.' -ForegroundColor Yellow
+        exit 0
+      }
+      Write-Host ''
     }
-    Write-Host ''
-    $_promptsShown = $true
+    $script:ReconfigureMode = $false
+    break
   }
 
-  # Publish the resolved client ID into the session cache so
-  # setup-graph-permissions.ps1 can skip its own prompt in Step 3.
-  if ($WebPartClientId) {
-    $Global:GsiSetup_WebPartClientId = $WebPartClientId
-  }
+  # ── Deploy ────────────────────────────────────────────────────────────────
+  Invoke-AzdProvision `
+    -EnvName $AzdEnvironmentName `
+    -ResourceGroup $ResourceGroupName `
+    -Location $AzureLocation `
+    -SharePointTenant $TenantName `
+    -Environment $Environment `
+    -Criticality $Criticality `
+    -AppName $FunctionAppName `
+    -Plan $HostingPlan `
+    -Maps:$DeployAzureMaps `
+    -Version $AppVersion `
+    -Monitoring:$EnableMonitoring `
+    -FailureAlert:$EnableFailureAnomaliesAlert `
+    -AlwaysReadyInstances $AlwaysReadyInstances `
+    -FlexInstances $MaximumFlexInstances `
+    -InstanceMemoryMB $InstanceMemoryMB `
+    -SkipRoles:$SkipGraphRoleAssignments
 
-  # ── Required Azure permissions ─────────────────────────────────────────────
-  Write-Hint @(
-    'Required Azure RBAC role:  Contributor  (on the target subscription or resource group)'
-    '  Owner also works. For provider registration: Contributor or higher at subscription level.'
-    ''
-    'If your role is eligible (PIM): activate it, then re-run.'
-    'If you do not have the role yet: request it from your Azure admin.'
-  )
-  Write-Link -Url 'https://portal.azure.com/#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/azurerbac' `
-    -Text 'PIM → My roles → Azure resources  (activate eligible role)'
-  Write-Link -Url 'https://portal.azure.com/#view/Microsoft_Azure_AD_IAM/ActiveDirectoryMenuBlade/~/RolesAndAdministrators' `
-    -Text 'Azure portal → Subscriptions → Access control (IAM)'
-
-  # ── Confirmation summary ───────────────────────────────────────────────────
-  # When all parameters were supplied on the command line (no interactive
-  # prompts shown) we display a summary so the operator can verify before
-  # the script commits any changes — unless -Confirm:$false or -WhatIf was passed.
-  if (-not $_promptsShown -and
-    $WhatIfPreference -ne [System.Management.Automation.SwitchParameter]$true -and
-    $ConfirmPreference -ne 'None') {
-    Write-Host ''
-    Write-Host '  Planned operations' -ForegroundColor Cyan
-    Write-Host $_sep -ForegroundColor DarkGray
-    Write-Host "  Subscription    : $($script:SubscriptionName) ($($script:SubscriptionId))"
-    Write-Host "  Resource group  : $ResourceGroupName"
-    Write-Host "  SharePoint org  : $TenantName"
-    Write-Host "  Function App    : $FunctionAppName"
-    Write-Host "  Hosting plan    : $HostingPlan"
-    Write-Host "  Azure Maps      : $DeployAzureMaps"
-    Write-Host "  Monitoring      : $EnableMonitoring"
-    Write-Host "  App version     : $AppVersion"
-    Write-Host "  Client ID       : $WebPartClientId"
-    Write-Host "  Method          : $selectedMode"
-    Write-Host ''
-    Write-Host '  The script will deploy Azure resources and register resource providers.' -ForegroundColor DarkGray
-    Write-Host '  All deployment operations are idempotent — re-running is safe.' -ForegroundColor DarkGray
-    Write-Host ''
-    $reply = (Read-Host '  Proceed? [Y/n]').Trim()
-    if ($reply -and $reply -notmatch '^[Yy]') {
-      Write-Host 'Aborted.' -ForegroundColor Yellow
-      exit 0
-    }
-    Write-Host ''
-  }
-
-  # ── Deployment ────────────────────────────────────────────────────────────
-  Initialize-ResourceGroup -Name $ResourceGroupName
-  Invoke-ProviderPreflight -SelectedHostingPlan $HostingPlan -DeployMaps $DeployAzureMaps -MonitoringEnabled:$EnableMonitoring
-
-  if ($selectedMode -eq 'Bicep') {
-    Invoke-BicepDeployment `
-      -GroupName $ResourceGroupName `
-      -TenantShortName $TenantName `
-      -AppName $FunctionAppName `
-      -ClientId $WebPartClientId `
-      -SelectedHostingPlan $HostingPlan `
-      -DeployMaps:$DeployAzureMaps `
-      -SelectedAppVersion $AppVersion `
-      -MonitoringEnabled:$EnableMonitoring `
-      -EnableFailureAlert:$EnableFailureAnomaliesAlert `
-      -FlexScaleLimit $MaximumFlexInstances
-  }
-  else {
-    Invoke-ArmJsonDeployment `
-      -GroupName $ResourceGroupName `
-      -TenantShortName $TenantName `
-      -AppName $FunctionAppName `
-      -ClientId $WebPartClientId `
-      -SelectedHostingPlan $HostingPlan `
-      -DeployMaps:$DeployAzureMaps `
-      -SelectedAppVersion $AppVersion `
-      -MonitoringEnabled:$EnableMonitoring `
-      -EnableFailureAlert:$EnableFailureAnomaliesAlert `
-      -FlexScaleLimit $MaximumFlexInstances
-  }
-
-  # ── Publish deployment outputs to the session cache ───────────────────────
-  # Read the Managed Identity Object ID directly from the deployed Function
-  # App. This lets setup-graph-permissions.ps1 (Step 3) skip that prompt when
-  # run in the same PowerShell session immediately after this script.
+  # ── Read outputs from azd env ─────────────────────────────────────────────
+  # Read the Bicep outputs so the operator gets the exact values to paste into
+  # the web part property pane without switching to the Azure portal.
+  $_azdFunctionBaseUrl = $null
+  $_azdWebPartClientId = $null
+  $_azdMiOid = $null
   if (-not $_whatIf) {
     try {
-      $_principalId = (Invoke-AzureCli -Arguments @(
-          'functionapp', 'identity', 'show',
-          '--name', $FunctionAppName,
-          '--resource-group', $ResourceGroupName,
-          '--query', 'principalId',
-          '-o', 'tsv'
-        )).Trim()
-      if ($_principalId) {
-        $Global:GsiSetup_ManagedIdentityObjectId = $_principalId
-        Write-Host "  $_chk Managed Identity Object ID cached for Step 3: $_principalId" -ForegroundColor Green
+      $_azdEnvVals = azd env get-values 2>$null
+      foreach ($_azdLine in $_azdEnvVals) {
+        if ($_azdLine -match '^functionAppUrl="?([^"]+)"?') { $_azdFunctionBaseUrl = $Matches[1] }
+        elseif ($_azdLine -match '^sponsorApiEndpointUrl="?([^"]+)"?') { $_azdFunctionBaseUrl = $Matches[1] -replace '/api/getGuestSponsors$' }
+        elseif ($_azdLine -match '^sponsorApiUrl="?([^"]+)"?') { $_azdFunctionBaseUrl = $Matches[1] -replace '/api/getGuestSponsors$' }
+        elseif ($_azdLine -match '^webPartClientId="?([^"]+)"?') { $_azdWebPartClientId = $Matches[1] }
+        elseif ($_azdLine -match '^managedIdentityObjectId="?([^"]+)"?') { $_azdMiOid = $Matches[1] }
       }
     }
     catch {
-      # Non-fatal — Step 3 will prompt for the value manually if it is missing.
-      Write-Host "  $_wrn Could not read Managed Identity Object ID from the Function App." -ForegroundColor Yellow
-      Write-Host '       You will be prompted for it in setup-graph-permissions.ps1.' -ForegroundColor DarkGray
+      # Non-fatal — values can be found in the Azure portal.
+      Write-Verbose "Could not read azd env values after provision: $_"
     }
-  }
-  # $PSScriptRoot is empty when the script was run via iwr (scriptblock
-  # execution) and non-empty when run from a saved local file — use this to
-  # show the right command to the operator.
-  $_graphPermScript = $null
-  if ($PSScriptRoot) {
-    $_candidate = Join-Path $PSScriptRoot 'setup-graph-permissions.ps1'
-    if (Test-Path $_candidate) { $_graphPermScript = $_candidate }
-  }
-  if ($_graphPermScript) {
-    # Local file found — run it directly.
-    $_graphPermCmd = "& '$_graphPermScript'"
-  }
-  else {
-    # Not available locally — provide the iwr one-liner from GitHub.
-    $_graphPermCmd = "& ([scriptblock]::Create((iwr 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/main/azure-function/infra/setup-graph-permissions.ps1').Content))"
+    # Fallback: resolve the Function App hostname via Azure CLI if azd env
+    # did not contain the functionAppUrl output.
+    if (-not $_azdFunctionBaseUrl -and $env:AZURE_RESOURCE_GROUP) {
+      try {
+        $_azdHostname = (Invoke-AzureCli -Arguments @(
+            'functionapp', 'list',
+            '--resource-group', $env:AZURE_RESOURCE_GROUP,
+            '--query', '[0].defaultHostName',
+            '-o', 'tsv'
+          )).Trim()
+        if ($_azdHostname) { $_azdFunctionBaseUrl = "https://$_azdHostname" }
+      }
+      catch {
+        Write-Verbose "Could not resolve Function App URL after azd provision: $_"
+      }
+    }
+    # Cache the Managed Identity Object ID so setup-graph-permissions.ps1
+    # can skip its own prompt when run in the same PowerShell session.
+    if ($_azdMiOid) {
+      $Global:GsiSetup_ManagedIdentityObjectId = $_azdMiOid
+      Write-Host "  $_chk Managed Identity Object ID cached: $_azdMiOid" -ForegroundColor Green
+    }
+    $Global:GsiSetup_TenantId = $script:TenantId
   }
 
-  # Re-read the step-1-done flag — it may have been set during this run
-  # (e.g. the operator chose to run setup-app-registration.ps1 inline).
-  $_step1DoneNow = [bool]$Global:GsiSetup_AppRegistrationDone
-  # Determine the step label for "run setup-graph-permissions.ps1":
-  #   - Step 1 done before this script → it is "Step 3" of the 3-step flow
-  #   - Step 1 done inline during this run → same
-  #   - Step 1 never done → this was step 1, graph permissions is step 2
-  $_graphPermStepLabel = if ($_step1DoneNow) { 'Step 3' } else { 'Step 2' }
-  Write-NextStep @(
-    'Step 1 — Verify the deployment succeeded in the Azure portal.'
-    ''
-    "$_graphPermStepLabel — Run setup-graph-permissions.ps1 to assign Graph app roles"
-    '         to the Function App Managed Identity and enable silent'
-    '         token acquisition by the web part.'
-    ''
-    "  $_graphPermCmd"
-    ''
-    '  You will need the Managed Identity Object ID from the'
-    '  deployment outputs (Azure portal → Resource group → Deployments).'
-  )
-}
-finally {
-  foreach ($path in $script:TempPaths) {
-    if (Test-Path -Path $path) {
-      Remove-Item -Path $path -Recurse -Force -ErrorAction SilentlyContinue
+  # ── NEXT STEPS ────────────────────────────────────────────────────────────
+  $_ns = [System.Collections.Generic.List[string]]::new()
+  if ($_whatIf) {
+    $_ns.Add('WhatIf preview completed:')
+    $_ns.Add('')
+    $_ns.Add('  No Azure resources were created or changed.')
+    $_ns.Add('  Re-run without -WhatIf to execute the deployment with the values above.')
+    $_ns.Add('')
+    $_ns.Add('Expected web part configuration after a real deployment:')
+  }
+  else {
+    $_ns.Add('Deployment completed successfully:')
+    $_ns.Add('')
+    $_ns.Add('  App Registration  — created/updated by Bicep (Graph extension)')
+    $_ns.Add('  Azure resources   — deployed by Bicep')
+    if ($SkipGraphRoleAssignments) {
+      $_ns.Add('  Graph permissions — DEFERRED: run setup-graph-permissions.ps1')
+    }
+    else {
+      $_ns.Add('  Graph permissions — assigned by Bicep (Graph extension)')
+    }
+    $_ns.Add('  Function App      — restarted by post-provision hook')
+    $_ns.Add('')
+    $_ns.Add('Configure the web part (SharePoint property pane → Guest Sponsor API):')
+  }
+  if (-not $_whatIf -and $SkipGraphRoleAssignments) {
+    $_ns.Add('')
+    $_ns.Add('Graph permissions — run setup-graph-permissions.ps1:')
+    $_miDisplay = if ($_azdMiOid) { $_azdMiOid } else { 'run: azd env get-values → managedIdentityObjectId' }
+    $_ns.Add("  -ManagedIdentityObjectId : $_miDisplay")
+    $_ns.Add("  -TenantId                : $($script:TenantId)")
+    $_ns.Add('')
+    $_graphPermScript = Join-Path $PSScriptRoot 'setup-graph-permissions.ps1'
+    if (Test-Path $_graphPermScript) {
+      $_ns.Add("  & '$_graphPermScript'")
     }
   }
+  if (-not $_whatIf) {
+    # Keep current wording for successful real deployments.
+  }
+  if ($_whatIf) {
+    $_ns.Add('  Base URL               : available after deployment')
+    $_ns.Add('  Application (client) ID: available after deployment')
+  }
+  elseif ($_azdFunctionBaseUrl) {
+    $_ns.Add("  Base URL               : $_azdFunctionBaseUrl")
+  }
+  else {
+    $_ns.Add('  Base URL               : see Function App hostname in the Azure portal')
+    if ($env:AZURE_RESOURCE_GROUP) {
+      $_ns.Add("  Resource group         : $($env:AZURE_RESOURCE_GROUP)")
+    }
+  }
+  if (-not $_whatIf) {
+    if ($_azdWebPartClientId) {
+      $_ns.Add("  Application (client) ID: $_azdWebPartClientId")
+    }
+    else {
+      $_ns.Add('  Application (client) ID: see post-provision hook output above')
+    }
+  }
+  Write-NextStep @($_ns)
+}
+catch {
+  throw
 }
 #endregion

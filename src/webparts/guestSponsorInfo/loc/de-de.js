@@ -155,7 +155,7 @@ define([], function () {
     ProxyStatusError: "Verbindung fehlgeschlagen",
     PpSetupIntro: "Erforderliche Einrichtung:",
     PpSetupRerunHint:
-      "Verbindungsproblem? Die Einrichtungsskripte sind idempotent \u2014 erneutes Ausführen mit denselben Parametern behebt die meisten Probleme.",
+      "Verbindungsproblem? Das Einrichtungsskript ist idempotent — erneutes Ausführen mit denselben Parametern behebt die meisten Probleme.",
     CopyToClipboardLabel: "Kopieren",
     CopiedToClipboardLabel: "Kopiert!",
     AuthorSectionGroupName: "Über",
@@ -236,7 +236,7 @@ define([], function () {
       "Voller Funktionsumfang über eine Azure Function. Erfordert eine einmalige Azure-Einrichtung — empfohlen für den Produktivbetrieb.",
     WelcomeDialogOptionApiDocsLabel: "Einrichtungsanleitung ansehen",
     WelcomeDialogSetupGuideNote:
-      "Diese Schritte sind eine Abkürzung. Lies die Einrichtungsanleitung, bevor du Skripte ausführst — damit du verstehst, was jeder Befehl tut.",
+      "Dieser Befehl ist eine Abkürzung. Lies die Einrichtungsanleitung, bevor du ihn ausführst — damit du verstehst, was er tut.",
     WelcomeDialogDeployToAzureLabel: "API in Azure bereitstellen",
     WelcomeDialogDeployNote:
       "Diese Option erfordert, dass die Guest Sponsor API in deinem Azure-Abonnement bereitgestellt wird. Das geht direkt hier — es dauert nur wenige Minuten.",

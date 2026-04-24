@@ -14,7 +14,7 @@ github_doc: telemetry.md
 
 ## What happens when you deploy
 
-When you deploy the Azure Function using the included ARM template,
+When you deploy the Azure Function using the included Bicep template and azd,
 a small tracking marker is added to your resource group:
 
 ```text
@@ -50,22 +50,17 @@ for that resource group.
 
 ## How to opt out
 
-Set `enableTelemetry=false` during deployment:
+Pass `-EnableTelemetry $false` to the deployment wizard:
 
-```bash
-az deployment group create \
-  --resource-group <your-resource-group> \
-  --template-uri https://github.com/workoho/spfx-guest-sponsor-info/releases/latest/download/azuredeploy.json \
-  --parameters \
-      tenantId=<your-tenant-id> \
-      tenantName=<your-tenant-name> \
-      functionAppName=<globally-unique-name> \
-      webPartClientId=<client-id-from-pre-step> \
-      enableTelemetry=false
+```powershell
+& ([scriptblock]::Create((iwr 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/main/azure-function/infra/install.ps1').Content)) -EnableTelemetry $false
 ```
 
-Or via the **Deploy to Azure** button: expand *Telemetry* in the parameter
-form and uncheck *Enable Telemetry*.
+Or, when running `deploy-azure.ps1` directly from an extracted infra ZIP:
+
+```powershell
+./deploy-azure.ps1 -EnableTelemetry $false
+```
 
 ## Contact
 

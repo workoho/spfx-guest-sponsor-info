@@ -223,7 +223,7 @@ define([], function () {
     WelcomeDialogOptionApiTitle: "使用 Guest Sponsor API",
     WelcomeDialogOptionApiBody: "由 Azure Function 提供支持的完整体验。需要一次性 Azure 设置 — 推荐用于生产环境。",
     WelcomeDialogOptionApiDocsLabel: "查看设置指南",
-    WelcomeDialogSetupGuideNote: "这些步骤是快速入门捷径。运行脚本前，请阅读设置指南，了解每个命令的作用。",
+    WelcomeDialogSetupGuideNote: "此命令是快速入门捷径。运行前，请阅读设置指南，了解其作用。",
     WelcomeDialogDeployToAzureLabel: "将 API 部署到 Azure",
     WelcomeDialogDeployNote:
       "此选项需要将 Guest Sponsor API 部署到您的 Azure 订阅。您可以在此处完成 \u2014 只需几分钟。",

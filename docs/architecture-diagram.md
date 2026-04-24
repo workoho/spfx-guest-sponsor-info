@@ -96,13 +96,13 @@ flowchart LR
 |---|---|---|---|
 | 1 | SharePoint Admin | Enables Site Collection App Catalog on the landing page site and uploads `.sppkg` | **SharePoint Administrator** (+ **Site Collection Admin** on the landing page site) |
 | 2 | SharePoint Admin | Verifies (or sets up) guest Visitor access on the landing page site. Recommended: enable `ShowEveryoneClaim` if not already set, then add the *Everyone* group to the Visitors group. Skip if guests already have reliable Visitor access. | **SharePoint Administrator** |
-| 3 | Azure Admin | Runs `setup-app-registration.ps1` — creates the App Registration | **Application Administrator** |
-| 4 | Azure Admin | Deploys the ARM template — creates Azure resources and Storage role assignments; EasyAuth config binds the Function to the Service Principal as its token validation endpoint | **Owner** on the target resource group¹ |
-| 5 | Azure Admin | Runs `setup-graph-permissions.ps1` — grants Graph app roles to the Managed Identity (`User.Read.All`, `Presence.Read.All`, …) | **Privileged Role Administrator**² |
-| 5 | Azure Admin | Same script — creates the Service Principal (Enterprise App) if not yet present (no user has signed in yet); sets `appRoleAssignmentRequired: false` so guests need no individual assignment; exposes `user_impersonation` scope and pre-authorizes SharePoint Online Web Client Extensibility | **Application Administrator** |
+| 3 | Azure Admin | Deploys the Bicep template via `azd provision` — creates Azure resources, Storage role assignments, EasyAuth App Registration (via Microsoft Graph Bicep extension), and configures the Function App | **Owner** on the target resource group + **Cloud Application Administrator** |
+| 4 | Azure Admin | Runs `setup-graph-permissions.ps1` — assigns Graph app roles to the Managed Identity (`User.Read.All`, `Presence.Read.All`, …) | **Privileged Role Administrator** |
 
 ¹ `Contributor` alone is not sufficient — the template creates
 `Microsoft.Authorization/roleAssignments` on the Storage Account.
+Cloud Application Administrator is required for the Microsoft Graph Bicep
+extension to create and configure the App Registration.
 
 ² Granting application permissions (app roles) to a Managed Identity requires
 `AppRoleAssignment.ReadWrite.All`, which requires Privileged Role Administrator

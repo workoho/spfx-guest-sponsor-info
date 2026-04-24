@@ -152,7 +152,7 @@ define([], function () {
     ProxyStatusError: "Verbinding mislukt",
     PpSetupIntro: "Vereiste configuratie:",
     PpSetupRerunHint:
-      "Verbindingsprobleem? De installatiescripts zijn idempotent \u2014 opnieuw uitvoeren met dezelfde parameters lost de meeste problemen op.",
+      "Verbindingsprobleem? Het installatiescript is idempotent — opnieuw uitvoeren met dezelfde parameters lost de meeste problemen op.",
     CopyToClipboardLabel: "Kopiëren",
     CopiedToClipboardLabel: "Gekopieerd!",
     AuthorSectionGroupName: "Over",
@@ -233,7 +233,7 @@ define([], function () {
       "Volledige ervaring aangedreven door een Azure Function. Vereist eenmalige Azure-installatie — aanbevolen voor productie.",
     WelcomeDialogOptionApiDocsLabel: "Installatiehandleiding bekijken",
     WelcomeDialogSetupGuideNote:
-      "Deze stappen zijn een snelstartverkort. Lees de installatiehandleiding voordat u scripts uitvoert, zodat u begrijpt wat elke opdracht doet.",
+      "Dit commando is een snelkoppeling. Lees de installatiehandleiding voordat u het uitvoert, zodat u begrijpt wat het doet.",
     WelcomeDialogDeployToAzureLabel: "De API implementeren in Azure",
     WelcomeDialogDeployNote:
       "Voor deze optie moet de Guest Sponsor API worden geïmplementeerd in uw Azure-abonnement. U kunt dit hier doen \u2014 het duurt slechts een paar minuten.",

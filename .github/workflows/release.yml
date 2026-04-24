@@ -69,58 +69,24 @@ jobs:
         working-directory: azure-function
         run: npm run package
 
-      # Bundle only the Bicep template sources and their modules.
-      # azd hooks live under infra/hooks via azure.yaml and are intentionally
-      # excluded from this archive because they are not part of the Bicep file graph.
-      - name: Package Bicep template as ZIP
+      # Bundle the infra package: everything needed to run deploy-azure.ps1
+      # locally without cloning the repository. The install.ps1 wrapper
+      # downloads this ZIP and runs deploy-azure.ps1 automatically.
+      # All files are zipped from within azure-function/infra/ so they land
+      # flat at the ZIP root — no azure-function/infra/ path prefix inside.
+      - name: Package infra bundle as ZIP
         run: |
-          rm -f azure-function/guest-sponsor-info-bicep.zip
+          rm -f guest-sponsor-info-infra.zip
           cd azure-function/infra
-          zip -r ../guest-sponsor-info-bicep.zip main.bicep main.parameters.json modules
-
-      # Bundle the minimal azd deployment sources: azure.yaml, the Bicep template,
-      # and the pre/post-provision hooks referenced by azure.yaml.
-      - name: Package azd deployment bundle as ZIP
-        run: |
-          rm -f guest-sponsor-info-azd.zip
-          zip -r guest-sponsor-info-azd.zip \
+          zip -r ../../guest-sponsor-info-infra.zip \
             azure.yaml \
-            azure-function/infra/main.bicep \
-            azure-function/infra/main.parameters.json \
-            azure-function/infra/modules \
-            azure-function/infra/hooks
-
-      # Compile the Bicep infra template to ARM JSON for the Deploy-to-Azure button.
-      # Uses the Azure CLI (pre-installed on GitHub runners) instead of the
-      # third-party anthony-c-martin/setup-bicep action — az bicep is maintained
-      # directly by Microsoft and needs no separate setup step.
-      # Normally set-version.sh already does this locally before tagging, so the
-      # committed azuredeploy.json should already be up to date. This step is a
-      # self-healing safety net for tags created directly on GitHub (bypassing the
-      # script). If the file is stale: regenerate, commit to main, move the tag to
-      # the new commit, and exit — the new tag push will trigger a fresh run.
-      - name: Ensure azuredeploy.json is up to date (safety net)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          az bicep install
-          az bicep build --file azure-function/infra/main.bicep --outfile "$RUNNER_TEMP/azuredeploy-fresh.json"
-
-          if diff -q "$RUNNER_TEMP/azuredeploy-fresh.json" azure-function/infra/azuredeploy.json > /dev/null 2>&1; then
-            echo "azuredeploy.json is already up to date — no action needed."
-          else
-            echo "azuredeploy.json is stale — regenerating, committing, and moving tag."
-            cp "$RUNNER_TEMP/azuredeploy-fresh.json" azure-function/infra/azuredeploy.json
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add azure-function/infra/azuredeploy.json
-            git commit -m "chore(ci): update azuredeploy.json for ${{ github.ref_name }} [skip ci]"
-            git tag -f "${{ github.ref_name }}" -m "Release ${{ github.ref_name }}"
-            git push origin HEAD:main
-            git push origin --force "${{ github.ref_name }}"
-            echo "Tag moved to new commit. A fresh workflow run will be triggered."
-            exit 0
-          fi
+            main.bicep \
+            main.parameters.json \
+            modules \
+            hooks \
+            deploy-azure.ps1 \
+            setup-graph-permissions.ps1 \
+            assets
 
       # Create or update the GitHub Release and attach build artifacts.
       - name: Create GitHub Release
@@ -132,8 +98,6 @@ jobs:
           files: |
             sharepoint/solution/guest-sponsor-info.sppkg
             azure-function/guest-sponsor-info-function.zip
-            azure-function/guest-sponsor-info-bicep.zip
-            guest-sponsor-info-azd.zip
-            azure-function/infra/azuredeploy.json
-            azure-function/infra/setup-app-registration.ps1
+            guest-sponsor-info-infra.zip
+            azure-function/infra/install.ps1
             azure-function/infra/setup-graph-permissions.ps1

@@ -158,7 +158,7 @@ define([], function () {
     ProxyStatusError: "Conexiune eșuată",
     PpSetupIntro: "Configurare necesară:",
     PpSetupRerunHint:
-      "Problemă de conexiune? Scripturile de configurare sunt idempotente — rularea lor din nou cu aceiași parametri rezolvă cele mai multe probleme.",
+      "Problemă de conexiune? Scriptul de configurare este idempotent — rularea lui din nou cu aceiași parametri rezolvă cele mai multe probleme.",
     CopyToClipboardLabel: "Copiere",
     CopiedToClipboardLabel: "Copiat!",
     AuthorSectionGroupName: "Despre",
@@ -240,7 +240,7 @@ define([], function () {
       "Experiență completă bazată pe Azure Function. Necesită o configurare unică Azure — recomandat pentru producție.",
     WelcomeDialogOptionApiDocsLabel: "Vizualizați ghidul de configurare",
     WelcomeDialogSetupGuideNote:
-      "Acești pași reprezintă o scurtătură. Înainte de a rula scripturi, citiți ghidul de configurare pentru a înțelege ce face fiecare comandă.",
+      "Această comandă reprezintă o scurtătură. Înainte de a o rula, citiți ghidul de configurare pentru a înțelege ce face.",
     WelcomeDialogDeployToAzureLabel: "Implementați API-ul în Azure",
     WelcomeDialogDeployNote:
       "Această opțiune necesită implementarea Guest Sponsor API în abonamentul Azure. Puteți face acest lucru chiar de aici — durează doar câteva minute.",
