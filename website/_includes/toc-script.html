@@ -4,7 +4,7 @@
         var list = document.querySelector('.doc-toc-list');
         if (!content || !list) return;
 
-        var headings = content.querySelectorAll('h2, h3');
+        var headings = content.querySelectorAll('h2, h3, .doc-source');
         if (headings.length < 2) {
             var toc = document.querySelector('.doc-toc');
             if (toc) toc.style.display = 'none';
@@ -17,7 +17,7 @@
             if (h.tagName === 'H3') li.className = 'doc-toc-sub';
             var a = document.createElement('a');
             a.href = '#' + h.id;
-            a.textContent = h.textContent;
+            a.textContent = h.textContent.trim();
             li.appendChild(a);
             list.appendChild(li);
         });

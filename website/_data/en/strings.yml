@@ -234,9 +234,9 @@ problem:
 cta:
   title: Ready to improve your guest experience?
   description: >-
-    Deploy the companion Azure Function to Azure with the included ARM
-    template — one button click. The built-in Setup Wizard guides you
-    through the rest, directly from the SharePoint page. Free and open source.
+    Deploy the companion Azure Function to Azure with the included setup
+    flow and installer script. The built-in Setup Wizard guides you through
+    the rest, directly from the SharePoint page. Free and open source.
   deploy: Setup Guide
   github: View on GitHub
 

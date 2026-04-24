@@ -19,7 +19,7 @@ Setting up Guest Sponsor Info involves three phases:
 | Phase | Where | Minimum role required |
 |---|---|---|
 | 1 — SharePoint | SharePoint Admin Center + landing page site | SharePoint Administrator |
-| 2 — Guest Sponsor API | PowerShell (`deploy-azure.ps1`) | Azure Contributor + Owner + Entra roles via PIM |
+| 2 — Guest Sponsor API | PowerShell (`install.ps1` via `iwr`) | Azure Contributor + Owner + Entra roles via PIM |
 | 3 — Web part | SharePoint landing page (edit mode) | Site Owner |
 
 > **The web part includes a built-in Setup Wizard**
@@ -31,8 +31,6 @@ Setting up Guest Sponsor Info involves three phases:
 > This page is the full reference that the wizard links to — work
 > through Phases 1 and 2 before (or alongside) running the wizard, then
 > complete Phase 3 inside it.
-
----
 
 ## Phase 1 — SharePoint
 
@@ -75,7 +73,7 @@ The web part's built-in **Guest Accessibility** diagnostics panel (property
 pane) detects the current scenario and shows the result of each check with a
 recommendation.
 
-**Option A — Enable the Office 365 Public CDN (recommended)**
+Enable the Office 365 Public CDN.
 
 When the Office 365 Public CDN is enabled, SharePoint replicates web part
 bundles to Microsoft's edge CDN (`publiccdn.sharepointonline.com`), which is
@@ -84,37 +82,45 @@ most reliable approach for guest users.
 
 **Required role:** SharePoint Administrator.
 
+Choose one of the following equivalent admin shells:
+
+<details markdown="1">
+<summary>Windows: SharePoint Online Management Shell</summary>
+
 ```powershell
-# SharePoint Online Management Shell (Windows):
 Connect-SPOService -Url "https://<tenant>-admin.sharepoint.com"
 Set-SPOTenantCdnEnabled -CdnType Public -Enable $true
 
 # Verify the ClientSideAssets origin is included (added by default):
 Get-SPOTenantCdnOrigins -CdnType Public
 # Expected output includes: */CLIENTSIDEASSETS
-```
 
-If `*/CLIENTSIDEASSETS` is missing, add it:
-
-```powershell
+# If the origin is missing, add it:
 Add-SPOTenantCdnOrigin -CdnType Public -OriginUrl "*/CLIENTSIDEASSETS"
 ```
 
+</details>
+
+<details markdown="1">
+<summary>Cross-platform: PowerShell 7 with PnP PowerShell (also works on Windows)</summary>
+
 ```powershell
-# PnP PowerShell (cross-platform):
 Connect-PnPOnline -Url "https://<tenant>-admin.sharepoint.com" `
-    -ClientId "<your-pnp-app-client-id>" -Interactive
+  -ClientId "<your-pnp-app-client-id>" -Interactive
 Set-PnPTenantCdnEnabled -CdnType Public -Enable $true
+
+# Verify the ClientSideAssets origin is included (added by default):
+Get-PnPTenantCdnOrigin -CdnType Public
+# Expected output includes: */CLIENTSIDEASSETS
+
+# If the origin is missing, add it:
+Add-PnPTenantCdnOrigin -CdnType Public -OriginUrl "*/CLIENTSIDEASSETS"
 ```
+
+</details>
 
 > CDN propagation takes **up to 15 minutes**. Once active, the bundle URL changes
 > to `publiccdn.sharepointonline.com` automatically — no reconfiguration needed.
-
-If enabling the Public CDN is not possible in your environment, or if you are
-deploying outside of AppSource, see the
-[full deployment guide on GitHub](https://github.com/workoho/spfx-guest-sponsor-info/blob/main/docs/deployment.md)
-for alternative options including direct Tenant App Catalog upload and Site
-Collection App Catalog deployments.
 
 ### Verify guest access to the landing page site
 
@@ -158,8 +164,6 @@ If that option is greyed out, raise it under **SharePoint Admin Center →
 Policies → Sharing** to at least *Existing guests only*, then configure the
 site.
 
----
-
 ## Phase 2 — Guest Sponsor API
 
 The Guest Sponsor API is a companion Azure Function that proxies all Microsoft
@@ -168,31 +172,90 @@ Graph calls on behalf of the web part. Guests authenticate against it using
 and the function queries Graph using its own Managed Identity — guests never
 need directory-level permissions in your tenant.
 
-The `deploy-azure.ps1` script handles the full deployment in one step:
-creating the Entra App Registration, deploying all Azure infrastructure, and
-assigning the required Microsoft Graph permissions — powered by the
+The `install.ps1` script is the recommended entry point. It downloads the
+infra package, runs the deployment wizard, creates the Entra App Registration,
+deploys all Azure infrastructure, and assigns the required Microsoft Graph
+permissions — powered by the
 [Microsoft Graph Bicep extension](https://learn.microsoft.com/azure/templates/microsoft.graph/applications).
 
-For restricted environments (Privileged Access Workstations) where the Entra
-directory roles required by the Bicep Graph extension cannot be activated, see
-[Deploying from a PAW](https://github.com/workoho/spfx-guest-sponsor-info/blob/main/docs/deployment.md#deploying-from-a-privileged-access-workstation-paw)
-in the deployment guide.
+### Run the installer
 
-### Deploy with deploy-azure.ps1
+<details markdown="1">
+<summary>Optional: review the scripts before you run them</summary>
 
-From a local clone of the repository, run:
+If you want to review the scripts before executing anything, inspect the
+[install.ps1 source](https://github.com/workoho/spfx-guest-sponsor-info/blob/main/azure-function/infra/install.ps1)
+and the
+[deploy-azure.ps1 source](https://github.com/workoho/spfx-guest-sponsor-info/blob/main/azure-function/infra/deploy-azure.ps1)
+on GitHub first.
+
+`install.ps1` is a small bootstrap wrapper: it downloads the current infra
+package to a temporary folder, extracts it, forwards your parameters, and then
+starts `deploy-azure.ps1`.
+
+`deploy-azure.ps1` is the actual deployment wizard: it collects or accepts the
+Azure settings, ensures the required CLIs are available, runs the `azd`/Bicep
+deployment, configures the app registration flow, and prints the values the
+web part needs afterwards.
+
+In short: `install.ps1` is the recommended entry point for a clean start,
+while `deploy-azure.ps1` does the real deployment work once the infra package
+is available locally.
+
+</details>
+
+Run this command in PowerShell 7+:
 
 ```powershell
-./deploy-azure.ps1
+& ([scriptblock]::Create((iwr 'https://raw.githubusercontent.com/workoho/spfx-guest-sponsor-info/main/azure-function/infra/install.ps1').Content))
 ```
 
 [Azure Developer CLI (azd)](https://aka.ms/azd) is installed automatically
-if it is not already present. The script walks through selecting a
-subscription and resource group, runs a pre-provision check, executes the
-Bicep deployment, and prints the web part configuration values at the end.
+if it is not already present. The installer downloads the infra package,
+walks through selecting a subscription and resource group, runs a
+pre-provision check, executes the Bicep deployment, and prints the web part
+configuration values at the end.
 
-#### What the script does
+### Questions the deployment wizard asks
 
+<details markdown="1">
+<summary>Optional: show the prompt-by-prompt reference</summary>
+
+Before the parameter prompts, the wizard may first ask you to pick the Azure
+subscription that should own the deployment.
+
+| Wizard question | What it means | Typical answer |
+|---|---|---|
+| **azd Environment Name** | Local `azd` environment name used to store deployment settings and outputs. It is mainly an operator-facing label, not a public Azure resource name. | Keep the default or use a short identifier such as `contoso-gsi`. |
+| **Resource Group** | Target Azure resource group for all deployed resources. The wizard creates it if it does not exist. | Keep `rg-<environment>` unless your organisation already has a naming scheme. |
+| **Azure Location** | Azure region for the Function App, Storage Account, monitoring resources, and related infrastructure. | Choose the region closest to your tenant or data residency needs, for example `westeurope`. |
+| **Environment Tag** | Optional governance tag written to the resource group and resources. Helps with inventory, policy, and cost views. | `prod` is a sensible default; use `-` only if you intentionally do not use tags. |
+| **Criticality Tag** | Optional business-criticality tag for the workload. Useful if your Azure policies or FinOps reporting use these tags. | `low` is the recommended default for most guest landing page deployments. |
+| **SharePoint Tenant Name** | Short tenant name before `.sharepoint.com`. The deployment uses it to configure SharePoint-related app settings correctly. | Enter `contoso` for `contoso.sharepoint.com`. |
+| **Function App Name** | Public Azure Function App host name. Must be globally unique if you set it yourself. | Leave it blank unless you need a fixed name for governance or DNS reasons. |
+| **Hosting Plan** | Azure Functions runtime plan. This controls scaling model, cold-start behaviour, Linux/Windows support, and cost profile. | Start with `Consumption` unless you specifically want Flex Consumption features. |
+| **Azure Maps** | Whether the deployment should create an Azure Maps resource for embedded address map rendering in the web part. | `true` if you want in-page map rendering; `false` if an external map link is enough. |
+| **Function Package Version** | Release tag of the Azure Function package to deploy. | Keep `latest` unless you intentionally pin a tested release. |
+| **Enable Monitoring** | Deploys Application Insights, Log Analytics, and alert resources. | `true` for production; only disable it for very minimal test setups. |
+| **Graph permissions** | Whether Graph app-role assignment should happen during deployment or later with `setup-graph-permissions.ps1`. | Use the default immediate assignment if you have the Entra role; defer only when role separation or a PAW process requires it. |
+
+Some follow-up questions only appear in specific cases:
+
+| Shown when | Wizard question | What it means | Typical answer |
+|---|---|---|---|
+| Monitoring is enabled | **Enable Failure Anomalies alert** | Turns on the Application Insights smart-detector email alert for unusual failure spikes. | `false` for quieter setups, `true` if you want proactive alerting from day one. |
+| Hosting plan is `FlexConsumption` | **Always-Ready Instances** | Number of pre-warmed instances. `0` allows full scale-to-zero, `1` reduces cold starts noticeably. | `1` for most production-like setups. |
+| Hosting plan is `FlexConsumption` | **Maximum Flex Instances** | Hard upper scale limit for concurrent instances. This is mainly a cost and burst-control setting. | Keep the default `10` unless you know you need a tighter or higher cap. |
+| Hosting plan is `FlexConsumption` | **Instance memory in MB** | Memory size per Flex instance. Higher memory increases headroom and cost. | Keep `2048` unless you explicitly optimise for minimum cost. |
+
+</details>
+
+### What the installer does
+
+<details markdown="1">
+<summary>Optional: show the installer workflow</summary>
+
+- **Downloads the infra package** and launches the deployment wizard
 - **Creates the Entra App Registration** —
   `Guest Sponsor Info - SharePoint Web Part Auth`
   (via the [Microsoft Graph Bicep extension](https://learn.microsoft.com/azure/templates/microsoft.graph/applications))
@@ -203,7 +266,9 @@ Bicep deployment, and prints the web part configuration values at the end.
 - **Configures EasyAuth** on the Function App with the App Registration
 - **Prints the web part configuration values** at the end
 
-#### Required Azure and Entra roles
+</details>
+
+### Required Azure and Entra roles
 
 | Scope | Required role |
 |---|---|
@@ -218,10 +283,13 @@ Bicep deployment, and prints the web part configuration values at the end.
 > pre-provision hook checks your active directory roles and warns if any
 > are missing.
 >
-> *Alternatively,* **Global Administrator** satisfies all Entra requirements
-> with a single role.
+> **Global Administrator** also satisfies the Entra requirements with a single
+> role.
 
-#### Hosting plan options
+### Hosting plan options
+
+<details markdown="1">
+<summary>Optional: compare Consumption and Flex Consumption</summary>
 
 | | **Consumption** (default) | **Flex Consumption** |
 |---|---|---|
@@ -234,9 +302,11 @@ Bicep deployment, and prints the web part configuration values at the end.
 Check the [supported regions list](https://learn.microsoft.com/en-us/azure/azure-functions/flex-consumption-how-to#view-currently-supported-regions)
 for Flex Consumption availability.
 
-#### Deployment outputs
+</details>
 
-At the end of the run, `deploy-azure.ps1` prints:
+### Deployment outputs
+
+At the end of the run, the installer prints:
 
 | Value | Used for |
 |---|---|
@@ -245,26 +315,31 @@ At the end of the run, `deploy-azure.ps1` prints:
 
 You can also retrieve them later with `azd env get-values`.
 
----
-
 ## Phase 3 — Configure the web part
+
+### Add the web part to the landing page
 
 With Phases 1 and 2 complete, open the SharePoint landing page in edit mode
 and add the **Guest Sponsor Info** web part to the page.
 
-The **Setup Wizard** will open automatically (it appears whenever the API
-URL has not been configured yet). Select **Guest Sponsor API**, then advance
-through the wizard steps to the **Connect** screen and enter:
+### Connect the web part to the API
+
+If the **Setup Wizard** is still pending, it opens automatically in edit mode.
+If you have already completed it, open the **property pane** manually (gear
+icon in edit mode). Then select **Guest Sponsor API** in the wizard or enter
+the values directly in the **Guest Sponsor API** property group:
 
 - **Guest Sponsor API Base URL** — the Base URL printed at the end of
-  `deploy-azure.ps1` (or from `azd env get-values`),
+  the `install.ps1` run (or from `azd env get-values`),
   e.g. `https://guest-sponsor-info-xyz.azurewebsites.net`
 - **Guest Sponsor API Client ID** — the Web Part Client ID printed at the
-  end of `deploy-azure.ps1` (or from `azd env get-values`)
+  end of the `install.ps1` run (or from `azd env get-values`)
 
-The wizard validates the format of both values before saving. You can also
-skip the wizard and configure the web part manually: open the **property pane**
-(gear icon in edit mode) and fill in the **Guest Sponsor API** group directly.
+The wizard validates the format of both values before saving. If the wizard no
+longer opens automatically, fill in the same values in the **Guest Sponsor API**
+group of the property pane.
+
+### Run the Guest Accessibility check
 
 > **Guest Accessibility check**
 >
@@ -274,7 +349,7 @@ skip the wizard and configure the web part manually: open the **property pane**
 > recommendation. Use this to confirm that the Phase 1 prerequisites are
 > working as expected.
 
----
+## Further reading
 
 For security posture and trust assumptions, see the
 [security assessment on GitHub](https://github.com/workoho/spfx-guest-sponsor-info/blob/main/docs/security-assessment.md).

@@ -10,7 +10,7 @@ layout: default
             {% if page.lead %}<p class="doc-lead">{{ page.lead }}</p>{% endif %}
             {{ content }}
             {% if page.github_doc %}
-            <p class="doc-source">
+            <p class="doc-source" id="full-documentation-on-github">
                 <a href="https://github.com/{{ site.repository }}/blob/main/docs/{{ page.github_doc }}" target="_blank"
                     rel="noopener">
                     {{ strings.doc.view_on_github | default: "View full documentation on GitHub" }} &rarr;

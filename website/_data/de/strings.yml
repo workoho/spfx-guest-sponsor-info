@@ -242,8 +242,8 @@ problem:
 cta:
   title: Bereit, die Gast-Erfahrung zu verbessern?
   description: >-
-    Stellen Sie die begleitende Azure Function mit der mitgelieferten
-    ARM-Vorlage bereit — per Klick auf einen Button. Der integrierte
+    Stellen Sie die begleitende Azure Function mit dem mitgelieferten
+    Setup-Ablauf und Installationsskript bereit. Der integrierte
     Setup-Assistent führt Sie durch den Rest, direkt auf der SharePoint-Seite.
     Kostenlos und Open Source.
   deploy: Setup-Anleitung

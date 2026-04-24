@@ -2,117 +2,239 @@
 <html lang="{{ page.lang | default: site.default_lang }}">
 
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    {%- assign strings = site.data[page.lang].strings -%}
-    {%- assign lang = page.lang | default: site.default_lang -%}
+  {%- assign strings = site.data[page.lang].strings -%}
+  {%- assign lang = page.lang | default: site.default_lang -%}
 
-    <title>{% if page.title %}{{ page.title }} — {% endif %}{{ site.title }}</title>
-    <meta name="description" content="{{ page.description | default: strings.meta.description }}">
+  <title>{% if page.title %}{{ page.title }} — {% endif %}{{ site.title }}</title>
+  <meta name="description" content="{{ page.description | default: strings.meta.description }}">
 
-    <!-- Open Graph -->
-    <meta property="og:title" content="{{ page.title | default: site.title }}">
-    <meta property="og:description" content="{{ page.description | default: strings.meta.description }}">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="{{ page.url | absolute_url }}">
-    <meta property="og:image" content="{{ '/assets/images/og-image.svg' | absolute_url }}">
-    <meta property="og:locale" content="{{ lang }}">
+  <!-- Open Graph -->
+  <meta property="og:title" content="{{ page.title | default: site.title }}">
+  <meta property="og:description" content="{{ page.description | default: strings.meta.description }}">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="{{ page.url | absolute_url }}">
+  <meta property="og:image" content="{{ '/assets/images/og-image.svg' | absolute_url }}">
+  <meta property="og:locale" content="{{ lang }}">
 
-    <!-- Alternate language -->
-    {%- if lang == "en" -%}
-    <link rel="alternate" hreflang="de" href="{{ page.url | replace: '/en/', '/de/' | absolute_url }}">
-    {%- else -%}
-    <link rel="alternate" hreflang="en" href="{{ page.url | replace: '/de/', '/en/' | absolute_url }}">
-    {%- endif -%}
-    <link rel="alternate" hreflang="x-default" href="{{ page.url | replace: '/de/', '/en/' | absolute_url }}">
+  <!-- Alternate language -->
+  {%- if lang == "en" -%}
+  <link rel="alternate" hreflang="de" href="{{ page.url | replace: '/en/', '/de/' | absolute_url }}">
+  {%- else -%}
+  <link rel="alternate" hreflang="en" href="{{ page.url | replace: '/de/', '/en/' | absolute_url }}">
+  {%- endif -%}
+  <link rel="alternate" hreflang="x-default" href="{{ page.url | replace: '/de/', '/en/' | absolute_url }}">
 
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="{{ '/assets/images/favicon.svg' | relative_url }}">
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="{{ '/assets/images/favicon.svg' | relative_url }}">
 
-    <!-- Styles -->
-    <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
+  <!-- Styles -->
+  <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
 </head>
 
 <body>
-    {%- include header.html -%}
+  {%- include header.html -%}
 
-    <main>
-        {{ content }}
-    </main>
+  <main>
+    {{ content }}
+  </main>
 
-    {%- include footer.html -%}
+  {%- include footer.html -%}
 
-    <script>
-        (function () {
-            var links = document.querySelectorAll('a[href]');
-            links.forEach(function (link) {
-                var rawHref = link.getAttribute('href');
-                if (!rawHref || rawHref.startsWith('#')) return;
-                if (link.classList.contains('no-external-icon')) return;
-                if (link.textContent.trim() === '') return;
+  <script>
+    (function () {
+      var locale = (document.documentElement.lang || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
+      var codeBlockStrings = {
+        en: {
+          copy: 'Copy',
+          copied: 'Copied',
+          copyAria: 'Copy code snippet',
+          code: 'Code',
+          text: 'Text'
+        },
+        de: {
+          copy: 'Kopieren',
+          copied: 'Kopiert',
+          copyAria: 'Codeblock kopieren',
+          code: 'Code',
+          text: 'Text'
+        }
+      };
+      var i18n = codeBlockStrings[locale];
 
-                var url;
-                try {
-                    url = new URL(rawHref, window.location.href);
-                } catch (_err) {
-                    return;
-                }
+      function copyTextFallback(text) {
+        return new Promise(function (resolve, reject) {
+          var textArea = document.createElement('textarea');
+          textArea.value = text;
+          textArea.setAttribute('readonly', 'readonly');
+          textArea.style.position = 'absolute';
+          textArea.style.left = '-9999px';
+          document.body.appendChild(textArea);
+          textArea.select();
 
-                var isHttp = url.protocol === 'http:' || url.protocol === 'https:';
-                var isExternal = isHttp && url.origin !== window.location.origin;
-                if (!isExternal) return;
+          try {
+            document.execCommand('copy');
+            resolve();
+          } catch (error) {
+            reject(error);
+          } finally {
+            document.body.removeChild(textArea);
+          }
+        });
+      }
 
-                link.classList.add('external-link');
-            });
+      function copyText(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+          return navigator.clipboard.writeText(text).catch(function () {
+            return copyTextFallback(text);
+          });
+        }
 
-            var toggle = document.querySelector('.nav-toggle');
-            var navList = document.querySelector('.nav-list');
-            if (toggle && navList) {
-                toggle.addEventListener('click', function () {
-                    var open = navList.classList.toggle('is-open');
-                    toggle.setAttribute('aria-expanded', open);
-                });
-            }
+        return copyTextFallback(text);
+      }
 
-            var langSwitch = document.querySelector('.lang-switch');
-            var langToggle = document.querySelector('.lang-switch-toggle');
-            var langMenu = document.querySelector('.lang-menu');
+      function formatCodeLanguage(language) {
+        if (!language) {
+          return i18n.code;
+        }
 
-            if (!langSwitch || !langToggle || !langMenu) {
-                return;
-            }
+        var normalized = language.toLowerCase();
+        if (normalized === 'powershell') return 'PowerShell';
+        if (normalized === 'plaintext' || normalized === 'text') return i18n.text;
+        if (normalized === 'bash' || normalized === 'shell' || normalized === 'sh') return 'Shell';
 
-            function setLangMenu(open) {
-                langSwitch.classList.toggle('is-open', open);
-                langToggle.setAttribute('aria-expanded', String(open));
-                langMenu.hidden = !open;
-            }
+        return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+      }
 
-            langToggle.addEventListener('click', function () {
-                var open = langToggle.getAttribute('aria-expanded') !== 'true';
-                setLangMenu(open);
-            });
+      function enhanceCodeBlocks() {
+        var blocks = document.querySelectorAll('.page-content div.highlighter-rouge, .doc-content div.highlighter-rouge');
 
-            document.addEventListener('click', function (event) {
-                if (!langSwitch.contains(event.target)) {
-                    setLangMenu(false);
-                }
-            });
+        blocks.forEach(function (block) {
+          if (block.dataset.enhanced === 'true') {
+            return;
+          }
 
-            document.addEventListener('keydown', function (event) {
-                if (event.key === 'Escape') {
-                    setLangMenu(false);
-                }
-            });
+          var code = block.querySelector('pre code');
+          if (!code) {
+            return;
+          }
 
-            langMenu.addEventListener('click', function (event) {
-                if (event.target.closest('a')) {
-                    setLangMenu(false);
-                }
-            });
-        })();
-    </script>
+          block.dataset.enhanced = 'true';
+          block.classList.add('code-snippet');
+
+          var languageClass = Array.from(block.classList).find(function (token) {
+            return token.indexOf('language-') === 0;
+          });
+          var language = languageClass ? languageClass.replace('language-', '') : '';
+
+          var toolbar = document.createElement('div');
+          toolbar.className = 'code-snippet-toolbar';
+
+          var label = document.createElement('span');
+          label.className = 'code-snippet-language';
+          label.textContent = formatCodeLanguage(language);
+
+          var button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'code-snippet-copy';
+          button.textContent = i18n.copy;
+          button.setAttribute('aria-label', i18n.copyAria);
+
+          button.addEventListener('click', function () {
+            copyText(code.textContent.replace(/\n$/, ''))
+              .then(function () {
+                button.textContent = i18n.copied;
+                button.classList.add('is-copied');
+                window.clearTimeout(button._resetTimer);
+                button._resetTimer = window.setTimeout(function () {
+                  button.textContent = i18n.copy;
+                  button.classList.remove('is-copied');
+                }, 1800);
+              })
+              .catch(function () {
+                button.textContent = i18n.copy;
+                button.classList.remove('is-copied');
+              });
+          });
+
+          toolbar.appendChild(label);
+          toolbar.appendChild(button);
+          block.insertBefore(toolbar, block.firstChild);
+        });
+      }
+
+      var links = document.querySelectorAll('a[href]');
+      links.forEach(function (link) {
+        var rawHref = link.getAttribute('href');
+        if (!rawHref || rawHref.startsWith('#')) return;
+        if (link.classList.contains('no-external-icon')) return;
+        if (link.textContent.trim() === '') return;
+
+        var url;
+        try {
+          url = new URL(rawHref, window.location.href);
+        } catch (_err) {
+          return;
+        }
+
+        var isHttp = url.protocol === 'http:' || url.protocol === 'https:';
+        var isExternal = isHttp && url.origin !== window.location.origin;
+        if (!isExternal) return;
+
+        link.classList.add('external-link');
+      });
+
+      enhanceCodeBlocks();
+
+      var toggle = document.querySelector('.nav-toggle');
+      var navList = document.querySelector('.nav-list');
+      if (toggle && navList) {
+        toggle.addEventListener('click', function () {
+          var open = navList.classList.toggle('is-open');
+          toggle.setAttribute('aria-expanded', open);
+        });
+      }
+
+      var langSwitch = document.querySelector('.lang-switch');
+      var langToggle = document.querySelector('.lang-switch-toggle');
+      var langMenu = document.querySelector('.lang-menu');
+
+      if (!langSwitch || !langToggle || !langMenu) {
+        return;
+      }
+
+      function setLangMenu(open) {
+        langSwitch.classList.toggle('is-open', open);
+        langToggle.setAttribute('aria-expanded', String(open));
+        langMenu.hidden = !open;
+      }
+
+      langToggle.addEventListener('click', function () {
+        var open = langToggle.getAttribute('aria-expanded') !== 'true';
+        setLangMenu(open);
+      });
+
+      document.addEventListener('click', function (event) {
+        if (!langSwitch.contains(event.target)) {
+          setLangMenu(false);
+        }
+      });
+
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+          setLangMenu(false);
+        }
+      });
+
+      langMenu.addEventListener('click', function (event) {
+        if (event.target.closest('a')) {
+          setLangMenu(false);
+        }
+      });
+    })();
+  </script>
 </body>
 
 </html>
