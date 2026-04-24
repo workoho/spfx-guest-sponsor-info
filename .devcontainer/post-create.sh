@@ -157,6 +157,19 @@ if ! try_net mcr.microsoft.com az bicep restore --file azure-function/infra/main
     "Run 'az bicep restore --file azure-function/infra/main.bicep' once the network is available."
 fi
 
+# Install repo-defined APM packages so every contributor gets the same shared
+# skills and agent context immediately after container creation.
+if [[ -f apm.yml ]]; then
+  echo "Installing APM-managed agent dependencies..."
+  if ! command -v apm >/dev/null 2>&1; then
+    warn "APM CLI is not available in PATH." \
+      "Rebuild the dev container to pick up the Dockerfile changes."
+  elif ! try_net github.com apm install; then
+    warn "APM dependency installation skipped — network unavailable?" \
+      "Run 'apm install' once the network is available."
+  fi
+fi
+
 echo ""
 echo "${C_BLD}━━━ Dev Container Ready ━━━${C_RST}"
 echo ""
@@ -164,6 +177,7 @@ echo "  Node     $(node --version)"
 echo "  npm      $(npm --version)"
 echo "  Yeoman   $(yo --version)"
 echo "  SPFx     $(npm view @microsoft/generator-sharepoint version)"
+echo "  APM      $(apm --version 2>/dev/null || echo "(not installed)")"
 echo "  Ruby     $(ruby --version 2>/dev/null | awk '{print $2}' || echo "(not found)")"
 echo "  Jekyll   $(jekyll --version 2>/dev/null | awk '{print $2}' || echo "(not installed)")"
 echo "  Bicep    $(az bicep version 2>/dev/null || echo "(not installed)")"

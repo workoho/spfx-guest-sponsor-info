@@ -28,8 +28,7 @@
     // packages-microsoft-prod.deb approach that fails on ARM64/Codespaces.
     "ghcr.io/jpawlowski/devcontainer-features/powershell-extended:2": {
       "installOhMyPosh": true,
-      // Pre-install Graph modules used by azure-function/infra/*.ps1
-      // (setup-app-registration.ps1, setup-graph-permissions.ps1).
+      // Pre-install Graph modules used by azure-function/infra/setup-graph-permissions.ps1.
       // Az.Accounts + Az.Resources are the minimal Az modules needed by
       // Verify-DeploymentGuid.ps1 (Connect-AzAccount, Get-AzResourceGroupDeployment,
       // Get-AzResourceGroupDeploymentOperation). The full Az meta-package is
@@ -70,7 +69,8 @@
     "vscode": {
       "settings": {
         "files.eol": "\n",
-        "terminal.integrated.defaultProfile.linux": "bash"
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "chat.agent.skills": true
       },
       // GitHub MCP server — gives Copilot structured access to GitHub APIs
       // (issues, PRs, Actions runs, releases) without needing to parse CLI output.
@@ -84,6 +84,37 @@
             "env": {
               "GITHUB_PERSONAL_ACCESS_TOKEN": "${localEnv:GITHUB_TOKEN}"
             }
+          },
+          // Playwright MCP server — gives Copilot a real browser for functional
+          // and visual checks against the workbench or a live SharePoint page.
+          // The browser profile lives in the workspace cache so a manual login
+          // can be reused across VS Code sessions.
+          "playwright": {
+            "type": "stdio",
+            "command": "npx",
+            "args": [
+              "-y",
+              "@playwright/mcp@latest",
+              "--config",
+              "/workspaces/spfx-guestSponsorInfo-webpart/.devcontainer/playwright-mcp.config.json",
+              "--headless",
+              "--no-sandbox",
+              "--caps",
+              "vision",
+              "--save-session",
+              "--user-data-dir",
+              "/workspaces/spfx-guestSponsorInfo-webpart/.cache/playwright-mcp/profile",
+              "--output-dir",
+              "/workspaces/spfx-guestSponsorInfo-webpart/.cache/playwright-mcp/output"
+            ]
+          },
+          // Microsoft Learn MCP server — gives Copilot current official
+          // Microsoft docs and code samples without relying on web search.
+          // Useful for Azure, SPFx, Graph, PnP PowerShell, and other Microsoft
+          // technologies used in this repository.
+          "microsoft-learn": {
+            "type": "http",
+            "url": "https://learn.microsoft.com/api/mcp?maxTokenBudget=2000"
           }
         }
       },
@@ -98,11 +129,14 @@
         "github.vscode-github-actions",
         "GitHub.vscode-pull-request-github",
         "ms-azuretools.azure-dev",
+        "ms-azuretools.vscode-azure-github-copilot",
         "ms-azuretools.vscode-azurefunctions",
+        "ms-azuretools.vscode-azure-mcp-server",
         "ms-azuretools.vscode-azureresourcegroups",
         "ms-azuretools.vscode-azurestorage",
         "ms-azuretools.vscode-bicep",
         "ms-azuretools.vscode-docker",
+        "ms-playwright.playwright",
         "ms-vscode.azurecli",
         "ms-vscode.powershell",
         "openai.chatgpt",

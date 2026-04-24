@@ -1,0 +1,13 @@
+name: spfx-guest-sponsor-info
+version: 1.0.0
+description: Shared agent baseline for this SPFx/Azure reference repository.
+target: vscode
+
+dependencies:
+  apm:
+    # Official Microsoft documentation and code-sample workflow via Learn MCP.
+    - github/awesome-copilot/skills/microsoft-docs#822d0407def3f01367d09ce35855eb6d8e3ace7c
+    # Browser-based UI validation workflow built around Playwright.
+    - github/awesome-copilot/skills/webapp-testing#b1f3346ef2d05f445b19a46bfeaeb887010b323d
+    # Azure/Bicep preflight validation before azd or az deployments.
+    - github/awesome-copilot/skills/azure-deployment-preflight#a3c13fae17da54fdcf0fc4bed7b1cd50e41bd259

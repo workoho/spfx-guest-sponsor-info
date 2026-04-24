@@ -5,6 +5,7 @@ npm-debug.log*
 
 # Dependency directories
 node_modules
+apm_modules
 
 # Build generated files
 dist
@@ -56,3 +57,7 @@ website/.jekyll-cache/
 website/.jekyll-metadata
 website/vendor/
 website/Gemfile.lock
+
+
+# APM dependencies
+apm_modules/

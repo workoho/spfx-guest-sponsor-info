@@ -17,6 +17,7 @@ RUN apt-get update \
   jq \
   python-is-python3 \
   python3 \
+  python3-venv \
   ripgrep \
   ruby-dev \
   shellcheck \
@@ -67,6 +68,19 @@ RUN SPFX_VERSION="$(jq -r '.config.spfxVersion // .dependencies["@microsoft/sp-c
 
 # Azure Functions Core Tools v4 — enables `func start` for local function development.
 RUN npm install --global azure-functions-core-tools@4 \
+  && npm cache clean --force
+
+# APM CLI — reproducible agent package management for shared skills,
+# instructions, and MCP dependencies across similar repositories.
+ARG APM_VERSION=0.9.2
+RUN python3 -m venv /opt/apm \
+  && /opt/apm/bin/pip install --no-cache-dir --upgrade pip \
+  && /opt/apm/bin/pip install --no-cache-dir "apm-cli==${APM_VERSION}" \
+  && ln -s /opt/apm/bin/apm /usr/local/bin/apm
+
+# Playwright browser runtime — installs Chromium plus the Linux libraries
+# needed by Playwright/Playwright MCP in this container.
+RUN npx -y playwright@latest install --with-deps chromium \
   && npm cache clean --force
 
 # delta — syntax-highlighting git diff pager (https://github.com/dandavison/delta).
