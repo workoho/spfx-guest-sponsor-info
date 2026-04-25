@@ -21,8 +21,8 @@ import oliverThompsonPhoto from '../assets/mock/oliver-thompson.jpg';
  * objects are returned directly so that the web part can be previewed in the
  * local workbench without a tenant connection or a guest account.
  *
- * Profile photos are AI-generated samples from randomuser.me, which
- * provides portrait images specifically for UI mockups and demos.
+ * Profile photos are custom-generated portrait assets created specifically for
+ * this demo dataset so they do not depict real people.
  */
 export const MOCK_SPONSORS: ISponsor[] = [
   {
