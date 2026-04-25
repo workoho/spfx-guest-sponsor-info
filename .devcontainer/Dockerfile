@@ -78,9 +78,14 @@ RUN python3 -m venv /opt/apm \
   && /opt/apm/bin/pip install --no-cache-dir "apm-cli==${APM_VERSION}" \
   && ln -s /opt/apm/bin/apm /usr/local/bin/apm
 
-# Playwright browser runtime — installs Chromium plus the Linux libraries
-# needed by Playwright/Playwright MCP in this container.
-RUN npx -y playwright@latest install --with-deps chromium \
+# Playwright browser runtime — install into the vscode user's cache path so
+# Playwright MCP and ad hoc `npx @playwright/mcp` commands reuse the same
+# browser bundle instead of downloading a second copy at runtime.
+ENV PLAYWRIGHT_BROWSERS_PATH=/home/vscode/.cache/ms-playwright
+RUN mkdir -p "${PLAYWRIGHT_BROWSERS_PATH}" \
+  && chown -R vscode:vscode "${PLAYWRIGHT_BROWSERS_PATH}" \
+  && npx -y playwright@latest install --with-deps chromium \
+  && chown -R vscode:vscode "${PLAYWRIGHT_BROWSERS_PATH}" \
   && npm cache clean --force
 
 # delta — syntax-highlighting git diff pager (https://github.com/dandavison/delta).

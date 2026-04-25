@@ -63,7 +63,11 @@
     // automatically. As a fallback, copy .env.example to .env and set the
     // variable there — the script loads .env before starting the dev server.
     // In Codespaces, add it as a Codespaces secret (repository scope).
-    "SPFX_SERVE_TENANT_DOMAIN": "${localEnv:SPFX_SERVE_TENANT_DOMAIN}"
+    "SPFX_SERVE_TENANT_DOMAIN": "${localEnv:SPFX_SERVE_TENANT_DOMAIN}",
+    // Match the Dockerfile's Playwright browser cache path so the vscode user,
+    // the MCP server, and manual `npx @playwright/mcp` commands all reuse the
+    // same preinstalled Chromium bundle.
+    "PLAYWRIGHT_BROWSERS_PATH": "/home/vscode/.cache/ms-playwright"
   },
   "customizations": {
     "vscode": {
