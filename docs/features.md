@@ -269,9 +269,15 @@ something is genuinely unrecoverable:
 
 ## Privacy-first permissions
 
-| Data path | Permissions used |
-|---|---|
-| Azure Function | `User.Read.All` · `Presence.Read.All` *(optional)* — on the Managed Identity, guests never hold these |
+The web part itself has no Microsoft Graph permissions. The Azure Function uses
+only its own Managed Identity permissions:
+
+| Permission | Purpose | Required? |
+|---|---|---|
+| `User.Read.All` | Read sponsor profiles and the sponsor relationship | **Required** |
+| `Presence.Read.All` | Show live presence and detect Teams provisioning state | Optional |
+| `MailboxSettings.Read` | Filter shared mailboxes, room accounts, and equipment accounts from the active sponsor set | Optional |
+| `TeamMember.Read.All` | Detect whether the guest has already been provisioned in a Team | Optional |
 
 ---
 
