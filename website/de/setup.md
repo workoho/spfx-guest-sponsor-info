@@ -33,7 +33,60 @@ Das Setup von Guest Sponsor Info umfasst drei Phasen:
 > oder parallel zum Ausführen des Assistenten, und schließen Sie Phase 3
 > dann direkt im Assistenten ab.
 
+Diese Anleitung geht davon aus, dass Sie eine dedizierte
+**SharePoint-Landingpage** als erstes verlässliches Ziel für Gastbenutzer
+vorbereiten. Wenn Ihr Einladungsprozess oder Ihr Governance-Werkzeug eine
+eigene Redirect-URL unterstützt, sollte diese auf diese Seite zeigen statt auf
+ein generisches MyApps-Ziel. MyApps erklärt dem Gast nicht, wer seine
+Sponsoren sind, und ein mandantenbezogener Teams-Deeplink hilft erst dann,
+wenn der Gast bereits mindestens einem Team in Ihrem Mandanten hinzugefügt
+wurde.
+
 ## Phase 1 — SharePoint
+
+### Festlegen, was der Gast zuerst öffnen soll
+
+Bevor Sie etwas installieren, legen Sie fest, welche SharePoint-Seite als
+Entrance-Seite für Gäste dienen soll. Genau diese Seite sollten Sie in
+Onboarding-Mails, Governance-Workflows oder Einladungs-Redirects
+kommunizieren.
+
+- Verwenden Sie eine dedizierte Landingpage und nicht die generische Startseite
+  einer Kollaborationssite.
+- Platzieren Sie das Web Part weit oben auf der Seite, damit Sponsor,
+  Ersatz-Sponsor und Kontaktkontext sofort sichtbar sind.
+- Behandeln Sie Teams-Links als nachgelagerten Schritt von dieser Seite aus,
+  nicht als einziges erstes Ziel.
+
+Wenn Sie ohnehin eine neue Landingpage aufbauen, sollten Sie außerdem prüfen,
+ob sie mittel- bis langfristig auf der **Root Site** des Mandanten (`/`)
+liegen sollte. Microsoft beschreibt die SharePoint Home Site als zentralen
+organisatorischen Einstiegspunkt, und gerade in jüngeren Tenants ist die Root
+Site häufig noch flexibel genug, um diese Entscheidung früh zu treffen. Wenn
+Sie `/` verwenden, ist die Adresse für Gäste außerdem oft auch ohne zusätzlichen
+Shortlink-Dienst leicht merkbar.
+
+Das bedeutet nicht, dass Ihr Mitarbeiterportal zwingend auf derselben Seite
+liegen muss. In vielen Organisationen liegen interne Inhalte bereits an
+anderer Stelle, und die gemeinsame Entrance-Seite verlinkt nur dorthin. Mit
+SharePoint Audience Targeting können Sie auf derselben Landingpage außerdem
+unterschiedliche Navigation, News und Web-Part-Inhalte für Mitarbeitende und
+Gäste einblenden.
+
+Auch wenn die Root Site heute bereits belegt ist, kann das eine sinnvolle
+langfristige Zielarchitektur sein. Sie können zunächst mit einer
+Kommunikationssite wie `/sites/entrance` starten, diese als gemeinsame
+Landingpage etablieren und das Erlebnis später per von Microsoft unterstütztem
+Root-Site-Swap nach `/` verschieben, wenn der Zeitpunkt passt. Wenn Sie das in
+Betracht ziehen, halten Sie die Landingpage als moderne Kommunikationssite und
+prüfen Sie die Voraussetzungen, Berechtigungen und Freigabeeinstellungen für
+die Root Site frühzeitig.
+
+Siehe auch:
+
+- [Landingpage-Ideen]({{ '/de/landing-page-ideas/' | relative_url }})
+- [Modernize your root site](https://learn.microsoft.com/sharepoint/modern-root-site)
+- [Plan, build, and launch a SharePoint home site](https://learn.microsoft.com/viva/connections/home-site-plan)
 
 ### Installation aus dem Microsoft AppSource
 
@@ -331,6 +384,11 @@ Sie können diese Werte auch später abrufen mit `azd env get-values`.
 
 Wenn Phase 1 und Phase 2 abgeschlossen sind, öffnen Sie die SharePoint-Landingpage
 im Bearbeitungsmodus und fügen Sie das Web Part **Guest Sponsor Info** der Seite hinzu.
+
+Platzieren Sie es weit oben auf der Seite, noch vor längeren Textblöcken oder
+nachgelagerten Links. Die Landingpage funktioniert am besten, wenn sie zuerst
+die zwei Fragen beantwortet, die MyApps und Teams allein meist nicht klären:
+wer die Sponsoren des Gasts sind und wie er sie sofort erreichen kann.
 
 ### Web Part mit der API verbinden
 

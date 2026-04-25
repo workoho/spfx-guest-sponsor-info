@@ -20,10 +20,11 @@ doc:
 hero:
   title: Let your guests know who to call
   subtitle: >-
-    Guest accounts provisioned through a formal process exist in Entra
-    before Microsoft Teams is ready for them. This web part shows each
-    guest their assigned sponsor automatically — and is honest about
-    what they can and can't do yet.
+    A SharePoint entrance page is often the safest first destination for
+    invited guests — but out of the box it still cannot show them who
+    their sponsors are. Guest Sponsor Info puts sponsors, backup sponsors,
+    and contact paths directly on that page — and is honest about what
+    they can and can't do yet.
   cta_primary: Explore Features
   cta_secondary: Why?
   illustration_alt: >-
@@ -36,12 +37,14 @@ features:
   section_title: Everything guests need — nothing they don't
   section_subtitle: >-
     Purpose-built for the moment a guest user lands in your tenant
-    and needs to know who their sponsor is.
+    and needs to see, for the first time, who their sponsors are,
+    who their backup sponsors are, and how to reach them.
   cards:
     title: Live Sponsor Cards
     description: >-
-      Rich contact cards with profile photos, job titles, email, phone,
-      and office address — loaded live from Microsoft Graph, never stale.
+      The core feature: guests can finally see their assigned sponsors
+      and backup sponsors themselves — with profile photos, job titles,
+      email, phone, and office address.
   presence:
     title: Real-Time Teams Presence
     description: >-
@@ -56,9 +59,10 @@ features:
   privacy:
     title: Privacy-First Architecture
     description: >-
-      All data stays within your Microsoft 365 tenant. No external services,
-      no tracking, no phone-home. The Azure Function proxy ensures guests
-      never hold directory permissions.
+      Sponsor and guest data stays within your Microsoft 365 and Azure
+      environment. Workoho receives no runtime data, no analytics, and no
+      phone-home stream. The Azure Function proxy ensures guests never hold
+      directory permissions.
   onboarding:
     title: Teams Onboarding Status
     description: >-
@@ -75,14 +79,15 @@ features:
 features_page:
   subtitle: >-
     Purpose-built for the moment a B2B guest user lands in your tenant
-    and needs to know who their sponsor is.
+    and needs to know who their sponsors are — not just who happened to
+    invite them.
   cards:
     title: Live Sponsor Cards
     description: >-
       Rich contact cards show the guest's assigned sponsors with live
       profile photos, display name, job title, email, phone number, and
-      office address — all loaded directly from Microsoft Graph. No stale
-      data, no manual maintenance.
+      office address — sourced from Microsoft Graph through the companion
+      Azure Function proxy. Current directory data, no manual maintenance.
     highlights:
       - "Three layout modes: Full, Compact, and Auto"
       - Live profile photos from Microsoft Graph
@@ -92,8 +97,9 @@ features_page:
     description: >-
       Hovering or tabbing to a card opens a contact panel with everything
       a guest needs — email, work phone, mobile, office location, and
-      full address. Each field has a one-click copy button. The panel also
-      shows the sponsor's manager and reporting chain.
+      full address. Each field has a one-click copy button. The panel can
+      also show the sponsor's manager, which gives guests extra orientation
+      even when Teams is not yet available.
     highlights:
       - One-click copy for email, phone, and mobile
       - Inline map preview via Azure Maps
@@ -103,10 +109,11 @@ features_page:
     title: Teams Onboarding Status
     description: >-
       A guest account can exist in Entra before it has been added to any
-      Team. In this state, guests see working-looking buttons that actually
-      do nothing. The web part detects this and shows a clear message
-      explaining the situation — with guidance to contact their sponsor.
-      Chat and call buttons are disabled until Teams access is confirmed.
+      Team. Without a dedicated guest-facing component, that can leave
+      guests looking at contact actions that appear ready but are not yet
+      usable. The web part detects this and shows a clear message explaining
+      the situation — with guidance to contact their sponsor. Chat and call
+      buttons are disabled until Teams access is confirmed.
   presence:
     title: Real-Time Teams Presence
     description: >-
@@ -131,24 +138,27 @@ features_page:
   privacy:
     title: Privacy-First Architecture
     description: >-
-      All data stays within your Microsoft 365 and Azure tenant. The web
-      part makes no external calls, sends no telemetry to third parties,
-      and stores nothing outside the browser session. The Azure Function
-      proxy ensures guests never need directory-level permissions.
+      Sponsor and guest data stays within your Microsoft 365 and Azure
+      environment under your control. The solution sends no runtime data to
+      Workoho, requires no Workoho-operated backend, and keeps directory
+      access inside your tenant. The Azure Function proxy ensures guests
+      never need directory-level permissions.
     link: Read the Privacy Policy
   delegation:
     title: Automatic Sponsor Delegation
     description: >-
       When multiple sponsors are assigned in priority order, the web part
-      skips unavailable sponsors automatically. Disabled accounts, shared
-      mailboxes, and deleted users are filtered out — guests always see
-      active, reachable contacts.
+      lets the next eligible sponsor step in automatically. Disabled
+      accounts, shared mailboxes, resource accounts, and deleted users are
+      filtered out of the active contact set.
     detail: >-
       Sponsors are evaluated in the configured priority order — primary
-      first, then secondary, and so on. Each sponsor is checked for
-      account status, mailbox type, and presence. The first active,
-      reachable sponsor is shown to the guest. If none qualify, the last
-      valid entry is displayed with a reduced contact set.
+      first, then secondary, and so on. Account status, mailbox type,
+      resource-account status, and sponsor eligibility filters determine
+      whether a sponsor can appear as a full contact. Eligible sponsors fill
+      the visible slots, while unavailable sponsors can still remain visible
+      as read-only context. That gives the guest more trust than seeing only
+      the original inviter and nobody else.
   more:
     title: And there's more
     languages:
@@ -211,25 +221,27 @@ problem:
   title: A guest accepted your invitation. Now what?
   body: >-
     Microsoft 365 provides no built-in answer to this question. Guests land
-    somewhere in their own tenant with no idea who their sponsor is or what
-    they can do. This web part closes three specific gaps.
+    somewhere in their own tenant with no idea who their sponsor is, how to
+    reach them, or what they can do next. This web part closes three
+    specific gaps.
   cta: Why?
   items:
     - title: No orientation at the entrance
       body: >-
-        After accepting, guests land in their own organization's Teams or
-        MyApps — with no indication that they now have access to your tenant.
-        There is no "you've arrived" moment.
+        After accepting, guests often land in MyApps or stay oriented around
+        their own organization's tools — with no indication that they now
+        have access to your tenant. There is no "you've arrived" moment.
     - title: Their sponsor is invisible
       body: >-
-        Sponsors are assigned in Microsoft Entra, but guests have no way to
-        see them. When they need help, the only name they have is whoever sent
-        the invitation email — which may no longer be the right person.
+        Sponsors are assigned in Microsoft Entra, but guests have no
+        self-service way to see them. When they need help, the only name
+        they have is whoever sent the invitation email — which may no longer
+        be the right person, or even a sponsor at all.
     - title: Teams looks ready — but isn't
       body: >-
         A structured onboarding process creates the Entra account before
         adding the guest to any Teams team. Until that happens, chat and call
-        buttons appear on screen but do nothing. No error. No explanation.
+        flows into Teams may still go nowhere. No error. No explanation.
 
 cta:
   title: Ready to improve your guest experience?
@@ -249,6 +261,7 @@ footer:
   source_code: Source Code
   docs: Documentation
   deployment: Setup
+  landing_page: Landing Page Ideas
   operations: Operations
   support: Support
   legal: Legal

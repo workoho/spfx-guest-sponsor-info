@@ -32,7 +32,53 @@ Setting up Guest Sponsor Info involves three phases:
 > through Phases 1 and 2 before (or alongside) running the wizard, then
 > complete Phase 3 inside it.
 
+This guide assumes that you are preparing a dedicated **SharePoint landing
+page** as the first reliable destination for guest users. If your invitation
+process or governance tooling supports a custom redirect URL, point it to that
+page instead of a generic MyApps destination. MyApps does not explain who the
+guest's sponsors are, and a tenant-scoped Teams deep link only helps after the
+guest has already been added to at least one team in your tenant.
+
 ## Phase 1 — SharePoint
+
+### Decide what the guest should open first
+
+Before you install anything, decide which SharePoint page should act as the
+guest entrance page. This should be the page you communicate in onboarding
+emails, governance workflows, or invitation redirects.
+
+- Use a dedicated landing page, not a generic collaboration site home page.
+- Put the web part high on the page so sponsor, backup sponsor, and contact
+  context are visible immediately.
+- Treat Teams links as a follow-up step from that page, not as the only first
+  destination.
+
+If you are creating a new landing page anyway, also consider whether it should
+eventually live at the tenant's **root site** (`/`). Microsoft describes the
+SharePoint home site as a major organizational entry point, and for newer
+tenants the root site is often still flexible enough to make that decision
+early. If you use `/`, the address is also much easier for guests to remember
+without an extra shortlink service.
+
+That does not mean your employee portal has to live on the same page. In many
+organizations, internal employee content already lives elsewhere, and the
+shared entry page simply links to it. SharePoint audience targeting can also
+help you show different navigation, news, and web-part content to employees
+and guests on the same landing page.
+
+Even if the root site is already occupied, this can still be a sensible
+long-term direction. You can start with a communication site such as
+`/sites/entrance`, establish it as the shared landing page first, and later use
+Microsoft's supported root-site swap approach to move that experience to `/`
+when the timing is right. If you plan for that, keep the landing page as a
+modern communication site and review root-site prerequisites, permissions, and
+sharing settings early.
+
+See also:
+
+- [Landing Page Ideas]({{ '/en/landing-page-ideas/' | relative_url }})
+- [Modernize your root site](https://learn.microsoft.com/sharepoint/modern-root-site)
+- [Plan, build, and launch a SharePoint home site](https://learn.microsoft.com/viva/connections/home-site-plan)
 
 ### Install from Microsoft AppSource
 
@@ -321,6 +367,11 @@ You can also retrieve them later with `azd env get-values`.
 
 With Phases 1 and 2 complete, open the SharePoint landing page in edit mode
 and add the **Guest Sponsor Info** web part to the page.
+
+Place it near the top of the page, where guests see it before long text blocks
+or downstream links. The landing page works best when it first answers the two
+questions MyApps and Teams usually do not answer on their own: who the guest's
+sponsors are, and how they can reach them right now.
 
 ### Connect the web part to the API
 

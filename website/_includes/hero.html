@@ -1,4 +1,11 @@
 {%- assign strings = site.data[page.lang].strings -%}
+{%- if page.lang == 'de' -%}
+{%- assign hero_screenshot_alt = 'Screenshot des Guest Sponsor Info Web Parts mit geöffneter Sponsor-Detailansicht.' -%}
+{%- assign hero_screenshot_caption = 'Echte Sponsor-Detailansicht aus dem Web Part.' -%}
+{%- else -%}
+{%- assign hero_screenshot_alt = 'Screenshot of the Guest Sponsor Info web part with an opened sponsor detail view.' -%}
+{%- assign hero_screenshot_caption = 'Actual sponsor detail view from the web part.' -%}
+{%- endif -%}
 
 <section class="hero">
     <div class="container hero-inner">
@@ -20,8 +27,13 @@
             </div>
         </div>
         <div class="hero-visual">
-            <img src="{{ '/assets/images/hero-illustration.svg' | relative_url }}"
-                alt="{{ strings.hero.illustration_alt }}" class="hero-illustration" width="520" height="400">
+            <figure class="hero-shot">
+                <a href="{{ '/assets/images/my-sponsors-card-example.jpg' | relative_url }}" class="hero-shot-link">
+                    <img src="{{ '/assets/images/my-sponsors-card-example.jpg' | relative_url }}"
+                        alt="{{ hero_screenshot_alt }}" class="hero-screenshot" width="1136" height="1279">
+                </a>
+                <figcaption class="hero-shot-caption">{{ hero_screenshot_caption }}</figcaption>
+            </figure>
         </div>
     </div>
 </section>

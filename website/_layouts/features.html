@@ -3,6 +3,21 @@ layout: default
 ---
 {%- assign strings = site.data[page.lang].strings -%}
 {%- assign f = strings.features_page -%}
+{%- if page.lang == 'de' -%}
+{%- assign screenshot_alt = 'Screenshot des Guest Sponsor Info Web Parts mit geöffneter Sponsor-Detailansicht.' -%}
+{%- assign screenshot_caption = 'Echte Sponsor-Detailansicht mit Kontakt- und Manager-Kontext.' -%}
+{%- assign onboarding_screenshot_alt = 'Screenshot des Guest Sponsor Info Web Parts mit Warnhinweis, dass Microsoft
+Teams für den Gast noch nicht eingerichtet ist.' -%}
+{%- assign onboarding_screenshot_caption = 'Echter Warnhinweis, wenn Teams im Zielmandanten für den Gast noch nicht
+bereit ist.' -%}
+{%- else -%}
+{%- assign screenshot_alt = 'Screenshot of the Guest Sponsor Info web part with an opened sponsor detail view.' -%}
+{%- assign screenshot_caption = 'Actual sponsor detail view with contact and manager context.' -%}
+{%- assign onboarding_screenshot_alt = 'Screenshot of the Guest Sponsor Info web part showing that Microsoft Teams is
+not set up yet for the guest.' -%}
+{%- assign onboarding_screenshot_caption = 'Actual warning state when Teams is not ready yet for the guest in the
+resource tenant.' -%}
+{%- endif -%}
 
 <section class="fp-hero">
     <div class="container">
@@ -31,8 +46,12 @@ layout: default
             </div>
 
             <div class="fp-row fp-row--reverse">
-                <div class="fp-icon">
-                    <img src="{{ '/assets/images/feature-contact.svg' | relative_url }}" alt="" width="80" height="80">
+                <div class="fp-media">
+                    <a href="{{ '/assets/images/my-sponsors-card-example.jpg' | relative_url }}" class="fp-shot-link">
+                        <img src="{{ '/assets/images/my-sponsors-card-example.jpg' | relative_url }}"
+                            alt="{{ screenshot_alt }}" class="fp-shot" width="1136" height="1279">
+                    </a>
+                    <p class="fp-media-caption">{{ screenshot_caption }}</p>
                 </div>
                 <div class="fp-text">
                     <h2 id="contact-panel">{{ f.contact_panel.title }}</h2>
@@ -71,9 +90,10 @@ layout: default
             </div>
 
             <div class="fp-row">
-                <div class="fp-icon">
-                    <img src="{{ '/assets/images/feature-onboarding.svg' | relative_url }}" alt="" width="80"
-                        height="80">
+                <div class="fp-media fp-media--wide">
+                    <img src="{{ '/assets/images/my-sponsors-noteams-example.jpg' | relative_url }}"
+                        alt="{{ onboarding_screenshot_alt }}" class="fp-shot" width="1100" height="650">
+                    <p class="fp-media-caption">{{ onboarding_screenshot_caption }}</p>
                 </div>
                 <div class="fp-text">
                     <h2 id="onboarding">{{ f.onboarding.title }}</h2>

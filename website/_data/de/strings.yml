@@ -20,10 +20,11 @@ doc:
 hero:
   title: Zeigen Sie Ihren Gästen, wen sie kontaktieren können
   subtitle: >-
-    Gastkonten, die über einen formalen Prozess angelegt werden, existieren
-    in Entra, bevor Microsoft Teams für sie bereit ist. Dieses Web Part
-    zeigt jedem Gast automatisch seinen zugewiesenen Sponsor — und sagt
-    ehrlich, was bereits möglich ist und was noch nicht.
+    Eine SharePoint-Entrance-Seite ist oft das verlässlichste erste Ziel
+    für eingeladene Gäste — aber mit Boardmitteln kann sie ihnen trotzdem
+    nicht zeigen, wer ihre Sponsoren sind. Guest Sponsor Info bringt
+    Sponsoren, Ersatz-Sponsoren und Kontaktwege direkt auf diese Seite —
+    und sagt ehrlich, was bereits möglich ist und was noch nicht.
   cta_primary: Features entdecken
   cta_secondary: Warum?
   illustration_alt: >-
@@ -36,12 +37,14 @@ features:
   section_title: Alles was Gäste brauchen — nicht mehr
   section_subtitle: >-
     Entwickelt für den Moment, in dem ein Gastbenutzer in Ihrem
-    Tenant landet und wissen muss, wer sein Sponsor ist.
+    Tenant landet und zum ersten Mal sehen muss, wer seine Sponsoren sind,
+    wer seine Ersatz-Sponsoren sind und wie er sie erreichen kann.
   cards:
     title: Live-Sponsor-Karten
     description: >-
-      Kontaktkarten mit Profilfotos, Jobtiteln, E-Mail, Telefon und
-      Büroadresse — live aus Microsoft Graph geladen, nie veraltet.
+      Die Kernfunktion: Gäste können ihre zugewiesenen Sponsoren und
+      Ersatz-Sponsoren endlich selbst sehen — mit Profilfoto, Jobtitel,
+      E-Mail, Telefon und Büroadresse.
   presence:
     title: Echtzeit-Teams-Präsenz
     description: >-
@@ -57,9 +60,10 @@ features:
   privacy:
     title: Privacy-First-Architektur
     description: >-
-      Alle Daten bleiben in Ihrem Microsoft 365 Tenant. Keine externen
-      Dienste, kein Tracking, kein Phone-Home. Der Azure Function Proxy
-      stellt sicher, dass Gäste keinerlei Verzeichnisberechtigungen benötigen.
+      Sponsor- und Gastdaten bleiben in Ihrer Microsoft-365- und
+      Azure-Umgebung. Workoho erhält keine Laufzeitdaten, keine Analytics
+      und keinen Phone-Home-Datenstrom. Der Azure Function Proxy stellt
+      sicher, dass Gäste keinerlei Verzeichnisberechtigungen benötigen.
   onboarding:
     title: Teams-Onboarding-Status
     description: >-
@@ -77,14 +81,15 @@ features:
 features_page:
   subtitle: >-
     Entwickelt für den Moment, in dem ein B2B-Gastbenutzer in Ihrem
-    Tenant landet und wissen muss, wer sein Sponsor ist.
+    Tenant landet und wissen muss, wer seine Sponsoren sind — und nicht
+    nur, wer ihn irgendwann eingeladen hat.
   cards:
     title: Live-Sponsor-Karten
     description: >-
       Kontaktkarten zeigen die zugewiesenen Sponsoren mit Live-Profilfotos,
       Anzeigenamen, Jobtitel, E-Mail, Telefonnummer und Büroadresse —
-      alles direkt aus Microsoft Graph geladen. Keine veralteten Daten,
-      keine manuelle Pflege.
+      bezogen aus Microsoft Graph über den begleitenden Azure-Function-
+      Proxy. Aktuelle Verzeichnisdaten, keine manuelle Pflege.
     highlights:
       - "Drei Layout-Modi: Vollständig, Kompakt und Auto"
       - Live-Profilfotos aus Microsoft Graph
@@ -95,8 +100,9 @@ features_page:
       Beim Überfahren oder Fokussieren einer Karte öffnet sich ein
       Kontaktpanel mit allem, was ein Gast braucht — E-Mail, Telefon,
       Mobilnummer, Bürostandort und vollständige Adresse. Jedes Feld
-      hat einen Kopieren-Button. Das Panel zeigt auch den Vorgesetzten
-      und die Berichtskette des Sponsors.
+      hat einen Kopieren-Button. Optional zeigt das Panel auch den
+      Vorgesetzten des Sponsors und gibt dem Gast so zusätzliche
+      Orientierung — auch dann, wenn Teams noch nicht verfügbar ist.
     highlights:
       - Ein-Klick-Kopieren für E-Mail, Telefon und Mobil
       - Inline-Kartenvorschau über Azure Maps
@@ -106,9 +112,10 @@ features_page:
     title: Teams-Onboarding-Status
     description: >-
       Ein Gastkonto kann in Entra existieren, bevor es einem Team
-      hinzugefügt wurde. In diesem Zustand sehen Gäste funktional
-      aussehende Buttons, die nichts tun. Das Web Part erkennt das und
-      zeigt eine klare Meldung mit Handlungsempfehlung — Chat- und
+      hinzugefügt wurde. Ohne ein dediziertes gastorientiertes Web Part
+      kann das dazu führen, dass Gäste Kontaktaktionen sehen, die bereit
+      aussehen, aber noch nicht nutzbar sind. Das Web Part erkennt das
+      und zeigt eine klare Meldung mit Handlungsempfehlung — Chat- und
       Anruf-Buttons werden deaktiviert, bis der Teams-Zugang bestätigt ist.
   presence:
     title: Echtzeit-Teams-Präsenz
@@ -135,25 +142,30 @@ features_page:
   privacy:
     title: Privacy-First-Architektur
     description: >-
-      Alle Daten bleiben innerhalb Ihres Microsoft 365 und Azure Tenants.
-      Keine externen Aufrufe, keine Telemetrie an Dritte, keine Speicherung
-      außerhalb der Browser-Sitzung. Der Azure Function Proxy stellt sicher,
-      dass Gäste nie Verzeichnis-Berechtigungen benötigen.
+      Sponsor- und Gastdaten bleiben innerhalb Ihrer Microsoft-365- und
+      Azure-Umgebung unter Ihrer Kontrolle. Die Lösung sendet keine
+      Laufzeitdaten an Workoho, benötigt kein Workoho-betriebenes Backend
+      und hält den Verzeichniszugriff vollständig in Ihrem Tenant. Der Azure
+      Function Proxy stellt sicher, dass Gäste nie Verzeichnis-
+      Berechtigungen benötigen.
     link: Zur Datenschutzrichtlinie
   delegation:
     title: Automatische Sponsor-Delegation
     description: >-
       Wenn mehrere Sponsoren in Prioritätsreihenfolge zugewiesen sind,
-      überspringt das Web Part nicht verfügbare automatisch. Deaktivierte
-      Konten, geteilte Postfächer und gelöschte Benutzer werden
-      ausgefiltert — Gäste sehen immer aktive, erreichbare Kontakte.
+      lässt das Web Part automatisch den nächsten geeigneten Sponsor
+      nachrücken. Deaktivierte Konten, geteilte Postfächer,
+      Ressourcen-Konten und gelöschte Benutzer werden aus dem aktiven
+      Kontaktset herausgefiltert.
     detail: >-
       Sponsoren werden in der konfigurierten Prioritätsreihenfolge
-      geprüft — zuerst der primäre, dann der sekundäre usw. Jeder
-      Sponsor wird auf Kontostatus, Postfachtyp und Präsenz
-      überprüft. Der erste aktive, erreichbare Sponsor wird dem Gast
-      angezeigt. Wenn keiner qualifiziert ist, wird der letzte
-      gültige Eintrag mit reduziertem Kontaktumfang dargestellt.
+      geprüft — zuerst der primäre, dann der sekundäre usw.
+      Kontostatus, Postfachtyp, Ressourcen-Konto-Status und Sponsor-
+      Filter entscheiden darüber, ob ein Sponsor als vollständiger Kontakt
+      erscheinen kann. Geeignete Sponsoren füllen die sichtbaren Plätze,
+      während nicht verfügbare Sponsoren als schreibgeschützter Kontext
+      sichtbar bleiben können. Das schafft mehr Vertrauen, als wenn der
+      Gast nur den ursprünglichen Einladenden kennt und sonst niemanden.
   more:
     title: Und es gibt noch mehr
     languages:
@@ -217,27 +229,30 @@ problem:
   title: Ein Gast hat Ihre Einladung angenommen. Und jetzt?
   body: >-
     Microsoft 365 gibt darauf keine Antwort. Gäste landen irgendwo in ihrem
-    eigenen Tenant — ohne zu wissen, wer ihr Sponsor ist oder was sie
-    überhaupt tun können. Dieses Web Part schließt drei konkrete Lücken.
+    eigenen Tenant — ohne zu wissen, wer ihr Sponsor ist, wie sie ihn
+    erreichen oder was sie überhaupt als Nächstes tun können. Dieses Web
+    Part schließt drei konkrete Lücken.
   cta: Warum?
   items:
     - title: Keine Orientierung am Eingang
       body: >-
-        Nach der Annahme landen Gäste im Teams oder in den MyApps ihrer
-        eigenen Organisation — ohne jeden Hinweis, dass sie jetzt auch
-        Zugang zu Ihrem Tenant haben. Es gibt keinen „Willkommen"-Moment.
+        Nach der Annahme landen Gäste oft in MyApps oder bleiben in der
+        Orientierung ihrer eigenen Organisation — ohne jeden Hinweis,
+        dass sie jetzt auch Zugang zu Ihrem Tenant haben. Es gibt keinen
+        „Willkommen"-Moment.
     - title: Ihr Sponsor ist unsichtbar
       body: >-
         Sponsoren sind in Microsoft Entra hinterlegt, aber Gäste haben keine
-        Möglichkeit, sie einzusehen. Wenn sie Hilfe brauchen, kennen sie nur
-        den Namen auf der Einladungs-E-Mail — der heute vielleicht nicht mehr
-        der richtige Ansprechpartner ist.
+        Self-Service-Möglichkeit, sie einzusehen. Wenn sie Hilfe brauchen,
+        kennen sie nur den Namen aus der Einladungs-E-Mail — der heute
+        vielleicht nicht mehr der richtige Ansprechpartner ist oder gar kein
+        Sponsor war.
     - title: Teams scheint bereit — ist es aber nicht
       body: >-
         Ein geregelter Onboarding-Prozess legt das Entra-Konto an, bevor
         der Gast einem Teams-Team hinzugefügt wird. Bis dieser Schritt
-        erfolgt, erscheinen Chat- und Anruf-Buttons auf dem Bildschirm,
-        tun aber nichts. Kein Fehler. Keine Erklärung.
+        erfolgt, laufen Wege in Richtung Teams oft noch ins Leere. Kein
+        Fehler. Keine Erklärung.
 
 cta:
   title: Bereit, die Gast-Erfahrung zu verbessern?
@@ -258,6 +273,7 @@ footer:
   source_code: Source Code
   docs: Dokumentation
   deployment: Setup
+  landing_page: Landingpage-Ideen
   operations: Operations
   support: Support
   legal: Rechtliches
