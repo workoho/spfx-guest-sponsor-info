@@ -728,6 +728,50 @@ foreach ($permission in $permissions) {
 }
 ```
 
+If the PAW cannot install or load any PowerShell modules at all, you can do the
+same assignment in [Graph Explorer](https://developer.microsoft.com/graph/graph-explorer).
+This uses the same Microsoft Graph API, but sends the requests manually from
+the browser:
+
+1. Sign in to Graph Explorer as a user with **Privileged Role Administrator**.
+2. Consent to the delegated permissions **Application.Read.All** and
+   **AppRoleAssignment.ReadWrite.All** for Graph Explorer.
+3. Retrieve the Microsoft Graph service principal and its app roles:
+
+   ```http
+   GET https://graph.microsoft.com/v1.0/servicePrincipals?$filter=displayName eq 'Microsoft Graph'&$select=id,appRoles
+   ```
+
+   Record the Graph service principal `id` and the `appRoles[].id` values for
+   the permissions you want to grant (`User.Read.All`, optionally
+   `Presence.Read.All`, `MailboxSettings.Read`, `TeamMember.Read.All`).
+
+4. Retrieve existing assignments on the Managed Identity so you do not create
+   duplicates:
+
+   ```http
+   GET https://graph.microsoft.com/v1.0/servicePrincipals/<managed-identity-object-id>/appRoleAssignments?$select=appRoleId
+   ```
+
+5. For each missing permission, create the assignment:
+
+   ```http
+   POST https://graph.microsoft.com/v1.0/servicePrincipals/<managed-identity-object-id>/appRoleAssignments
+   Content-Type: application/json
+
+   {
+     "principalId": "<managed-identity-object-id>",
+     "resourceId": "<microsoft-graph-service-principal-id>",
+     "appRoleId": "<permission-app-role-id>"
+   }
+   ```
+
+6. Repeat the POST only for the permissions you actually need.
+
+This Graph Explorer path is intentionally low-level. Changes take effect
+immediately and are not wrapped in any helper logic, so double-check the three
+IDs before sending the request.
+
 Use the Azure portal only for lookup and verification here:
 
 1. **Azure Portal -> Function App -> Identity** to copy the Managed Identity
