@@ -4,7 +4,7 @@
     "name": "Guest Sponsor Info for Microsoft Entra B2B",
     "title": "Guest Sponsor Info for Microsoft Entra B2B",
     "id": "6cdf9494-9c67-40af-8ac8-7b36be245848",
-    "version": "0.26.0.0",
+    "version": "0.27.0.0",
     "includeClientSideAssets": true,
     "skipFeatureDeployment": false,
     "isDomainIsolated": false,
@@ -89,7 +89,7 @@
         "title": "Guest Sponsor Info for Microsoft Entra B2B",
         "description": "The feature that activates elements of the Guest Sponsor Info web part.",
         "id": "b7d00abc-0ce7-45d6-9b8e-ffd7b2139cee",
-        "version": "0.26.0.0"
+        "version": "0.27.0.0"
       }
     ]
   },
