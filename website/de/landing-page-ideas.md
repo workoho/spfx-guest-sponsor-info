@@ -328,6 +328,92 @@ Umfeldinhalte sehen.
   schafft, und nutzen Sie Quick Links darum herum, damit die gesamte Seite wie
   ein bewusst gestalteter Einstieg wirkt.
 
+## Den Gasttyp Sichtbar Machen
+
+Wenn Sie Audience Targeting ohnehin nutzen, kann die Landingpage dem Gast auch
+direkt sagen, in welchem Rahmen er eingebunden ist: **Partner**,
+**Kunde**, **Collaboration** oder bei Bedarf **Lieferant**. Das ist nicht nur
+ein nettes Extra. Es gibt Kontext. Viele der restlichen Links erklären sich
+dadurch fast von selbst.
+
+Von Haus aus unterstützen in modernem SharePoint nur wenige Bausteine Audience
+Targeting wirklich gut. Offiziell gehören dazu vor allem Navigation, Seiten,
+News, Highlighted Content, Quick Links und Events. Für genau diesen Use Case
+ist **Quick Links** oft trotzdem am geeignetsten, weil dort einzelne Links
+direkt einer Zielgruppe zugeordnet werden können.
+
+Ein nützliches Muster ist ein kleines eigenes Quick-Links-Web-Part in einem
+zurückhaltenden Layout, oft **List**. Legen Sie dort pro Gasttyp einen Link auf
+dieselbe Seite an, blenden Sie unnötige visuelle Elemente aus und verwenden Sie
+Formulierungen wie:
+
+- **Sie sind als Partner-Gast eingebunden.**
+- **Sie sind als Kunden-Gast eingebunden.**
+- **Ihr Zugriff ist als kurzfristige Collaboration angelegt.**
+
+Solange man nicht mit der Maus darüber fährt, wird so ein Link oft eher als
+normaler Hinweistext wahrgenommen und nicht als große Call-to-Action. Technisch
+ist es trotzdem ein Link und damit audience-targeting-fähig. Das ist kein
+offizielles Text-Web-Part-Feature, sondern ein pragmatischer Workaround.
+
+## Gastsegmente Praktisch Nutzen
+
+Wenn Ihr Tenant Gäste bereits grob in **Partner**, **Kunden** und
+**Collaboration** einordnet, sollte diese Logik nicht im Verzeichnis stecken
+bleiben. Nutzen Sie sie auch auf der Landingpage. Starten Sie dabei ruhig
+einfach: eine breite Gruppe für alle Gäste und nur die Segmente, bei denen
+Risiko, Standardfreigaben oder Onboarding wirklich unterschiedlich sind.
+Lieferanten können dafür eine eigene Zielgruppe bekommen oder zunächst unter
+**Partner** laufen.
+
+Ein pragmatisches Muster auf der Seite kann so aussehen:
+
+- **Alle Gäste** sehen Sponsor-Sichtbarkeit, My Account, Sicherheitsinfos,
+  Leave-Self-Service und die allgemeinen tenant-fixierten Einstiegslinks.
+- **Partner** sehen zusätzlich dauerhafte Projektflächen, Betriebs- oder
+  Lieferdokumentation, Service- oder Ticket-Einstiege und wiederkehrende
+  Kollaborations-Apps.
+- **Kunden** sehen eher kuratierte Projekt- oder Support-Ziele, bewusst enger
+  ausgewählte Ressourcen und sehr klare Kontaktpfade.
+- **Collaboration-Gäste** sehen vor allem den einen Workshop-, Review- oder
+  Dateiaustausch-Kontext plus deutliche Hinweise zu Laufzeit und nächstem
+  Schritt.
+- **Lieferanten** können, falls Sie sie separat führen, zusätzlich procurement-
+  oder delivery-nahe Links und abgestimmte Freigabeprozesse sehen.
+
+Der Mehrwert endet nicht auf der Landingpage. Derselbe Zuschnitt hilft oft
+auch außerhalb der Seite:
+
+- Access Packages können pro Segment passende Standardbündel aus Gruppen,
+  Apps und SharePoint-Ressourcen bereitstellen.
+- Anwendungen außerhalb von Microsoft Teams lassen sich für bestimmte
+  Gastgruppen gruppenbasiert freischalten, statt jede Freigabe einzeln zu
+  beantragen.
+- Access Reviews werden aussagekräftiger, wenn nicht alle externen Konten in
+  derselben Prüfung landen.
+- Conditional Access und Nutzungsbedingungen können gezielter auf die
+  richtigen Gasttypen wirken.
+- Im Security Incident liefert die Segmentzuordnung oft einen schnellen ersten
+  Kontext, auch wenn sie natürlich nur ein Indikator unter mehreren ist.
+
+Für diesen Anwendungsfall ist in der Praxis meist eine **statische Gruppe pro
+Gasttyp** die robusteste Grundlage. SharePoint-Audience-Targeting unterstützt
+zwar auch Microsoft-Entra-Gruppen mit dynamischer Mitgliedschaft, aber das
+hilft nur dann, wenn der Kontotyp in einem Attribut liegt, das dynamische
+Regeln überhaupt auswerten können.
+
+Je nach Architektur kann das ein Standardattribut, ein Extension-Attribut oder
+eine unterstützte **Directory Extension** sein. Viele Governance-Lösungen
+halten ihre fachlichen Zusatzdaten jedoch bewusst getrennt vom übrigen Schema.
+Dann ist es oft einfacher, die Zielgruppen-Gruppen direkt bei der Anlage des
+Gastkontos mit zu pflegen.
+
+In **EasyLife 365 Collaboration** ist genau das ein sinnvolles Muster: Die für
+Audience Targeting benötigte Gruppenzuweisung kann aus dem gewählten Template
+automatisch mit gesetzt werden, während weitergehende Gast-Metadaten separat in
+einer app-eigenen **Directory Extension** am Gastobjekt liegen. Das vermeidet
+Konflikte im Kundentenant und lässt sich bei Bedarf sauber wieder entfernen.
+
 <div class="doc-cta-box">
   <div>
     <p class="doc-cta-title">Die Landingpage als Gesamtsystem denken</p>
@@ -342,6 +428,25 @@ Umfeldinhalte sehen.
 
 ## Passende Microsoft-Dokumentation
 
+- [Target content to a specific audience on a SharePoint site](https://support.microsoft.com/office/overview-of-audience-targeting-in-modern-sharepoint-sites-68113d1b-be99-4d4c-a61c-73b087f48a81)
 - [Use the Quick Links web part](https://support.microsoft.com/office/use-the-quick-links-web-part-e1df7561-209d-4362-96d4-469f85ab2a82)
 - [Deep links in Microsoft Teams](https://learn.microsoft.com/microsoftteams/platform/concepts/build-and-test/deep-link-teams)
 - [Planning your SharePoint hub sites](https://learn.microsoft.com/sharepoint/planning-hub-sites)
+- [Manage rules for dynamic membership groups in Microsoft Entra ID](https://learn.microsoft.com/entra/identity/users/groups-dynamic-membership)
+- [Change resource roles for an access package in entitlement management](https://learn.microsoft.com/entra/id-governance/entitlement-management-access-package-resources)
+- [Conditional Access: Users, groups, agents, and workload identities](https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-users-groups)
+- [Add custom data to resources by using extensions](https://learn.microsoft.com/graph/extensibility-overview)
+
+## Passende EasyLife-Dokumentation
+
+- [Guest Accounts Learning Guide](https://docs.easylife365.cloud/collab/getting-started/learningguides/guest-account-learning-guide):
+  zeigt einen kompletten Gast-Lifecycle von Einladung über Bestätigung bis
+  Deaktivierung oder Löschung.
+- [Guest Accounts im Admin-Bereich](https://docs.easylife365.cloud/collab/admin/manage/guest-accounts):
+  interessant für Bulk-Änderungen, Template- und Policy-Wechsel,
+  Compliance-Status sowie Import und Export.
+- [Templates Overview](https://docs.easylife365.cloud/collab/admin/templates):
+  relevant, wenn Vorlagen nicht nur Felder und Policies, sondern auch
+  Zielgruppen und Sichtbarkeit steuern sollen.
+- [Confirmation Policy for Guest Accounts](https://docs.easylife365.cloud/collab/policies/confirmation-guest-accounts):
+  gut passend zum Thema Sponsor- bzw. Owner-Bestätigung und Gast-Lifecycle.

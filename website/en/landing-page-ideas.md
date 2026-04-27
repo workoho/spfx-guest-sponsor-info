@@ -314,6 +314,87 @@ surrounding content.
 - Keep the Guest Sponsor Info web part where it adds value, but use Quick Links
   around it to make the whole page feel intentional.
 
+## Show The Guest Which Type They Are
+
+If you already use audience targeting, the landing page can also tell the guest
+which collaboration frame they are in: **Partner**, **Customer**,
+**Collaboration**, or if needed **Supplier**. That is more than a nice extra.
+It gives context. Many of the surrounding links make more sense once that is
+clear.
+
+Modern SharePoint only supports audience targeting well in a limited number of
+places. Officially that mostly means navigation, pages, News, Highlighted
+Content, Quick Links, and Events. For this exact use case, **Quick Links** is
+still often the best fit because individual links can be targeted directly to
+an audience.
+
+A useful pattern is a small dedicated Quick Links web part in a restrained
+layout, often **List**. Create one link per guest type that points back to the
+same page, hide unnecessary visual noise, and use labels such as:
+
+- **You are working here as a partner guest.**
+- **You are working here as a customer guest.**
+- **Your access is set up as short-lived collaboration.**
+
+Until the user hovers over it, that kind of link is often perceived more like a
+normal hint than a large call to action. Technically it is still a link, which
+means it can benefit from audience targeting. This is not a built-in text web
+part feature, but a pragmatic workaround.
+
+## Put Guest Segments To Work
+
+If your tenant already classifies guests broadly as **Partner**,
+**Customer**, and **Collaboration**, do not leave that logic buried in the
+directory. Use it on the landing page too. Keep the model simple at first: one
+wide audience for all guests and only the segments where risk, default access,
+or onboarding really differ. Suppliers can have their own audience if that is
+useful, or simply sit under **Partner** initially.
+
+A practical page pattern can look like this:
+
+- **All guests** see sponsor visibility, My Account, security info,
+  leave-self-service, and the general tenant-pinned entry links.
+- **Partners** also see durable project spaces, delivery or operations
+  documentation, service or ticket entry points, and recurring collaboration
+  apps.
+- **Customers** see more curated project or support destinations, more tightly
+  selected resources, and especially clear contact paths.
+- **Collaboration guests** mostly see the one workshop, review, or file-
+  exchange context plus very clear guidance on duration and next step.
+- **Suppliers**, if you run them separately, can also receive procurement- or
+  delivery-specific links and matching approval flows.
+
+The value does not stop at the page itself. The same segmentation often helps
+outside the page too:
+
+- Access packages can provide segment-specific default bundles of groups,
+  apps, and SharePoint resources.
+- Applications outside Microsoft Teams can be enabled for certain guest groups
+  by default instead of requiring every access request separately.
+- Access reviews become more meaningful when all external accounts are not
+  thrown into one generic review.
+- Conditional Access and Terms of Use can target the right guest cohorts more
+  precisely.
+- In a security incident, segment membership often gives a useful first clue
+  about likely context, even though it is only one indicator among many.
+
+For this use case, a **static group per guest type** is often the most robust
+foundation in practice. SharePoint audience targeting does support
+Microsoft Entra groups with dynamic membership, but that only helps if the
+guest type lives in an attribute that dynamic rules can actually evaluate.
+
+Depending on the architecture, that might be a standard attribute, an
+extension attribute, or a supported **directory extension**. Many governance
+solutions intentionally keep their richer business metadata separate from the
+rest of the directory schema. In that case, it is often simpler to maintain the
+audience groups directly when the guest account is created.
+
+In **EasyLife 365 Collaboration**, that is a sensible pattern: the group
+membership needed for audience targeting can be assigned automatically from the
+selected template, while richer guest metadata remains separate on the guest
+object in an app-owned **directory extension**. That avoids conflicts in the
+customer tenant and can be removed cleanly later if needed.
+
 <div class="doc-cta-box">
   <div>
     <p class="doc-cta-title">Use the landing page as a whole system</p>
@@ -327,6 +408,26 @@ surrounding content.
 
 ## Related Microsoft Guidance
 
+- [Target content to a specific audience on a SharePoint site](https://support.microsoft.com/office/overview-of-audience-targeting-in-modern-sharepoint-sites-68113d1b-be99-4d4c-a61c-73b087f48a81)
 - [Use the Quick Links web part](https://support.microsoft.com/office/use-the-quick-links-web-part-e1df7561-209d-4362-96d4-469f85ab2a82)
 - [Deep links in Microsoft Teams](https://learn.microsoft.com/microsoftteams/platform/concepts/build-and-test/deep-link-teams)
 - [Planning your SharePoint hub sites](https://learn.microsoft.com/sharepoint/planning-hub-sites)
+- [Manage rules for dynamic membership groups in Microsoft Entra ID](https://learn.microsoft.com/entra/identity/users/groups-dynamic-membership)
+- [Change resource roles for an access package in entitlement management](https://learn.microsoft.com/entra/id-governance/entitlement-management-access-package-resources)
+- [Conditional Access: Users, groups, agents, and workload identities](https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-users-groups)
+- [Add custom data to resources by using extensions](https://learn.microsoft.com/graph/extensibility-overview)
+
+## Related EasyLife Guidance
+
+- [Guest Accounts Learning Guide](https://docs.easylife365.cloud/collab/getting-started/learningguides/guest-account-learning-guide):
+  walks through a full guest lifecycle from invitation to confirmation,
+  disablement, and deletion.
+- [Guest Accounts in Admin](https://docs.easylife365.cloud/collab/admin/manage/guest-accounts):
+  useful for bulk changes, template and policy reassignment,
+  compliance status, and import/export.
+- [Templates Overview](https://docs.easylife365.cloud/collab/admin/templates):
+  relevant when templates are used to drive not only fields and policies,
+  but also audiences and visibility.
+- [Confirmation Policy for Guest Accounts](https://docs.easylife365.cloud/collab/policies/confirmation-guest-accounts):
+  a good fit for the owner or sponsor confirmation angle and ongoing
+  guest lifecycle control.
