@@ -1,0 +1,19 @@
+---
+layout: null
+permalink: /sitemap.xml
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+{% assign sitemap_pages = site.pages | where_exp: 'page', "page.sitemap != false" %}
+{% for page in sitemap_pages %}
+  {% if page.url and page.url != '/404.html' and page.url != '/robots.txt' and page.url != '/sitemap.xml' and page.name != 'CNAME' %}
+    {% if page.url == '/en/' or page.url == '/de/' or page.url contains '/en/' or page.url contains '/de/' %}
+      {% unless page.url contains '/_site/' %}
+        <url>
+          <loc>{{ page.url | absolute_url }}</loc>
+        </url>
+      {% endunless %}
+    {% endif %}
+  {% endif %}
+{% endfor %}
+</urlset>
