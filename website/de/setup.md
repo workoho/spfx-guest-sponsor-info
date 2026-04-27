@@ -217,13 +217,25 @@ gesteuert. Seit März 2018 erhalten Gastbenutzer den Everyone-Anspruch
 standardmäßig nicht mehr — die Einstellung muss explizit gesetzt werden.
 Falls *Everyone* nicht im Personen-Auswähler erscheint, führen Sie aus:
 
-```powershell
-# SharePoint Online Management Shell (Windows):
-Set-SPOTenant -ShowEveryoneClaim $true
+Wählen Sie eine der folgenden gleichwertigen Admin-Shells:
 
-# PnP PowerShell (plattformübergreifend):
+<details markdown="1">
+<summary>Windows: SharePoint Online Management Shell</summary>
+
+```powershell
+Set-SPOTenant -ShowEveryoneClaim $true
+```
+
+</details>
+
+<details markdown="1">
+<summary>Plattformübergreifend: PowerShell 7 mit PnP PowerShell (funktioniert auch unter Windows)</summary>
+
+```powershell
 Set-PnPTenant -ShowEveryoneClaim $true
 ```
+
+</details>
 
 Fügen Sie dann *Everyone* zur Besuchergruppe der Site hinzu:
 **Websiteeinstellungen → Personen und Gruppen → [Site] Besucher →

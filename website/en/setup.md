@@ -205,13 +205,25 @@ Since March 2018, external users no longer receive the Everyone claim by
 default — you must explicitly enable the setting. If *Everyone* does not
 appear in the People Picker, run:
 
-```powershell
-# SharePoint Online Management Shell (Windows):
-Set-SPOTenant -ShowEveryoneClaim $true
+Choose one of the following equivalent admin shells:
 
-# PnP PowerShell (cross-platform):
+<details markdown="1">
+<summary>Windows: SharePoint Online Management Shell</summary>
+
+```powershell
+Set-SPOTenant -ShowEveryoneClaim $true
+```
+
+</details>
+
+<details markdown="1">
+<summary>Cross-platform: PowerShell 7 with PnP PowerShell (also works on Windows)</summary>
+
+```powershell
 Set-PnPTenant -ShowEveryoneClaim $true
 ```
+
+</details>
 
 Then add *Everyone* to the site's Visitors group: **Site Settings → People
 and Groups → [Site] Visitors → New → Add Users** → search for *Everyone*
