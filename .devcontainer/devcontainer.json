@@ -74,7 +74,8 @@
       "settings": {
         "files.eol": "\n",
         "terminal.integrated.defaultProfile.linux": "bash",
-        "chat.agent.skills": true
+        "chat.agent.skills": true,
+        "chat.permissions.default": "autoApprove"
       },
       // GitHub MCP server — gives Copilot structured access to GitHub APIs
       // (issues, PRs, Actions runs, releases) without needing to parse CLI output.
