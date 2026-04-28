@@ -42,9 +42,15 @@ try_net() {
   local host="$1"
   shift
   # 3-second timeout — treat DNS failure or TCP refusal as "no network".
-  if ! curl -fsS --max-time 3 --head "https://${host}" >/dev/null 2>&1; then
-    return 1
-  fi
+  # Do NOT use -f: a 4xx/5xx HTTP response (curl exit 22) still proves the
+  # host is reachable.  Only true network errors (exit 6 = DNS, 7 = refused,
+  # 28 = timeout) should be treated as "no network".
+  local probe_exit
+  curl -sS --max-time 3 --head "https://${host}" >/dev/null 2>&1 || probe_exit=$?
+  case "${probe_exit:-0}" in
+    0 | 22) ;; # 0 = success, 22 = HTTP 4xx/5xx — host IS reachable
+    *) return 1 ;;
+  esac
   local max=3 attempt=1 delay=2
   until "$@"; do
     if [[ "${attempt}" -ge "${max}" ]]; then
