@@ -38,9 +38,10 @@ updates:
       - dependency-name: "@microsoft/sp-*"
       - dependency-name: "@microsoft/spfx-*"
       - dependency-name: "@microsoft/eslint-*"
-      # @rushstack packages are part of the SPFx Heft build rig and are
-      # coordinated with the SPFx release.
-      - dependency-name: "@rushstack/*"
+      # Keep SPFx-coupled Rushstack lint config pinned, but allow Heft update
+      # proposals because we validate that one manually and may need it for
+      # transitive security improvements.
+      - dependency-name: "@rushstack/eslint-config"
       # @types/heft-jest is tightly coupled to the Heft build rig.
       - dependency-name: "@types/heft-jest"
       # css-loader is pinned to the version compatible with the SPFx webpack

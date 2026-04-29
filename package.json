@@ -82,7 +82,7 @@
     "@microsoft/spfx-heft-plugins": "1.22.2",
     "@microsoft/spfx-web-build-rig": "1.22.2",
     "@rushstack/eslint-config": "4.5.2",
-    "@rushstack/heft": "1.1.2",
+    "@rushstack/heft": "1.2.17",
     "@types/heft-jest": "1.0.6",
     "@types/react": "17.0.45",
     "@types/react-dom": "17.0.17",
@@ -93,12 +93,12 @@
     "eslint-plugin-react-hooks": "7.0.1",
     "husky": "9.1.7",
     "lint-staged": "16.4.0",
-    "markdownlint-cli2": "0.22.0",
+    "markdownlint-cli2": "0.22.1",
     "prettier": "3.8.3",
     "typescript": "~5.9.3"
   },
   "overrides": {
-    "@rushstack/heft": "1.1.2"
+    "@rushstack/heft": "1.2.17"
   },
   "resolutions": {
     "@types/react": "17.0.45"
