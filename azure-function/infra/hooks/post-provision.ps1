@@ -21,6 +21,30 @@
 
 $ErrorActionPreference = 'Stop'
 
+function Sync-AzdEnvValue {
+  param(
+    [Parameter(Mandatory)][string]$Name,
+    [AllowEmptyString()][string]$Value
+  )
+
+  if ([string]::IsNullOrWhiteSpace($Value)) {
+    return
+  }
+
+  [Environment]::SetEnvironmentVariable($Name, $Value)
+  azd env set $Name $Value | Out-Null
+}
+
+function Write-SummaryLine {
+  param(
+    [Parameter(Mandatory)][string]$Label,
+    [AllowEmptyString()][string]$Value
+  )
+
+  $_displayValue = if ([string]::IsNullOrWhiteSpace($Value)) { '(not available)' } else { $Value }
+  Write-Host ('  {0,-28}: {1}' -f $Label, $_displayValue)
+}
+
 # Load azd environment. azd writes Bicep output names verbatim (camelCase) to
 # the .env file and preloads them into the hook process with the same casing.
 foreach ($line in (azd env get-values)) {
@@ -47,6 +71,37 @@ if (-not $env:WEB_PART_CLIENT_ID) { $env:WEB_PART_CLIENT_ID = $env:webPartClient
 if (-not $env:FUNCTION_APP_NAME) {
   $env:FUNCTION_APP_NAME = if ($env:functionAppName) { $env:functionAppName } else { $env:AZURE_FUNCTION_APP_NAME }
 }
+if (-not $env:MANAGED_IDENTITY_OBJECT_ID) {
+  $env:MANAGED_IDENTITY_OBJECT_ID = $env:managedIdentityObjectId
+}
+
+if (-not $env:FUNCTION_APP_URL -and $env:FUNCTION_APP_NAME -and $env:AZURE_RESOURCE_GROUP) {
+  try {
+    $_defaultHostName = (az functionapp show --name $env:FUNCTION_APP_NAME --resource-group $env:AZURE_RESOURCE_GROUP --query defaultHostName -o tsv 2>$null).Trim()
+    if ($_defaultHostName -and $_defaultHostName -ne 'null') {
+      $env:FUNCTION_APP_URL = "https://$_defaultHostName"
+      $env:functionAppUrl = $env:FUNCTION_APP_URL
+      Sync-AzdEnvValue -Name 'functionAppUrl' -Value $env:FUNCTION_APP_URL
+    }
+  }
+  catch {
+    Write-Verbose "Could not resolve Function App base URL from Azure: $_"
+  }
+}
+
+if (-not $env:MANAGED_IDENTITY_OBJECT_ID -and $env:FUNCTION_APP_NAME -and $env:AZURE_RESOURCE_GROUP) {
+  try {
+    $_principalId = (az functionapp identity show --name $env:FUNCTION_APP_NAME --resource-group $env:AZURE_RESOURCE_GROUP --query principalId -o tsv 2>$null).Trim()
+    if ($_principalId -and $_principalId -ne 'null') {
+      $env:MANAGED_IDENTITY_OBJECT_ID = $_principalId
+      $env:managedIdentityObjectId = $_principalId
+      Sync-AzdEnvValue -Name 'managedIdentityObjectId' -Value $_principalId
+    }
+  }
+  catch {
+    Write-Verbose "Could not resolve Managed Identity object ID from Azure: $_"
+  }
+}
 
 # azd can retain a stale webPartClientId in the env file. Resolve the EasyAuth
 # App Registration directly by its deterministic uniqueName and sync the azd
@@ -56,17 +111,11 @@ if ($env:FUNCTION_APP_NAME) {
     $_appRegUniqueName = "guest-sponsor-info-proxy-$($env:FUNCTION_APP_NAME)"
     $_resolvedClientId = (az ad app list --filter "uniqueName eq '$_appRegUniqueName'" --query '[0].appId' -o tsv 2>$null).Trim()
     if ($_resolvedClientId -and $_resolvedClientId -ne 'null') {
-      $_existingEnvClientId = $env:webPartClientId
-      $_existingLegacyClientId = $env:AZURE_WEB_PART_CLIENT_ID
       $env:WEB_PART_CLIENT_ID = $_resolvedClientId
       $env:webPartClientId = $_resolvedClientId
-      if ($env:AZURE_WEB_PART_CLIENT_ID -ne $_resolvedClientId) {
-        azd env set AZURE_WEB_PART_CLIENT_ID $_resolvedClientId | Out-Null
-        $env:AZURE_WEB_PART_CLIENT_ID = $_resolvedClientId
-      }
-      if ($_existingEnvClientId -ne $_resolvedClientId) {
-        azd env set webPartClientId $_resolvedClientId | Out-Null
-      }
+      $env:AZURE_WEB_PART_CLIENT_ID = $_resolvedClientId
+      Sync-AzdEnvValue -Name 'AZURE_WEB_PART_CLIENT_ID' -Value $_resolvedClientId
+      Sync-AzdEnvValue -Name 'webPartClientId' -Value $_resolvedClientId
     }
   }
   catch {
@@ -81,30 +130,25 @@ if ($env:FUNCTION_APP_NAME) {
 # fresh deployment may fail until the token naturally expires.
 $functionAppName = $env:FUNCTION_APP_NAME
 $resourceGroup = $env:AZURE_RESOURCE_GROUP
+$restartStatus = 'restart manually if needed'
 if ($functionAppName -and $resourceGroup) {
   Write-Host ''
   Write-Host "Restarting Function App '$functionAppName' to activate Graph permissions..."
   az functionapp restart --name $functionAppName --resource-group $resourceGroup | Out-Null
-  Write-Host '  Function App restarted.'
+  $restartStatus = 'completed'
 }
 else {
   Write-Host ''
-  Write-Host 'Note: Could not restart the Function App automatically'
-  Write-Host '(functionAppName output or AZURE_RESOURCE_GROUP not set).'
-  Write-Host 'Restart it manually to ensure Graph permissions are activated.'
+  Write-Host 'Skipping automatic Function App restart (function app name or resource group missing).'
 }
 
-# ── Print web part configuration values ──────────────────────────────────────
+# ── Print concise post-provision summary ─────────────────────────────────────
 Write-Host ''
-Write-Host 'Paste these values into the SPFx web part property pane'
-Write-Host '(Edit web part → Guest Sponsor API):'
-Write-Host ''
-Write-Host "  Guest Sponsor API Base URL              : $($env:FUNCTION_APP_URL)"
-Write-Host "  Guest Sponsor API Client ID (App Reg.)  : $($env:WEB_PART_CLIENT_ID)"
-Write-Host ''
-Write-Host 'Note: Storage role assignment propagation can take 1-2 minutes.'
-Write-Host 'If the function returns errors immediately after deployment,'
-Write-Host 'wait a moment and retry - no redeployment is needed.'
+Write-Host 'Post-provision summary'
+Write-Host '----------------------' -ForegroundColor DarkGray
+Write-SummaryLine -Label 'Function app restart' -Value $restartStatus
+Write-SummaryLine -Label 'Guest Sponsor API Base URL' -Value $env:FUNCTION_APP_URL
+Write-SummaryLine -Label 'Guest Sponsor API Client ID' -Value $env:WEB_PART_CLIENT_ID
 
 # ── Deferred Graph permissions reminder ───────────────────────────────────────
 # When deploy-azure.ps1 was used with SkipGraphRoleAssignments, the Bicep
@@ -112,13 +156,16 @@ Write-Host 'wait a moment and retry - no redeployment is needed.'
 # was written to the azd env. Remind the operator to run the follow-up script.
 $_skipRoles = $env:AZURE_SKIP_GRAPH_ROLE_ASSIGNMENTS -eq 'true'
 if ($_skipRoles) {
-  Write-Host ''
-  Write-Host 'IMPORTANT: Graph role assignments are DEFERRED.'
-  Write-Host 'The Function App Managed Identity does not yet have the Microsoft Graph'
-  Write-Host 'application permissions it needs. Run setup-graph-permissions.ps1 to assign them:'
-  Write-Host ''
-  Write-Host "  -ManagedIdentityObjectId : $($env:managedIdentityObjectId)"
-  Write-Host "  -TenantId                : $($env:AZURE_TENANT_ID)"
-  Write-Host ''
-  Write-Host 'The web part will return errors until those permissions are assigned.'
+  Write-SummaryLine -Label 'Microsoft Graph permissions' -Value 'one more admin step is needed'
+  Write-SummaryLine -Label 'Managed identity object ID' -Value $env:MANAGED_IDENTITY_OBJECT_ID
+  Write-SummaryLine -Label 'TenantId' -Value $env:AZURE_TENANT_ID
+  Write-SummaryLine -Label 'Next step' -Value 'run setup-graph-permissions.ps1 to finish Microsoft Graph permissions'
+}
+Write-Host ''
+Write-Host 'Note: Storage role assignment propagation can take 1-2 minutes.'
+if ($_skipRoles) {
+  Write-Host 'The web part may show errors until you finish the Microsoft Graph permissions step.'
+}
+else {
+  Write-Host 'If you see errors right after deployment, wait a moment and try again.'
 }

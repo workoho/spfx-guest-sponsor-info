@@ -151,6 +151,7 @@ try {
       $_forwardParams[$_key] = $PSBoundParameters[$_key]
     }
   }
+  $_forwardParams['InstallerVersion'] = $Version
 
   & $_deployScript @_forwardParams
 }

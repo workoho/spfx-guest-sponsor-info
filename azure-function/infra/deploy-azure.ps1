@@ -127,6 +127,8 @@ param(
   [ValidateSet(512, 2048)]
   [int]$InstanceMemoryMB = 2048,
   [bool]$SkipGraphRoleAssignments = $false,
+  [Parameter(DontShow)]
+  [string]$InstallerVersion = '',
   [switch]$PreflightOnly
 )
 
@@ -641,6 +643,82 @@ function Enable-AzdAzureCliAuth {
   }
 
   throw 'Azure Developer CLI could not be configured to reuse the Azure CLI login for this session.'
+}
+
+function Get-DeployedFunctionAppInfo {
+  param(
+    [Parameter(Mandatory)][string]$ResourceGroup,
+    [string]$FunctionAppName
+  )
+
+  try {
+    $_query = '{name:name,defaultHostName:defaultHostName,principalId:identity.principalId}'
+    $_appJson = if ($FunctionAppName) {
+      Invoke-AzureCliQuiet -Arguments @(
+        'functionapp', 'show',
+        '--resource-group', $ResourceGroup,
+        '--name', $FunctionAppName,
+        '--query', $_query,
+        '-o', 'json'
+      )
+    }
+    else {
+      Invoke-AzureCliQuiet -Arguments @(
+        'functionapp', 'list',
+        '--resource-group', $ResourceGroup,
+        '--query', "[0].$_query",
+        '-o', 'json'
+      )
+    }
+
+    $_appJsonText = ($_appJson -join "`n").Trim()
+    if (-not $_appJsonText -or $_appJsonText -eq 'null') {
+      return $null
+    }
+
+    return $_appJsonText | ConvertFrom-Json
+  }
+  catch {
+    Write-Verbose "Could not resolve Function App metadata from Azure CLI: $_"
+    return $null
+  }
+}
+
+function Get-WebPartClientId {
+  param([Parameter(Mandatory)][string]$FunctionAppName)
+
+  try {
+    $_appRegUniqueName = "guest-sponsor-info-proxy-$FunctionAppName"
+    $_clientId = (Invoke-AzureCliQuiet -Arguments @(
+        'ad', 'app', 'list',
+        '--filter', "uniqueName eq '$_appRegUniqueName'",
+        '--query', '[0].appId',
+        '-o', 'tsv'
+      )).Trim()
+
+    if ($_clientId -and $_clientId -ne 'null') {
+      return $_clientId
+    }
+  }
+  catch {
+    Write-Verbose "Could not resolve EasyAuth App Registration client ID from Entra: $_"
+  }
+
+  return $null
+}
+
+function Get-SetupGraphPermissionsScriptReference {
+  $_repoRoot = Get-RepoRoot
+  if (Test-Path (Join-Path $_repoRoot '.git')) {
+    return (Join-Path $PSScriptRoot 'setup-graph-permissions.ps1')
+  }
+
+  $_releaseBaseUrl = 'https://github.com/workoho/spfx-guest-sponsor-info/releases'
+  if ($InstallerVersion -and $InstallerVersion -ne 'latest') {
+    return "$_releaseBaseUrl/download/$InstallerVersion/setup-graph-permissions.ps1"
+  }
+
+  return "$_releaseBaseUrl/latest/download/setup-graph-permissions.ps1"
 }
 
 function Install-AzureCliIfNeeded {
@@ -2157,14 +2235,18 @@ try {
   $_azdFunctionBaseUrl = $null
   $_azdWebPartClientId = $null
   $_azdMiOid = $null
+  $_azdFunctionAppName = if ($FunctionAppName) { $FunctionAppName } else { $null }
   if (-not $_whatIf) {
     try {
       $_azdEnvVals = azd env get-values 2>$null
       foreach ($_azdLine in $_azdEnvVals) {
+        if ($_azdLine -match '^functionAppName="?([^\"]+)"?') { $_azdFunctionAppName = $Matches[1] }
+        elseif ($_azdLine -match '^AZURE_FUNCTION_APP_NAME="?([^\"]+)"?') { $_azdFunctionAppName = $Matches[1] }
         if ($_azdLine -match '^functionAppUrl="?([^"]+)"?') { $_azdFunctionBaseUrl = $Matches[1] }
         elseif ($_azdLine -match '^sponsorApiEndpointUrl="?([^"]+)"?') { $_azdFunctionBaseUrl = $Matches[1] -replace '/api/getGuestSponsors$' }
         elseif ($_azdLine -match '^sponsorApiUrl="?([^"]+)"?') { $_azdFunctionBaseUrl = $Matches[1] -replace '/api/getGuestSponsors$' }
         elseif ($_azdLine -match '^webPartClientId="?([^"]+)"?') { $_azdWebPartClientId = $Matches[1] }
+        elseif ($_azdLine -match '^AZURE_WEB_PART_CLIENT_ID="?([^\"]+)"?') { $_azdWebPartClientId = $Matches[1] }
         elseif ($_azdLine -match '^managedIdentityObjectId="?([^"]+)"?') { $_azdMiOid = $Matches[1] }
       }
     }
@@ -2172,22 +2254,27 @@ try {
       # Non-fatal — values can be found in the Azure portal.
       Write-Verbose "Could not read azd env values after provision: $_"
     }
-    # Fallback: resolve the Function App hostname via Azure CLI if azd env
-    # did not contain the functionAppUrl output.
-    if (-not $_azdFunctionBaseUrl -and $env:AZURE_RESOURCE_GROUP) {
-      try {
-        $_azdHostname = (Invoke-AzureCli -Arguments @(
-            'functionapp', 'list',
-            '--resource-group', $env:AZURE_RESOURCE_GROUP,
-            '--query', '[0].defaultHostName',
-            '-o', 'tsv'
-          )).Trim()
-        if ($_azdHostname) { $_azdFunctionBaseUrl = "https://$_azdHostname" }
-      }
-      catch {
-        Write-Verbose "Could not resolve Function App URL after azd provision: $_"
+
+    $_functionAppMetadata = $null
+    if ($env:AZURE_RESOURCE_GROUP) {
+      $_functionAppMetadata = Get-DeployedFunctionAppInfo -ResourceGroup $env:AZURE_RESOURCE_GROUP -FunctionAppName $_azdFunctionAppName
+      if ($_functionAppMetadata) {
+        if (-not $_azdFunctionAppName -and $_functionAppMetadata.name) {
+          $_azdFunctionAppName = [string]$_functionAppMetadata.name
+        }
+        if (-not $_azdFunctionBaseUrl -and $_functionAppMetadata.defaultHostName) {
+          $_azdFunctionBaseUrl = "https://$($_functionAppMetadata.defaultHostName)"
+        }
+        if (-not $_azdMiOid -and $_functionAppMetadata.principalId) {
+          $_azdMiOid = [string]$_functionAppMetadata.principalId
+        }
       }
     }
+
+    if (-not $_azdWebPartClientId -and $_azdFunctionAppName) {
+      $_azdWebPartClientId = Get-WebPartClientId -FunctionAppName $_azdFunctionAppName
+    }
+
     # Cache the Managed Identity Object ID so setup-graph-permissions.ps1
     # can skip its own prompt when run in the same PowerShell session.
     if ($_azdMiOid) {
@@ -2200,64 +2287,51 @@ try {
   # ── NEXT STEPS ────────────────────────────────────────────────────────────
   $_ns = [System.Collections.Generic.List[string]]::new()
   if ($_whatIf) {
-    $_ns.Add('WhatIf preview completed:')
+    $_ns.Add('Preview summary:')
     $_ns.Add('')
-    $_ns.Add('  azd provision --preview completed.')
-    $_ns.Add('  No Azure resources were created or changed by the preview.')
-    $_ns.Add('  Local azd environment values were updated for this preview run.')
-    $_ns.Add('  Re-run without -WhatIf to execute the deployment with the values above.')
+    $_ns.Add(('  {0,-28}: {1}' -f 'Preview run', 'completed'))
+    $_ns.Add(('  {0,-28}: {1}' -f 'Azure resources', 'unchanged'))
+    $_ns.Add(('  {0,-28}: {1}' -f 'Deployment settings', 'updated for preview'))
     $_ns.Add('')
     $_ns.Add('Expected web part configuration after a real deployment:')
   }
   else {
-    $_ns.Add('Deployment completed successfully:')
+    $_ns.Add('Deployment summary:')
     $_ns.Add('')
-    $_ns.Add('  App Registration  — created/updated by Bicep (Graph extension)')
-    $_ns.Add('  Azure resources   — deployed by Bicep')
-    if ($SkipGraphRoleAssignments) {
-      $_ns.Add('  Graph permissions — DEFERRED: run setup-graph-permissions.ps1')
-    }
-    else {
-      $_ns.Add('  Graph permissions — assigned by Bicep (Graph extension)')
-    }
-    $_ns.Add('  Function App      — restarted by post-provision hook')
+    $_ns.Add(('  {0,-28}: {1}' -f 'Application registration', 'created or updated'))
+    $_ns.Add(('  {0,-28}: {1}' -f 'Azure resources', 'created or updated'))
+    $_ns.Add(('  {0,-28}: {1}' -f 'Microsoft Graph permissions', $(if ($SkipGraphRoleAssignments) { 'one more admin step is needed' } else { 'ready to use' })))
+    $_ns.Add(('  {0,-28}: {1}' -f 'Function app restart', 'completed automatically'))
     $_ns.Add('')
-    $_ns.Add('Configure the web part (SharePoint property pane → Guest Sponsor API):')
-  }
-  if (-not $_whatIf -and $SkipGraphRoleAssignments) {
-    $_ns.Add('')
-    $_ns.Add('Graph permissions — run setup-graph-permissions.ps1:')
-    $_miDisplay = if ($_azdMiOid) { $_azdMiOid } else { 'run: azd env get-values → managedIdentityObjectId' }
-    $_ns.Add("  -ManagedIdentityObjectId : $_miDisplay")
-    $_ns.Add("  -TenantId                : $($script:TenantId)")
-    $_ns.Add('')
-    $_graphPermScript = Join-Path $PSScriptRoot 'setup-graph-permissions.ps1'
-    if (Test-Path $_graphPermScript) {
-      $_ns.Add("  & '$_graphPermScript'")
-    }
-  }
-  if (-not $_whatIf) {
-    # Keep current wording for successful real deployments.
+    $_ns.Add('Web part configuration (SharePoint property pane → Guest Sponsor API):')
   }
   if ($_whatIf) {
-    $_ns.Add('  Base URL               : available after deployment')
-    $_ns.Add('  Application (client) ID: available after deployment')
+    $_ns.Add(('  {0,-28}: {1}' -f 'Guest Sponsor API Base URL', 'available after deployment'))
+    $_ns.Add(('  {0,-28}: {1}' -f 'Guest Sponsor API Client ID', 'available after deployment'))
   }
   elseif ($_azdFunctionBaseUrl) {
-    $_ns.Add("  Base URL               : $_azdFunctionBaseUrl")
+    $_ns.Add(('  {0,-28}: {1}' -f 'Guest Sponsor API Base URL', $_azdFunctionBaseUrl))
   }
   else {
-    $_ns.Add('  Base URL               : see Function App hostname in the Azure portal')
+    $_ns.Add(('  {0,-28}: {1}' -f 'Guest Sponsor API Base URL', 'see the function app URL in the Azure portal'))
     if ($env:AZURE_RESOURCE_GROUP) {
-      $_ns.Add("  Resource group         : $($env:AZURE_RESOURCE_GROUP)")
+      $_ns.Add(('  {0,-28}: {1}' -f 'Resource group', $env:AZURE_RESOURCE_GROUP))
     }
   }
   if (-not $_whatIf) {
     if ($_azdWebPartClientId) {
-      $_ns.Add("  Application (client) ID: $_azdWebPartClientId")
+      $_ns.Add(('  {0,-28}: {1}' -f 'Guest Sponsor API Client ID', $_azdWebPartClientId))
     }
     else {
-      $_ns.Add('  Application (client) ID: see post-provision hook output above')
+      $_ns.Add(('  {0,-28}: {1}' -f 'Guest Sponsor API Client ID', 'check Microsoft Entra app registrations if needed'))
+    }
+    if ($SkipGraphRoleAssignments) {
+      $_ns.Add('')
+      $_ns.Add('Microsoft Graph permissions: one more admin step')
+      $_miDisplay = if ($_azdMiOid) { $_azdMiOid } else { 'see Azure portal -> Function App -> Identity' }
+      $_ns.Add(('  {0,-28}: {1}' -f 'Managed identity object ID', $_miDisplay))
+      $_ns.Add(('  {0,-28}: {1}' -f 'TenantId', $script:TenantId))
+      $_ns.Add(('  {0,-28}: {1}' -f 'Run this script', (Get-SetupGraphPermissionsScriptReference)))
     }
     $_ns.Add('')
     $_ns.Add('Finish in SharePoint:')
@@ -2266,18 +2340,20 @@ try {
     $_ns.Add('  3. Paste the Base URL and Application (client) ID under Guest Sponsor API.')
     $_ns.Add('  4. Save or publish the page.')
     $_ns.Add('')
-    $_ns.Add('If you need to retry, re-run the same command. The azd environment and')
-    $_ns.Add('Azure resources are reused or updated idempotently.')
+    $_ns.Add('Retry:')
+    $_ns.Add('  Re-run the same command. The saved deployment settings and Azure resources')
+    $_ns.Add('  are reused safely.')
   }
   Write-NextStep @($_ns)
 }
 catch {
   Write-Failure @(
-    'The deployment did not finish.'
+    'Failure summary:'
     ''
-    'You can safely re-run the same install command after fixing the error above.'
-    'The existing azd environment will be reused, and Bicep will update or skip'
-    'resources that were already created.'
+    ('  {0,-28}: {1}' -f 'Deployment status', 'not completed')
+    ('  {0,-28}: {1}' -f 'Retry', 'fix the error above, then run the same command again')
+    ('  {0,-28}: {1}' -f 'Deployment settings', 'reused on the next run')
+    ('  {0,-28}: {1}' -f 'Azure resources', 'existing resources are reused, updated, or skipped')
     ''
     'Do not delete partially created Azure resources unless the error message'
     'explicitly tells you to do so.'

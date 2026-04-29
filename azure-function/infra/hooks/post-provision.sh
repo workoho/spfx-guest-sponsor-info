@@ -21,6 +21,23 @@
 
 set -euo pipefail
 
+sync_azd_env_value() {
+  local name="$1" value="$2"
+  if [[ -z "${value}" ]]; then
+    return
+  fi
+  export "${name}=${value}"
+  azd env set "${name}" "${value}" >/dev/null
+}
+
+print_summary_line() {
+  local label="$1" value="${2:-}"
+  if [[ -z "${value}" ]]; then
+    value="(not available)"
+  fi
+  printf '  %-28s: %s\n' "${label}" "${value}"
+}
+
 # shellcheck disable=SC1090  # process substitution: no static path to specify
 source <(azd env get-values)
 
@@ -39,6 +56,29 @@ WEB_PART_CLIENT_ID="${webPartClientId:-${WEB_PART_CLIENT_ID:-}}"
 # functionAppName is now a Bicep output (camelCase); fall back to the azd env
 # var for deployments that still have AZURE_FUNCTION_APP_NAME persisted.
 FUNCTION_APP_NAME="${functionAppName:-${AZURE_FUNCTION_APP_NAME:-}}"
+MANAGED_IDENTITY_OBJECT_ID="${managedIdentityObjectId:-${MANAGED_IDENTITY_OBJECT_ID:-}}"
+
+if [[ -z "${FUNCTION_APP_URL:-}" && -n "${FUNCTION_APP_NAME:-}" && -n "${AZURE_RESOURCE_GROUP:-}" ]]; then
+  if default_host_name="$(az functionapp show --name "${FUNCTION_APP_NAME}" --resource-group "${AZURE_RESOURCE_GROUP}" --query defaultHostName -o tsv 2>/dev/null)"; then
+    if [[ -n "${default_host_name}" && "${default_host_name}" != "null" ]]; then
+      FUNCTION_APP_URL="https://${default_host_name}"
+      export FUNCTION_APP_URL
+      export functionAppUrl="${FUNCTION_APP_URL}"
+      sync_azd_env_value functionAppUrl "${FUNCTION_APP_URL}"
+    fi
+  fi
+fi
+
+if [[ -z "${MANAGED_IDENTITY_OBJECT_ID:-}" && -n "${FUNCTION_APP_NAME:-}" && -n "${AZURE_RESOURCE_GROUP:-}" ]]; then
+  if principal_id="$(az functionapp identity show --name "${FUNCTION_APP_NAME}" --resource-group "${AZURE_RESOURCE_GROUP}" --query principalId -o tsv 2>/dev/null)"; then
+    if [[ -n "${principal_id}" && "${principal_id}" != "null" ]]; then
+      MANAGED_IDENTITY_OBJECT_ID="${principal_id}"
+      export MANAGED_IDENTITY_OBJECT_ID
+      export managedIdentityObjectId="${principal_id}"
+      sync_azd_env_value managedIdentityObjectId "${principal_id}"
+    fi
+  fi
+fi
 
 # azd can retain a stale webPartClientId in the env file. Resolve the EasyAuth
 # App Registration directly by its deterministic uniqueName and sync the azd
@@ -47,17 +87,12 @@ if [[ -n "${FUNCTION_APP_NAME:-}" ]]; then
   app_reg_unique_name="guest-sponsor-info-proxy-${FUNCTION_APP_NAME}"
   if resolved_client_id="$(az ad app list --filter "uniqueName eq '${app_reg_unique_name}'" --query '[0].appId' -o tsv 2>/dev/null)"; then
     if [[ -n "${resolved_client_id}" && "${resolved_client_id}" != "null" ]]; then
-      existing_env_client_id="${webPartClientId:-}"
       WEB_PART_CLIENT_ID="${resolved_client_id}"
       export WEB_PART_CLIENT_ID
       export webPartClientId="${resolved_client_id}"
-      if [[ "${AZURE_WEB_PART_CLIENT_ID:-}" != "${resolved_client_id}" ]]; then
-        azd env set AZURE_WEB_PART_CLIENT_ID "${resolved_client_id}" >/dev/null
-        export AZURE_WEB_PART_CLIENT_ID="${resolved_client_id}"
-      fi
-      if [[ "${existing_env_client_id}" != "${resolved_client_id}" ]]; then
-        azd env set webPartClientId "${resolved_client_id}" >/dev/null
-      fi
+      export AZURE_WEB_PART_CLIENT_ID="${resolved_client_id}"
+      sync_azd_env_value AZURE_WEB_PART_CLIENT_ID "${resolved_client_id}"
+      sync_azd_env_value webPartClientId "${resolved_client_id}"
     fi
   fi
 fi
@@ -67,6 +102,7 @@ fi
 # the Managed Identity token cache is cleared and the new permissions are
 # activated immediately.  Without this, the first invocations after a
 # fresh deployment may fail until the token naturally expires.
+RESTART_STATUS="restart manually if needed"
 if [ -n "${FUNCTION_APP_NAME:-}" ] && [ -n "${AZURE_RESOURCE_GROUP:-}" ]; then
   echo ""
   echo "Restarting Function App '${FUNCTION_APP_NAME}' to activate Graph permissions..."
@@ -74,25 +110,19 @@ if [ -n "${FUNCTION_APP_NAME:-}" ] && [ -n "${AZURE_RESOURCE_GROUP:-}" ]; then
     --name "${FUNCTION_APP_NAME}" \
     --resource-group "${AZURE_RESOURCE_GROUP}" \
     >/dev/null
-  echo "  Function App restarted."
+  RESTART_STATUS="completed"
 else
   echo ""
-  echo "Note: Could not restart the Function App automatically"
-  echo "(functionAppName output or AZURE_RESOURCE_GROUP not set)."
-  echo "Restart it manually to ensure Graph permissions are activated."
+  echo "Skipping automatic Function App restart (function app name or resource group missing)."
 fi
 
-# ── Print web part configuration values ──────────────────────────────────────
+# ── Print concise post-provision summary ─────────────────────────────────────
 echo ""
-echo "Paste these values into the SPFx web part property pane"
-echo "(Edit web part → Guest Sponsor API):"
-echo ""
-echo "  Guest Sponsor API Base URL              : ${FUNCTION_APP_URL}"
-echo "  Guest Sponsor API Client ID (App Reg.)  : ${WEB_PART_CLIENT_ID}"
-echo ""
-echo "Note: Storage role assignment propagation can take 1–2 minutes."
-echo "If the function returns errors immediately after deployment,"
-echo "wait a moment and retry — no redeployment is needed."
+echo "Post-provision summary"
+echo "----------------------"
+print_summary_line "Function app restart" "${RESTART_STATUS}"
+print_summary_line "Guest Sponsor API Base URL" "${FUNCTION_APP_URL}"
+print_summary_line "Guest Sponsor API Client ID" "${WEB_PART_CLIENT_ID}"
 
 # ── Deferred Graph permissions reminder ───────────────────────────────────────
 # When deploy-azure.ps1 was used with SkipGraphRoleAssignments, the Bicep
@@ -100,13 +130,15 @@ echo "wait a moment and retry — no redeployment is needed."
 # AZURE_SKIP_GRAPH_ROLE_ASSIGNMENTS was written to the azd env.
 # Remind the operator to run the follow-up script.
 if [ "${AZURE_SKIP_GRAPH_ROLE_ASSIGNMENTS:-false}" = "true" ]; then
-  echo ""
-  echo "IMPORTANT: Graph role assignments are DEFERRED."
-  echo "The Function App Managed Identity does not yet have the Microsoft Graph"
-  echo "application permissions it needs. Run setup-graph-permissions.ps1 to assign them:"
-  echo ""
-  echo "  -ManagedIdentityObjectId : ${managedIdentityObjectId:-<see azd env get-values>}"
-  echo "  -TenantId                : ${AZURE_TENANT_ID:-<see azd env get-values>}"
-  echo ""
-  echo "The web part will return errors until those permissions are assigned."
+  print_summary_line "Microsoft Graph permissions" "one more admin step is needed"
+  print_summary_line "Managed identity object ID" "${MANAGED_IDENTITY_OBJECT_ID}"
+  print_summary_line "TenantId" "${AZURE_TENANT_ID:-}"
+  print_summary_line "Next step" "run setup-graph-permissions.ps1 to finish Microsoft Graph permissions"
+fi
+echo ""
+echo "Note: Storage role assignment propagation can take 1-2 minutes."
+if [ "${AZURE_SKIP_GRAPH_ROLE_ASSIGNMENTS:-false}" = "true" ]; then
+  echo "The web part may show errors until you finish the Microsoft Graph permissions step."
+else
+  echo "If you see errors right after deployment, wait a moment and try again."
 fi
