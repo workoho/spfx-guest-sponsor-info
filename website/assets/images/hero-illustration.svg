@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 400" width="520" height="400" fill="none">
+  <!-- Background blobs -->
+  <ellipse cx="260" cy="200" rx="240" ry="180" fill="#12B2CD" fill-opacity="0.06"/>
+  <ellipse cx="380" cy="280" rx="120" ry="90" fill="#12B2CD" fill-opacity="0.08"/>
+
+  <!-- Connection lines (fork metaphor — sponsors converge to guest) -->
+  <path d="M120 110 Q200 180 280 200" stroke="#12B2CD" stroke-width="2.5" stroke-dasharray="6 4" stroke-linecap="round" opacity="0.5"/>
+  <path d="M120 290 Q200 220 280 200" stroke="#12B2CD" stroke-width="2.5" stroke-dasharray="6 4" stroke-linecap="round" opacity="0.5"/>
+  <path d="M280 200 L340 200" stroke="#0A3D4F" stroke-width="2.5" stroke-linecap="round" opacity="0.4"/>
+
+  <!-- Sponsor 1 (top-left) — card style -->
+  <g transform="translate(40,60)">
+    <rect width="160" height="100" rx="12" fill="white" stroke="#e2e8f0" stroke-width="1.5"/>
+    <circle cx="40" cy="40" r="22" fill="#0A3D4F"/>
+    <circle cx="40" cy="34" r="7" fill="white"/>
+    <ellipse cx="40" cy="48" rx="10" ry="6" fill="white"/>
+    <!-- Name lines -->
+    <rect x="72" y="28" width="68" height="6" rx="3" fill="#0A3D4F" opacity="0.7"/>
+    <rect x="72" y="40" width="52" height="4" rx="2" fill="#12B2CD" opacity="0.5"/>
+    <!-- Contact icons -->
+    <circle cx="76" cy="60" r="6" fill="#12B2CD" fill-opacity="0.15"/>
+    <rect x="73" y="57.5" width="6" height="5" rx="1" fill="#12B2CD"/>
+    <circle cx="94" cy="60" r="6" fill="#12B2CD" fill-opacity="0.15"/>
+    <rect x="91" y="57" width="6" height="6" rx="3" fill="#12B2CD"/>
+    <!-- Presence dot (green = available) -->
+    <circle cx="56" cy="56" r="5" fill="#10b981" stroke="white" stroke-width="2"/>
+  </g>
+
+  <!-- Sponsor 2 (bottom-left) — card style -->
+  <g transform="translate(40,240)">
+    <rect width="160" height="100" rx="12" fill="white" stroke="#e2e8f0" stroke-width="1.5"/>
+    <circle cx="40" cy="40" r="22" fill="#0A3D4F"/>
+    <circle cx="40" cy="34" r="7" fill="white"/>
+    <ellipse cx="40" cy="48" rx="10" ry="6" fill="white"/>
+    <rect x="72" y="28" width="60" height="6" rx="3" fill="#0A3D4F" opacity="0.7"/>
+    <rect x="72" y="40" width="48" height="4" rx="2" fill="#12B2CD" opacity="0.5"/>
+    <circle cx="76" cy="60" r="6" fill="#12B2CD" fill-opacity="0.15"/>
+    <rect x="73" y="57.5" width="6" height="5" rx="1" fill="#12B2CD"/>
+    <circle cx="94" cy="60" r="6" fill="#12B2CD" fill-opacity="0.15"/>
+    <rect x="91" y="57" width="6" height="6" rx="3" fill="#12B2CD"/>
+    <!-- Presence dot (yellow = busy) -->
+    <circle cx="56" cy="56" r="5" fill="#f59e0b" stroke="white" stroke-width="2"/>
+  </g>
+
+  <!-- Guest user (right side, larger, dashed border) -->
+  <g transform="translate(340,130)">
+    <rect width="150" height="140" rx="16" fill="white" stroke="#0A3D4F" stroke-width="2.5" stroke-dasharray="8 5"/>
+    <circle cx="75" cy="45" r="28" fill="#0A3D4F" fill-opacity="0.12"/>
+    <circle cx="75" cy="38" r="10" fill="#0A3D4F"/>
+    <ellipse cx="75" cy="55" rx="14" ry="8" fill="#0A3D4F"/>
+    <!-- Question mark -->
+    <text x="75" y="98" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" font-weight="700" fill="#12B2CD">?</text>
+    <rect x="30" y="112" width="90" height="5" rx="2.5" fill="#0A3D4F" opacity="0.15"/>
+  </g>
+
+  <!-- Arrow annotation: "Who do I call?" -->
+  <g transform="translate(350,310)">
+    <rect x="0" y="0" width="140" height="32" rx="16" fill="#12B2CD"/>
+    <text x="70" y="21" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="white">Who do I call?</text>
+  </g>
+
+  <!-- Decorative dots -->
+  <circle cx="20" cy="200" r="4" fill="#12B2CD" opacity="0.2"/>
+  <circle cx="500" cy="80" r="6" fill="#12B2CD" opacity="0.15"/>
+  <circle cx="480" cy="360" r="3" fill="#0A3D4F" opacity="0.15"/>
+  <circle cx="260" cy="30" r="5" fill="#12B2CD" opacity="0.1"/>
+</svg>

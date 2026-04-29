@@ -1,0 +1,18 @@
+{%- assign strings = site.data[page.lang].strings -%}
+
+<section class="cta-section">
+    <div class="container cta-inner">
+        <div class="cta-text">
+            <h2>{{ strings.cta.title }}</h2>
+            <p>{{ strings.cta.description }}</p>
+        </div>
+        <div class="cta-actions">
+            <a href="{{ '/' | append: page.lang | append: '/setup/' | relative_url }}" class="btn btn-teal">
+                {{ strings.cta.deploy }}
+            </a>
+            <a href="https://github.com/{{ site.repository }}" class="btn btn-outline" target="_blank" rel="noopener">
+                {{ strings.cta.github }}
+            </a>
+        </div>
+    </div>
+</section>

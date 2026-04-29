@@ -1,0 +1,156 @@
+{
+  "name": "spfx-guest-sponsor-info",
+  // Ensure ~/.gitconfig exists on the host before the bind-mount runs.
+  // The mount makes the host git identity automatically available in the
+  // container — and any 'git config --global' changes persist back to the host.
+  // Note: initializeCommand object keys run in parallel (not per-platform),
+  // so a single sh command is used here. Windows users: Git for Windows
+  // creates %USERPROFILE%\.gitconfig automatically, so no action is needed.
+  "initializeCommand": "[ -f ~/.gitconfig ] || touch ~/.gitconfig",
+  "mounts": [
+    // Expose the host gitconfig as a read-only reference file.
+    // setup-git.sh reads user.name/email from it and writes them into the
+    // container's own global gitconfig — the host file is never modified.
+    // ${localEnv:HOME} resolves on Mac/Linux; ${localEnv:USERPROFILE} on Windows.
+    // In Codespaces neither variable is set but GitHub configures Git automatically.
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.gitconfig,target=/home/vscode/.gitconfig.host,type=bind,consistency=cached,readonly"
+  ],
+  "features": {
+    // GitHub CLI — lets Copilot and shell scripts query Actions runs, PRs, releases, etc.
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    // Azure CLI — needed for azure-function infra deployment and local az commands.
+    "ghcr.io/devcontainers/features/azure-cli:1": {},
+    // Azure Developer CLI (azd) — end-to-end developer workflow for provisioning
+    // and deploying Azure resources (used by azure.yaml).
+    "ghcr.io/azure/azure-dev/azd:latest": {},
+    // PowerShell Extended — installs pwsh correctly on AMD64 and ARM64, with Oh My Posh
+    // prompt, PSReadLine, and optional PSGallery resources. Replaces the fragile
+    // packages-microsoft-prod.deb approach that fails on ARM64/Codespaces.
+    "ghcr.io/jpawlowski/devcontainer-features/powershell-extended:2": {
+      "installOhMyPosh": true,
+      // Pre-install Graph modules used by azure-function/infra/setup-graph-permissions.ps1.
+      // Az.Accounts + Az.Resources are the minimal Az modules needed by
+      // Verify-DeploymentGuid.ps1 (Connect-AzAccount, Get-AzResourceGroupDeployment,
+      // Get-AzResourceGroupDeploymentOperation). The full Az meta-package is
+      // intentionally omitted — it would add ~500 MB without adding capability.
+      "resources": "Microsoft.Graph.Authentication;Microsoft.Graph.Applications;Az.Accounts;Az.Resources;PSScriptAnalyzer"
+    },
+    // PnP PowerShell — cross-platform module for SharePoint Online management:
+    // .sppkg deployment to app catalog, site configuration, permission management.
+    // Depends on powershell-extended (above) and adds adamwojcikit.pnp-powershell-extension.
+    "ghcr.io/jpawlowski/devcontainer-features/pnp.powershell:1": {}
+  },
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "..",
+    "args": {
+      "NODE_VERSION": "22.14.0"
+    }
+  },
+  "remoteUser": "vscode",
+  "postCreateCommand": "/bin/bash .devcontainer/post-create.sh",
+  "forwardPorts": [4000, 4321],
+  "containerEnv": {
+    "npm_config_save_exact": "true",
+    // Pass the host GITHUB_TOKEN into the container so `gh` and the MCP server
+    // authenticate automatically. In Codespaces this is set automatically.
+    // Locally: export GITHUB_TOKEN=<your PAT> before opening the devcontainer.
+    "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}",
+    // SPFx hosted workbench tenant domain — used by config/serve.json ({tenantdomain}
+    // placeholder) and dev-webpart.sh. Set once on your host OS (e.g. add
+    //   export SPFX_SERVE_TENANT_DOMAIN=contoso.sharepoint.com
+    // to ~/.bashrc or ~/.profile) and every container rebuild picks it up
+    // automatically. As a fallback, copy .env.example to .env and set the
+    // variable there — the script loads .env before starting the dev server.
+    // In Codespaces, add it as a Codespaces secret (repository scope).
+    "SPFX_SERVE_TENANT_DOMAIN": "${localEnv:SPFX_SERVE_TENANT_DOMAIN}",
+    // Match the Dockerfile's Playwright browser cache path so the vscode user,
+    // the MCP server, and manual `npx @playwright/mcp` commands all reuse the
+    // same preinstalled Chromium bundle.
+    "PLAYWRIGHT_BROWSERS_PATH": "/home/vscode/.cache/ms-playwright"
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "files.eol": "\n",
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "chat.agent.skills": true,
+        "chat.permissions.default": "autoApprove"
+      },
+      // GitHub MCP server — gives Copilot structured access to GitHub APIs
+      // (issues, PRs, Actions runs, releases) without needing to parse CLI output.
+      // Requires GITHUB_TOKEN to be set (see containerEnv above).
+      "mcp": {
+        "servers": {
+          "github": {
+            "type": "stdio",
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-github@latest"],
+            "env": {
+              "GITHUB_PERSONAL_ACCESS_TOKEN": "${localEnv:GITHUB_TOKEN}"
+            }
+          },
+          // Playwright MCP server — gives Copilot a real browser for functional
+          // and visual checks against the workbench or a live SharePoint page.
+          // The browser profile lives in the workspace cache so a manual login
+          // can be reused across VS Code sessions.
+          "playwright": {
+            "type": "stdio",
+            "command": "npx",
+            "args": [
+              "-y",
+              "@playwright/mcp@latest",
+              "--config",
+              "/workspaces/spfx-guestSponsorInfo-webpart/.devcontainer/playwright-mcp.config.json",
+              "--headless",
+              "--no-sandbox",
+              "--caps",
+              "vision",
+              "--save-session",
+              "--user-data-dir",
+              "/workspaces/spfx-guestSponsorInfo-webpart/.cache/playwright-mcp/profile",
+              "--output-dir",
+              "/workspaces/spfx-guestSponsorInfo-webpart/.cache/playwright-mcp/output"
+            ]
+          },
+          // Microsoft Learn MCP server — gives Copilot current official
+          // Microsoft docs and code samples without relying on web search.
+          // Useful for Azure, SPFx, Graph, PnP PowerShell, and other Microsoft
+          // technologies used in this repository.
+          "microsoft-learn": {
+            "type": "http",
+            "url": "https://learn.microsoft.com/api/mcp?maxTokenBudget=2000"
+          }
+        }
+      },
+      "extensions": [
+        "Anthropic.claude-code",
+        "DavidAnson.vscode-markdownlint",
+        "dbaeumer.vscode-eslint",
+        "EditorConfig.EditorConfig",
+        "esbenp.prettier-vscode",
+        "foxundermoon.shell-format",
+        "GitHub.copilot-chat",
+        "github.vscode-github-actions",
+        "GitHub.vscode-pull-request-github",
+        "ms-azuretools.azure-dev",
+        "ms-azuretools.vscode-azure-github-copilot",
+        "ms-azuretools.vscode-azurefunctions",
+        "ms-azuretools.vscode-azure-mcp-server",
+        "ms-azuretools.vscode-azureresourcegroups",
+        "ms-azuretools.vscode-azurestorage",
+        "ms-azuretools.vscode-bicep",
+        "ms-azuretools.vscode-docker",
+        "ms-playwright.playwright",
+        "ms-vscode.azurecli",
+        "ms-vscode.powershell",
+        "openai.chatgpt",
+        "SharePoint.deployToSPOnline",
+        "stylelint.vscode-stylelint",
+        "usernamehw.errorlens",
+        "vivaxy.vscode-conventional-commits",
+        "eamodio.gitlens"
+      ]
+    }
+  }
+}

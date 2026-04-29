@@ -1,0 +1,60 @@
+{%- assign strings = site.data[page.lang].strings -%}
+
+<section class="features" id="features">
+    <div class="container">
+        <h2 class="section-title">{{ strings.features.section_title }}</h2>
+        <p class="section-subtitle">{{ strings.features.section_subtitle }}</p>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <img src="{{ '/assets/images/feature-cards.svg' | relative_url }}" alt="" width="80" height="80">
+                </div>
+                <h3>{{ strings.features.cards.title }}</h3>
+                <p>{{ strings.features.cards.description }}</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <img src="{{ '/assets/images/feature-presence.svg' | relative_url }}" alt="" width="80" height="80">
+                </div>
+                <h3>{{ strings.features.presence.title }}</h3>
+                <p>{{ strings.features.presence.description }}</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <img src="{{ '/assets/images/feature-teams.svg' | relative_url }}" alt="" width="80" height="80">
+                </div>
+                <h3>{{ strings.features.teams.title }}</h3>
+                <p>{{ strings.features.teams.description }}</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <img src="{{ '/assets/images/feature-privacy.svg' | relative_url }}" alt="" width="80" height="80">
+                </div>
+                <h3>{{ strings.features.privacy.title }}</h3>
+                <p>{{ strings.features.privacy.description }}</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <img src="{{ '/assets/images/feature-onboarding.svg' | relative_url }}" alt="" width="80"
+                        height="80">
+                </div>
+                <h3>{{ strings.features.onboarding.title }}</h3>
+                <p>{{ strings.features.onboarding.description }}</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <img src="{{ '/assets/images/feature-delegation.svg' | relative_url }}" alt="" width="80"
+                        height="80">
+                </div>
+                <h3>{{ strings.features.delegation.title }}</h3>
+                <p>{{ strings.features.delegation.description }}</p>
+            </div>
+        </div>
+    </div>
+</section>

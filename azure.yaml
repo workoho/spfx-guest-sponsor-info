@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+name: guest-sponsor-info
+
+infra:
+  provider: bicep
+  path: azure-function/infra
+
+hooks:
+  # Derives a default Function App name from the azd environment name,
+  # detects the SharePoint tenant name, and checks Azure RBAC and Entra
+  # role assignments required for the Bicep Graph extension deployment.
+  # Must run before Bicep so all required env vars are set.
+  preprovision:
+    posix:
+      shell: sh
+      run: azure-function/infra/hooks/pre-provision.sh
+      interactive: true
+    windows:
+      shell: pwsh
+      run: azure-function/infra/hooks/pre-provision.ps1
+      interactive: true
+
+  # Restarts the Function App so the newly assigned Graph permissions
+  # (provisioned by Bicep) are picked up immediately by the Managed Identity
+  # token cache. Prints the web part configuration values.
+  postprovision:
+    posix:
+      shell: sh
+      run: azure-function/infra/hooks/post-provision.sh
+    windows:
+      shell: pwsh
+      run: azure-function/infra/hooks/post-provision.ps1

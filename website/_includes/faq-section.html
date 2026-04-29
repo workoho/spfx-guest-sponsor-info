@@ -1,0 +1,41 @@
+{%- assign strings = site.data[page.lang].strings -%}
+{%- assign faq = strings.faq -%}
+
+<section class="doc-page">
+    <div class="container">
+        <div class="doc-content">
+            <h2>{{ faq.title }}</h2>
+            <p class="doc-lead">{{ faq.lead }}</p>
+            {%- for item in faq.items %}
+            <details>
+                <summary>{{ item.question }}</summary>
+                <p>{{ item.answer }}</p>
+            </details>
+            {%- endfor %}
+            <p class="doc-source">
+                <a href="{{ '/' | append: page.lang | append: '/sponsor-vs-inviter/' | relative_url }}">{{ faq.more_link
+                    }}
+                    &rarr;</a>
+            </p>
+        </div>
+    </div>
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {%- for item in faq.items -%}
+        {
+          "@type": "Question",
+          "name": {{ item.question | jsonify }},
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": {{ item.answer | strip_newlines | jsonify }}
+          }
+        }{%- unless forloop.last -%},{%- endunless -%}
+        {%- endfor -%}
+      ]
+    }
+  </script>
+</section>

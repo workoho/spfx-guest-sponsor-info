@@ -1,0 +1,7 @@
+{
+  // The "rig.json" file directs tools to look for their config files in an external package.
+  // Documentation for this system: https://github.com/microsoft/rushstack/tree/main/libraries/rig-package
+  "$schema": "https://developer.microsoft.com/json-schemas/rig-package/rig.schema.json",
+
+  "rigPackageName": "@microsoft/spfx-web-build-rig"
+}

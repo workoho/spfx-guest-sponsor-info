@@ -1,0 +1,117 @@
+{
+  "name": "guest-sponsor-info",
+  "version": "1.0.0",
+  "description": "SharePoint Online web part that shows the Microsoft Entra sponsors of the signed-in guest user",
+  "license": "LicenseRef-PolyForm-Shield-1.0.0",
+  "author": {
+    "name": "Workoho GmbH",
+    "url": "https://workoho.com"
+  },
+  "contributors": [
+    {
+      "name": "Julian Pawlowski",
+      "url": "https://github.com/jpawlowski"
+    }
+  ],
+  "homepage": "https://github.com/workoho/spfx-guest-sponsor-info",
+  "keywords": [
+    "sharepoint",
+    "spfx",
+    "sharepoint-framework",
+    "microsoft-entra",
+    "guest",
+    "sponsor",
+    "microsoft-graph",
+    "webpart"
+  ],
+  "private": true,
+  "engines": {
+    "node": ">=22.14.0 < 23.0.0"
+  },
+  "config": {
+    "spfxVersion": "1.22.2",
+    "yoVersion": "7.0.0"
+  },
+  "scripts": {
+    "build": "heft test --clean --production && heft package-solution --production",
+    "test": "heft test --clean",
+    "start": "heft start --clean",
+    "clean": "heft clean",
+    "eject-webpack": "heft eject-webpack",
+    "lint:ts": "eslint src --ext .ts,.tsx --cache --cache-location .cache/eslint/src/",
+    "lint:ts:func": "eslint azure-function/src --ext .ts --cache --cache-location .cache/eslint/func/",
+    "lint:md": "markdownlint-cli2 --config .markdownlint-cli2.jsonc README.md AGENTS.md azure-function/README.md docs/**/*.md .github/*.md .github/**/*.md website/*.md website/**/*.md",
+    "lint:yml": "prettier --check --cache --cache-location .cache/prettier/ \".github/**/*.yml\" \"azure.yaml\" \"website/_config.yml\" \"website/_data/**/*.yml\"",
+    "lint:actions": "actionlint .github/workflows/*.yml",
+    "lint:ps": "pwsh -NonInteractive -File scripts/lint-ps.ps1",
+    "lint:bicep": "bash scripts/lint-bicep.sh",
+    "lint:sh": "shellcheck -x scripts/*.sh azure-function/infra/*.sh azure-function/infra/hooks/*.sh",
+    "lint:loc": "prettier --check --cache --cache-location .cache/prettier/ \"src/webparts/guestSponsorInfo/loc/*.js\" && node --check src/webparts/guestSponsorInfo/loc/cs-cz.js src/webparts/guestSponsorInfo/loc/da-dk.js src/webparts/guestSponsorInfo/loc/de-de.js src/webparts/guestSponsorInfo/loc/en-us.js src/webparts/guestSponsorInfo/loc/es-es.js src/webparts/guestSponsorInfo/loc/fi-fi.js src/webparts/guestSponsorInfo/loc/fr-fr.js src/webparts/guestSponsorInfo/loc/hu-hu.js src/webparts/guestSponsorInfo/loc/it-it.js src/webparts/guestSponsorInfo/loc/ja-jp.js src/webparts/guestSponsorInfo/loc/nb-no.js src/webparts/guestSponsorInfo/loc/nl-nl.js src/webparts/guestSponsorInfo/loc/pl-pl.js src/webparts/guestSponsorInfo/loc/pt-pt.js src/webparts/guestSponsorInfo/loc/ro-ro.js src/webparts/guestSponsorInfo/loc/sv-se.js src/webparts/guestSponsorInfo/loc/zh-cn.js && node scripts/check-loc.js",
+    "lint": "npm run lint:ts && npm run lint:ts:func && npm run lint:md && npm run lint:yml && npm run lint:actions && npm run lint:bicep && npm run lint:sh && npm run lint:ps && npm run lint:loc",
+    "fix:ts": "eslint src --ext .ts,.tsx --fix --cache --cache-location .cache/eslint/src/",
+    "fix:ts:func": "eslint azure-function/src --ext .ts --fix --cache --cache-location .cache/eslint/func/",
+    "fix:md": "markdownlint-cli2 --config .markdownlint-cli2.jsonc --fix README.md AGENTS.md azure-function/README.md docs/**/*.md .github/*.md .github/**/*.md website/*.md website/**/*.md",
+    "fix:yml": "prettier --write --cache --cache-location .cache/prettier/ \".github/**/*.yml\" \"azure.yaml\" \"website/_config.yml\" \"website/_data/**/*.yml\"",
+    "fix:json": "prettier --write --cache --cache-location .cache/prettier/ \"*.{json,jsonc}\" \"config/*.{json,jsonc}\" \"azure-function/*.{json,jsonc}\" \"azure-function/infra/**/*.{json,jsonc}\" \".vscode/*.{json,jsonc}\" \".devcontainer/*.{json,jsonc}\"",
+    "fix:loc": "prettier --write --cache --cache-location .cache/prettier/ \"src/webparts/guestSponsorInfo/loc/*.js\"",
+    "fix:sh": "shfmt -w -i 2 -ci scripts/*.sh azure-function/infra/*.sh azure-function/infra/hooks/*.sh",
+    "fix": "npm run fix:ts && npm run fix:ts:func && npm run fix:md && npm run fix:yml && npm run fix:json && npm run fix:loc && npm run fix:sh",
+    "prepare": "husky"
+  },
+  "dependencies": {
+    "@fluentui/react-components": "9.73.7",
+    "@fluentui/react-icons": "2.0.324",
+    "@fluentui/react-migration-v8-v9": "9.10.9",
+    "@microsoft/sp-component-base": "1.22.2",
+    "@microsoft/sp-core-library": "1.22.2",
+    "@microsoft/sp-http": "1.22.2",
+    "@microsoft/sp-lodash-subset": "1.22.2",
+    "@microsoft/sp-office-ui-fabric-core": "1.22.2",
+    "@microsoft/sp-property-pane": "1.22.2",
+    "@microsoft/sp-webpart-base": "1.22.2",
+    "react": "17.0.1",
+    "react-dom": "17.0.1",
+    "tslib": "2.8.1"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "20.5.0",
+    "@commitlint/config-conventional": "20.5.0",
+    "@microsoft/eslint-config-spfx": "1.22.2",
+    "@microsoft/eslint-plugin-spfx": "1.22.2",
+    "@microsoft/sp-module-interfaces": "1.22.2",
+    "@microsoft/spfx-heft-plugins": "1.22.2",
+    "@microsoft/spfx-web-build-rig": "1.22.2",
+    "@rushstack/eslint-config": "4.5.2",
+    "@rushstack/heft": "1.1.2",
+    "@types/heft-jest": "1.0.6",
+    "@types/react": "17.0.45",
+    "@types/react-dom": "17.0.17",
+    "@types/webpack-env": "~1.18.8",
+    "@typescript-eslint/parser": "8.58.0",
+    "css-loader": "~7.1.2",
+    "eslint": "8.57.1",
+    "eslint-plugin-react-hooks": "7.0.1",
+    "husky": "9.1.7",
+    "lint-staged": "16.4.0",
+    "markdownlint-cli2": "0.22.0",
+    "prettier": "3.8.3",
+    "typescript": "~5.9.3"
+  },
+  "overrides": {
+    "@rushstack/heft": "1.1.2"
+  },
+  "resolutions": {
+    "@types/react": "17.0.45"
+  },
+  "lint-staged": {
+    "src/**/*.{ts,tsx}": "eslint --fix --cache --cache-location .cache/eslint/src/",
+    "azure-function/src/**/*.ts": "eslint --fix --cache --cache-location .cache/eslint/func/",
+    "**/*.md": "markdownlint-cli2 --config .markdownlint-cli2.jsonc --fix",
+    "src/**/loc/*.js": "prettier --write --ignore-path .prettierignore",
+    "azure-function/infra/**/*.bicep": "bash scripts/lint-bicep.sh",
+    ".github/**/*.yml": "prettier --write --ignore-path .prettierignore",
+    "website/**/*.{yml,yaml}": "prettier --write --ignore-path .prettierignore",
+    "**/*.{json,jsonc}": "prettier --write --ignore-path .prettierignore",
+    "**/*.sh": "shfmt -w -i 2 -ci"
+  }
+}

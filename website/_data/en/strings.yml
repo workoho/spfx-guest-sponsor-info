@@ -1,0 +1,326 @@
+meta:
+  description: >-
+    Guest Sponsor Info — a free SharePoint Framework web part for
+    Microsoft Entra B2B guest users that shows sponsors, backup sponsors,
+    live contact cards, Teams presence, and 17 languages.
+
+nav:
+  why: Why?
+  features: Features
+  setup: Setup
+  aria_label: Main navigation
+  toggle: Toggle menu
+  switch_lang: Zur deutschen Version wechseln
+
+doc:
+  toc_title: On this page
+  toc_label: Table of contents
+  view_on_github: View full documentation on GitHub
+
+hero:
+  title: Let your guests know who to call
+  subtitle: >-
+    A SharePoint guest landing page is often the safest first destination for
+    Microsoft Entra B2B guest users after they accept an invitation — but
+    out of the box it still cannot show them who their sponsors are.
+    Guest Sponsor Info puts sponsors, backup sponsors, and contact paths
+    directly on that page — and is honest about what they can and can't
+    do yet.
+  cta_primary: Explore Features
+  cta_secondary: Why?
+  illustration_alt: >-
+    Illustration showing sponsor contact cards connecting to a guest user
+  badge_languages: 17 Languages
+  badge_privacy: Privacy-First
+  badge_opensource: Open Source
+
+features:
+  section_title: Everything guests need — nothing they don't
+  section_subtitle: >-
+    Built for the moment a Microsoft Entra B2B guest lands in your tenant
+    and needs sponsor visibility for the first time: who their sponsors
+    are, who the backup sponsors are, and how to reach them.
+  cards:
+    title: Live Sponsor Cards
+    description: >-
+      The core feature: guests can finally see their assigned sponsors
+      and backup sponsors — with profile photos, job titles, email,
+      phone, and office address.
+  presence:
+    title: Real-Time Teams Presence
+    description: >-
+      See whether a sponsor is Available, Busy, In a Meeting, or Away,
+      with coloured status indicators that update automatically.
+  teams:
+    title: Teams Chat & Call
+    description: >-
+      One-click deep links for a Teams chat or call with the sponsor.
+      If Teams isn't provisioned for the guest yet, the web part shows an
+      honest status instead of a button that looks ready but is not.
+  privacy:
+    title: Privacy-First Architecture
+    description: >-
+      Sponsor and guest data stays inside your Microsoft 365 and Azure
+      environment. Workoho receives no runtime data, analytics, or
+      phone-home stream. The Azure Function proxy ensures guests never
+      hold directory permissions.
+  onboarding:
+    title: Teams Onboarding Status
+    description: >-
+      Guests often accept the invitation but still can't use Teams until
+      they've been added to a Team. The web part detects this and shows a
+      clear explanation instead of leaving them with broken buttons.
+  delegation:
+    title: Automatic Sponsor Delegation
+    description: >-
+      When a primary sponsor is unavailable, the next sponsor in priority
+      order steps in automatically. Disabled accounts and shared mailboxes
+      are filtered out.
+
+features_page:
+  subtitle: >-
+    Built for the moment a Microsoft Entra B2B guest lands on your
+    SharePoint guest landing page and needs sponsor visibility
+    immediately — not just the name of whoever invited them.
+  cards:
+    title: Live Sponsor Cards
+    description: >-
+      Rich contact cards give Microsoft Entra B2B guests direct sponsor
+      visibility on the SharePoint landing page: live profile photos,
+      display name, job title, email, phone number, and office address —
+      sourced from Microsoft Graph through the companion Azure Function
+      proxy. Current directory data, no manual upkeep.
+    highlights:
+      - "Three layout modes: Full, Compact, and Auto"
+      - Live profile photos from Microsoft Graph
+      - Office address with optional map integration
+  contact_panel:
+    title: Rich Contact Details
+    description: >-
+      Hovering or tabbing to a card opens a contact panel with the details
+      a guest actually needs — email, work phone, mobile, office location,
+      and full address. Each field has a one-click copy button. The panel
+      can also show the sponsor's manager for extra orientation when Teams
+      is not yet available.
+    highlights:
+      - One-click copy for email, phone, and mobile
+      - Inline map preview via Azure Maps
+      - Manager name, title, and department
+      - Every field individually toggleable by admins
+  onboarding:
+    title: Teams Onboarding Status
+    description: >-
+      A guest account can exist in Entra before it has been added to any
+      Team. In real onboarding flows, that leaves guests on a SharePoint
+      landing page with contact actions that look ready but are not. The
+      web part detects this, shows a clear explanation, and disables chat
+      and call buttons until Teams access is confirmed.
+  presence:
+    title: Real-Time Teams Presence
+    description: >-
+      Coloured presence indicators show whether a sponsor is reachable
+      right now. Updates automatically with intelligent polling.
+    statuses:
+      - Available
+      - Busy
+      - In a Meeting
+      - Away
+      - Out of Office
+      - Do Not Disturb
+      - Focusing
+      - Offline
+  teams:
+    title: Teams Chat & Call Integration
+    description: >-
+      One-click deep links let guests start a Teams chat or call directly
+      from the sponsor card. If Teams is not provisioned yet, the web part
+      shows an explanation instead of a broken link.
+  privacy:
+    title: Privacy-First Architecture
+    description: >-
+      Sponsor and guest data stays inside your Microsoft 365 and Azure
+      environment. The solution sends no runtime data to Workoho, requires
+      no Workoho-operated backend, and keeps directory access inside your
+      tenant. The Azure Function proxy ensures guests never need
+      directory-level permissions.
+    link: Read the Privacy Policy
+  delegation:
+    title: Automatic Sponsor Delegation
+    description: >-
+      When multiple sponsors are assigned in priority order, the web part
+      lets the next eligible sponsor step in automatically. Disabled
+      accounts, shared mailboxes, resource accounts, and deleted users are
+      filtered out of the active contact set.
+    detail: >-
+      Sponsors are evaluated in configured priority order — primary first,
+      then secondary, and so on. Account status, mailbox type,
+      resource-account status, and sponsor eligibility filters determine who
+      can appear as a full contact. Eligible sponsors fill the visible
+      slots, while unavailable sponsors can remain as read-only context.
+      That gives the guest more trust than seeing only the original inviter
+      and nobody else.
+  more:
+    title: More features
+    languages:
+      title: 17 Languages
+      description: >-
+        English, German, French, Spanish, Italian, Danish, Finnish,
+        Japanese, Norwegian, Swedish, Chinese, Portuguese, Polish,
+        Dutch, Czech, Hungarian, and Romanian — including formal and
+        informal modes.
+    api:
+      title: Zero-Trust Security
+      description: >-
+        Guests authenticate with their own identity but never hold directory
+        permissions. EasyAuth validates each request before it reaches the
+        function, and the Managed Identity handles all Graph calls on their
+        behalf.
+    editor:
+      title: Editor Preview Mode
+      description: >-
+        Page editors see realistic demo cards with mock data — no Graph
+        calls and no guest account required. Design the landing page before
+        any guests are invited.
+    resilience:
+      title: Built-in Resilience
+      description: >-
+        Handles Microsoft Graph throttling and transient failures without
+        showing errors to guests. Progressive loading keeps something
+        visible, and the web part recovers automatically.
+    permissions:
+      title: Try Before You Commit
+      description: >-
+        Demo Mode lets you place the web part on a page and see it working
+        with realistic mock sponsor cards before you set up any Azure
+        infrastructure. No API, no guests, no commitment required.
+    guest_only:
+      title: Silent for Internal Users
+      description: >-
+        The web part renders nothing for internal member accounts — no Graph
+        calls and no visible component. Only B2B guests see the sponsor
+        cards. Page editors see a compact preview instead of the full
+        interface.
+
+made_by:
+  label: Created & maintained by
+  intro: >-
+    Microsoft 365 governance, identity, and guest access — our day job.
+  description: >-
+    We built Guest Sponsor Info because we work with these scenarios every
+    day. As a consultancy specialising in Microsoft 365 collaboration,
+    security, and identity management, we help organisations design and
+    implement guest access from policy to production. This web part is our
+    contribution to the community — source-available, free of charge for
+    noncompeting use, and improved through public contributions where possible.
+  cta: Work with us
+  partner_tier: Platinum Partner
+  partner_tagline: >-
+    EasyLife 365 automates lifecycle management for Teams, SharePoint
+    sites, Viva Engage, and other Microsoft 365 workspaces, including
+    guest onboarding and sponsor assignments.
+  partner_cta: Book a Demo
+
+problem:
+  title: A guest accepted your invitation. Now what?
+  body: >-
+    Guests can reach your resource tenant through My Apps, a direct app
+    link, or Microsoft Teams. What often still remains unclear is who
+    their sponsor is, how to reach them, or what they should do next.
+    This web part closes three concrete gaps.
+  cta: Why?
+  items:
+    - title: No orientation at the entrance
+      body: >-
+        Depending on the invitation and app flow, guests may arrive in My
+        Apps, on a direct app URL, or in Teams. Even then, the entry
+        experience often offers little orientation about where they are,
+        what access they just received, or what to do next.
+    - title: Their sponsor is invisible
+      body: >-
+        Sponsors are assigned in Microsoft Entra, but guests have no
+        self-service way to see them. When they need help, the only name
+        they have is whoever sent the invitation email — and that might no
+        longer be the right person, or even a sponsor at all.
+    - title: Teams looks ready — but isn't
+      body: >-
+        A structured onboarding process creates the Entra account before
+        adding the guest to any Teams team. Until that happens, chat and
+        call actions may still be unavailable, with little built-in
+        explanation for the guest.
+
+faq:
+  title: "FAQ: Microsoft Entra B2B guest access"
+  lead: >-
+    Short answers to the questions admins and project teams usually ask when
+    they design a SharePoint guest landing page with clear sponsor visibility.
+  items:
+    - question: What is a sponsor in Microsoft Entra B2B?
+      answer: >-
+        A sponsor is the internal person or group recorded in Microsoft
+        Entra's Sponsors field for a guest relationship. In Microsoft Entra
+        B2B, that relationship can exist in the directory even when the guest
+        has no built-in self-service way to see it.
+    - question: Is an "owner" the same as a sponsor?
+      answer: >-
+        In some tools and internal processes, yes. There, owner usually means
+        the same responsible internal contact or group that Microsoft Entra
+        records as the sponsor. On this website we prefer sponsor because it
+        matches Microsoft's terminology and avoids implying budget ownership or
+        special authority over the guest.
+    - question: Why can't a guest user see their sponsor in SharePoint by default?
+      answer: >-
+        SharePoint can show page content and links, but it does not surface the
+        guest's Microsoft Entra sponsor relationship out of the box. Without a
+        dedicated component, sponsor visibility is missing on the landing page.
+    - question: What is the difference between a sponsor and the inviter?
+      answer: >-
+        The inviter is the person or process that triggered the invitation.
+        The sponsor is the ongoing responsible contact recorded in Microsoft
+        Entra. In standard Entra invitation flows, the inviter becomes the
+        default sponsor unless another sponsor is specified. SharePoint
+        sharing invitations can be an exception.
+    - question: Why use a SharePoint guest landing page for onboarding?
+      answer: >-
+        A SharePoint guest landing page can serve as a stable first
+        destination even in flows where Teams guest functionality is not ready
+        yet. That makes it useful for showing sponsors, backup sponsors,
+        contact paths, and honest onboarding status.
+  more_link: Read the full sponsor vs inviter explanation
+
+cta:
+  title: Ready to improve your guest experience?
+  description: >-
+    Deploy the companion Azure Function to Azure with the included setup
+    flow and installer script. The built-in Setup Wizard guides you through
+    the rest, directly from the SharePoint page. Source-available and free to
+    use for noncompeting purposes.
+  deploy: Setup Guide
+  github: View on GitHub
+
+footer:
+  tagline: >-
+    Helping Microsoft Entra B2B guest users find their contacts since day one.
+  product: Product
+  why: Why this exists
+  releases: Releases
+  source_code: Source Code
+  docs: Documentation
+  deployment: Setup
+  landing_page: Landing Page Ideas
+  sponsor_vs_inviter: Sponsor vs Inviter
+  operations: Operations
+  support: Support
+  legal: Legal
+  security: Trust & Security
+  privacy: Privacy Policy
+  terms: Terms of Use
+  imprint: Legal Notice
+  telemetry: Telemetry
+  license: >-
+    Source-available under PolyForm Shield 1.0.0.
+
+error:
+  title: "404"
+  message: This page could not be found.
+  go_home_en: Go to English Home
+  go_home_de: Go to German Home

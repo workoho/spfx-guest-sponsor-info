@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 64" fill="none">
+  <!-- Parallelogram accent (Workoho brand motif) -->
+  <polygon points="85,2 101,2 98,8 82,8" fill="#4FC3F7" fill-opacity="0.10"/>
+
+  <!-- Azure Function block -->
+  <rect x="10" y="16" width="52" height="32" rx="6" fill="#0A3D4F" stroke="#4FC3F7" stroke-width="1.5"/>
+  <!-- Lightning bolt -->
+  <path d="M37 22 L31 35 H36 L33 42 L43 29 H38 Z" fill="#4FC3F7"/>
+
+  <!-- Connecting arrow line -->
+  <line x1="62" y1="32" x2="138" y2="32" stroke="#1A5A6A" stroke-width="2" stroke-dasharray="5 3"/>
+  <!-- Arrowhead -->
+  <path d="M133 27 L140 32 L133 37" stroke="#4FC3F7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- SharePoint web part block -->
+  <rect x="138" y="16" width="52" height="32" rx="6" fill="#0A3D4F" stroke="#4FC3F7" stroke-width="1.5"/>
+  <!-- Web part: title bar -->
+  <rect x="144" y="22" width="40" height="5" rx="2" fill="#1A5A6A"/>
+  <!-- Web part: two content lines -->
+  <rect x="144" y="31" width="28" height="3" rx="1.5" fill="#1A5A6A"/>
+  <rect x="144" y="37" width="20" height="3" rx="1.5" fill="#1A5A6A"/>
+</svg>

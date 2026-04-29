@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="{{ page.lang | default: site.default_lang }}">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  {%- assign strings = site.data[page.lang].strings -%}
+  {%- assign lang = page.lang | default: site.default_lang -%}
+  {%- assign seo_page_title = page.meta_title | default: page.title | default: site.title -%}
+  {%- capture seo_title -%}{% if seo_page_title != site.title %}{{ seo_page_title }} — {% endif %}{{ site.title }}{%-
+  endcapture -%}
+  {%- assign seo_description = page.description | default: strings.meta.description -%}
+  {%- assign page_url = page.url | absolute_url -%}
+  {%- assign social_image_path = page.social_image | default: '/assets/images/social-card.jpg' -%}
+  {%- assign social_image_url = social_image_path | absolute_url -%}
+  {%- assign social_image_width = page.social_image_width | default: 1200 -%}
+  {%- assign social_image_height = page.social_image_height | default: 630 -%}
+  {%- assign social_image_type = page.social_image_type | default: 'image/jpeg' -%}
+  {%- if lang == 'de' -%}
+  {%- assign og_locale = 'de_DE' -%}
+  {%- assign og_locale_alternate = 'en_US' -%}
+  {%- assign default_social_image_alt = 'SharePoint-Gast-Landingpage mit Sponsor-Karten und Self-Service-Links fuer
+  Microsoft Entra B2B-Gastbenutzer.' -%}
+  {%- else -%}
+  {%- assign og_locale = 'en_US' -%}
+  {%- assign og_locale_alternate = 'de_DE' -%}
+  {%- assign default_social_image_alt = 'SharePoint guest landing page with sponsor cards and guest self-service links
+  for Microsoft Entra B2B users.' -%}
+  {%- endif -%}
+  {%- assign social_image_alt = page.social_image_alt | default: default_social_image_alt -%}
+
+  <title>{{ seo_title }}</title>
+  <meta name="description" content="{{ seo_description }}">
+  <link rel="canonical" href="{{ page_url }}">
+  <meta name="robots" content="{{ page.robots | default: 'index,follow' }}">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="{{ seo_page_title }}">
+  <meta property="og:description" content="{{ seo_description }}">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="{{ page_url }}">
+  <meta property="og:image" content="{{ social_image_url }}">
+  <meta property="og:image:secure_url" content="{{ social_image_url }}">
+  <meta property="og:image:type" content="{{ social_image_type }}">
+  <meta property="og:image:width" content="{{ social_image_width }}">
+  <meta property="og:image:height" content="{{ social_image_height }}">
+  <meta property="og:image:alt" content="{{ social_image_alt }}">
+  <meta property="og:site_name" content="{{ site.title }}">
+  <meta property="og:locale" content="{{ og_locale }}">
+  <meta property="og:locale:alternate" content="{{ og_locale_alternate }}">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ seo_page_title }}">
+  <meta name="twitter:description" content="{{ seo_description }}">
+  <meta name="twitter:image" content="{{ social_image_url }}">
+  <meta name="twitter:image:alt" content="{{ social_image_alt }}">
+
+  <!-- Alternate language -->
+  {%- if lang == "en" -%}
+  <link rel="alternate" hreflang="en" href="{{ page.url | absolute_url }}">
+  <link rel="alternate" hreflang="de" href="{{ page.url | replace: '/en/', '/de/' | absolute_url }}">
+  {%- else -%}
+  <link rel="alternate" hreflang="en" href="{{ page.url | replace: '/de/', '/en/' | absolute_url }}">
+  <link rel="alternate" hreflang="de" href="{{ page.url | absolute_url }}">
+  {%- endif -%}
+  <link rel="alternate" hreflang="x-default" href="{{ page.url | replace: '/de/', '/en/' | absolute_url }}">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="/assets/favicon/favicon-96x96.png?v=20260427" sizes="96x96" />
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon/favicon.svg?v=20260427" />
+  <link rel="shortcut icon" href="/assets/favicon/favicon.ico?v=20260427" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon/apple-touch-icon.png?v=20260427" />
+  <meta name="apple-mobile-web-app-title" content="Guest Sponsor Info" />
+  <link rel="manifest" href="/assets/favicon/site.webmanifest?v=20260427" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
+
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": {{ seo_title | jsonify }},
+      "description": {{ seo_description | jsonify }},
+      "url": {{ page_url | jsonify }},
+      "image": {{ social_image_url | jsonify }},
+      "inLanguage": {{ lang | jsonify }},
+      "isPartOf": {
+        "@type": "WebSite",
+        "name": {{ site.title | jsonify }},
+        "url": {{ site.url | jsonify }}
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": {{ site.author | jsonify }},
+        "url": {{ site.author_url | jsonify }}
+      }
+    }
+  </script>
+</head>
+
+<body>
+  {%- include header.html -%}
+
+  <main>
+    {{ content }}
+  </main>
+
+  {%- include footer.html -%}
+
+  <script>
+    (function () {
+      var locale = (document.documentElement.lang || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
+      var codeBlockStrings = {
+        en: {
+          copy: 'Copy',
+          copied: 'Copied',
+          copyAria: 'Copy code snippet',
+          code: 'Code',
+          text: 'Text'
+        },
+        de: {
+          copy: 'Kopieren',
+          copied: 'Kopiert',
+          copyAria: 'Codeblock kopieren',
+          code: 'Code',
+          text: 'Text'
+        }
+      };
+      var i18n = codeBlockStrings[locale];
+
+      function copyTextFallback(text) {
+        return new Promise(function (resolve, reject) {
+          var textArea = document.createElement('textarea');
+          textArea.value = text;
+          textArea.setAttribute('readonly', 'readonly');
+          textArea.style.position = 'absolute';
+          textArea.style.left = '-9999px';
+          document.body.appendChild(textArea);
+          textArea.select();
+
+          try {
+            document.execCommand('copy');
+            resolve();
+          } catch (error) {
+            reject(error);
+          } finally {
+            document.body.removeChild(textArea);
+          }
+        });
+      }
+
+      function copyText(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+          return navigator.clipboard.writeText(text).catch(function () {
+            return copyTextFallback(text);
+          });
+        }
+
+        return copyTextFallback(text);
+      }
+
+      function formatCodeLanguage(language) {
+        if (!language) {
+          return i18n.code;
+        }
+
+        var normalized = language.toLowerCase();
+        if (normalized === 'powershell') return 'PowerShell';
+        if (normalized === 'plaintext' || normalized === 'text') return i18n.text;
+        if (normalized === 'bash' || normalized === 'shell' || normalized === 'sh') return 'Shell';
+
+        return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+      }
+
+      function enhanceCodeBlocks() {
+        var blocks = document.querySelectorAll('.page-content div.highlighter-rouge, .doc-content div.highlighter-rouge');
+
+        blocks.forEach(function (block) {
+          if (block.dataset.enhanced === 'true') {
+            return;
+          }
+
+          var code = block.querySelector('pre code');
+          if (!code) {
+            return;
+          }
+
+          block.dataset.enhanced = 'true';
+          block.classList.add('code-snippet');
+
+          var languageClass = Array.from(block.classList).find(function (token) {
+            return token.indexOf('language-') === 0;
+          });
+          var language = languageClass ? languageClass.replace('language-', '') : '';
+
+          var toolbar = document.createElement('div');
+          toolbar.className = 'code-snippet-toolbar';
+
+          var label = document.createElement('span');
+          label.className = 'code-snippet-language';
+          label.textContent = formatCodeLanguage(language);
+
+          var button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'code-snippet-copy';
+          button.textContent = i18n.copy;
+          button.setAttribute('aria-label', i18n.copyAria);
+
+          button.addEventListener('click', function () {
+            copyText(code.textContent.replace(/\n$/, ''))
+              .then(function () {
+                button.textContent = i18n.copied;
+                button.classList.add('is-copied');
+                window.clearTimeout(button._resetTimer);
+                button._resetTimer = window.setTimeout(function () {
+                  button.textContent = i18n.copy;
+                  button.classList.remove('is-copied');
+                }, 1800);
+              })
+              .catch(function () {
+                button.textContent = i18n.copy;
+                button.classList.remove('is-copied');
+              });
+          });
+
+          toolbar.appendChild(label);
+          toolbar.appendChild(button);
+          block.insertBefore(toolbar, block.firstChild);
+        });
+      }
+
+      function enhanceMarkdownAlerts() {
+        var labels = {
+          en: {
+            note: 'Note',
+            tip: 'Tip',
+            important: 'Important',
+            warning: 'Warning',
+            caution: 'Caution'
+          },
+          de: {
+            note: 'Hinweis',
+            tip: 'Tipp',
+            important: 'Wichtig',
+            warning: 'Warnung',
+            caution: 'Achtung'
+          }
+        };
+
+        var blocks = document.querySelectorAll('.page-content blockquote, .doc-content blockquote');
+        blocks.forEach(function (block) {
+          if (block.dataset.alertEnhanced === 'true') {
+            return;
+          }
+
+          var firstParagraph = block.querySelector('p');
+          if (!firstParagraph) {
+            return;
+          }
+
+          var markerMatch = firstParagraph.textContent.trimStart().match(/^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/i);
+          if (!markerMatch) {
+            return;
+          }
+
+          var type = markerMatch[1].toLowerCase();
+          block.dataset.alertEnhanced = 'true';
+          block.classList.add('markdown-alert', 'markdown-alert-' + type);
+
+          firstParagraph.innerHTML = firstParagraph.innerHTML.replace(
+            /^\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*(<br\s*\/?>)?\s*/i,
+            ''
+          );
+
+          if (firstParagraph.textContent.trim() === '') {
+            firstParagraph.remove();
+          }
+
+          var title = document.createElement('div');
+          title.className = 'markdown-alert-title';
+          title.textContent = (labels[locale] && labels[locale][type]) || labels.en[type];
+          block.insertBefore(title, block.firstChild);
+        });
+      }
+
+      var links = document.querySelectorAll('a[href]');
+      links.forEach(function (link) {
+        var rawHref = link.getAttribute('href');
+        if (!rawHref || rawHref.startsWith('#')) return;
+        if (link.classList.contains('no-external-icon')) return;
+        if (link.textContent.trim() === '') return;
+
+        var url;
+        try {
+          url = new URL(rawHref, window.location.href);
+        } catch (_err) {
+          return;
+        }
+
+        var isHttp = url.protocol === 'http:' || url.protocol === 'https:';
+        var isExternal = isHttp && url.origin !== window.location.origin;
+        if (!isExternal) return;
+
+        link.classList.add('external-link');
+      });
+
+      enhanceCodeBlocks();
+      enhanceMarkdownAlerts();
+
+      var toggle = document.querySelector('.nav-toggle');
+      var navList = document.querySelector('.nav-list');
+      if (toggle && navList) {
+        toggle.addEventListener('click', function () {
+          var open = navList.classList.toggle('is-open');
+          toggle.setAttribute('aria-expanded', open);
+        });
+      }
+
+      var langSwitch = document.querySelector('.lang-switch');
+      var langToggle = document.querySelector('.lang-switch-toggle');
+      var langMenu = document.querySelector('.lang-menu');
+
+      if (!langSwitch || !langToggle || !langMenu) {
+        return;
+      }
+
+      function setLangMenu(open) {
+        langSwitch.classList.toggle('is-open', open);
+        langToggle.setAttribute('aria-expanded', String(open));
+        langMenu.hidden = !open;
+      }
+
+      langToggle.addEventListener('click', function () {
+        var open = langToggle.getAttribute('aria-expanded') !== 'true';
+        setLangMenu(open);
+      });
+
+      document.addEventListener('click', function (event) {
+        if (!langSwitch.contains(event.target)) {
+          setLangMenu(false);
+        }
+      });
+
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+          setLangMenu(false);
+        }
+      });
+
+      langMenu.addEventListener('click', function (event) {
+        if (event.target.closest('a')) {
+          setLangMenu(false);
+        }
+      });
+    })();
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,18 @@
+---
+layout: default
+---
+{%- assign strings = site.data[page.lang].strings -%}
+{%- assign intro_text = page.lead -%}
+
+{%- if page.lead -%}
+{%- include content-intro.html variant="page" text=intro_text badges=page.intro_badges actions=page.intro_actions -%}
+{%- endif -%}
+
+<article class="page-content{% if page.lead %} page-content--with-intro{% endif %}">
+    <div class="container">
+        {% unless page.lead %}
+        <h1>{{ page.title }}</h1>
+        {% endunless %}
+        {{ content }}
+    </div>
+</article>

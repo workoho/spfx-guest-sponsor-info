@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 80" fill="none">
+  <!-- Parallelogram accents (teal — bridging brand identity into success) -->
+  <polygon points="18,22 34,22 31,28 15,28" fill="#4FC3F7" fill-opacity="0.15"/>
+  <polygon points="168,50 184,50 181,56 165,56" fill="#4FC3F7" fill-opacity="0.12"/>
+
+  <!-- Small teal accent dots -->
+  <circle cx="24" cy="50" r="3" fill="#4FC3F7" fill-opacity="0.15"/>
+  <circle cx="176" cy="28" r="3" fill="#4FC3F7" fill-opacity="0.15"/>
+
+  <!-- Success circle + checkmark -->
+  <circle cx="100" cy="40" r="36" fill="#1A2E1A"/>
+  <path d="M82 40 L94 52 L118 28" stroke="#54B054" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

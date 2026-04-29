@@ -1,0 +1,103 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+  "solution": {
+    "name": "Guest Sponsor Info for Microsoft Entra B2B",
+    "title": "Guest Sponsor Info for Microsoft Entra B2B",
+    "id": "6cdf9494-9c67-40af-8ac8-7b36be245848",
+    "version": "1.0.0.0",
+    "includeClientSideAssets": true,
+    "skipFeatureDeployment": false,
+    "isDomainIsolated": false,
+    "iconPath": "images/icon.png",
+    "supportedLocales": [
+      "cs-CZ",
+      "da-DK",
+      "de-DE",
+      "en-US",
+      "es-ES",
+      "fi-FI",
+      "fr-FR",
+      "hu-HU",
+      "it-IT",
+      "ja-JP",
+      "nb-NO",
+      "nl-NL",
+      "pl-PL",
+      "pt-PT",
+      "ro-RO",
+      "sv-SE",
+      "zh-CN"
+    ],
+    "developer": {
+      "name": "Workoho GmbH",
+      "websiteUrl": "https://guest-sponsor-info.workoho.cloud/",
+      "privacyUrl": "https://guest-sponsor-info.workoho.cloud/privacy/",
+      "termsOfUseUrl": "https://guest-sponsor-info.workoho.cloud/terms/",
+      "mpnId": "6553067"
+    },
+    "metadata": {
+      "shortDescription": {
+        "default": "B2B guest sponsor cards with Teams readiness check — on your SharePoint landing page.",
+        "cs-cz": "Karty sponzorů pro B2B hosty s kontrolou připravenosti Teams — na vaší SharePoint stránce.",
+        "da-dk": "B2B-gæst-sponsorkort med Teams-parathedstjek — på din SharePoint-landingsside.",
+        "de-de": "B2B-Gast-Sponsorkarten mit Teams-Bereitschaftsprüfung — auf Ihrer SharePoint-Einstiegsseite.",
+        "es-es": "Tarjetas sponsor B2B con comprobación de preparación Teams — en tu página de SharePoint.",
+        "fi-fi": "B2B-vieraiden sponsorikortit Teams-valmiustarkistuksella — SharePoint-aloitussivullasi.",
+        "fr-fr": "Cartes sponsor B2B avec vérification de préparation Teams — sur votre page SharePoint.",
+        "hu-hu": "B2B-vendég szponzorkartyák Teams-készenléti ellenőrzéssel — SharePoint nyitóoldalán.",
+        "it-it": "Schede sponsor B2B con verifica della prontezza Teams — sulla tua pagina SharePoint.",
+        "ja-jp": "B2B ゲストのスポンサーカードと Teams 利用準備確認 — SharePoint ランディングページに表示。",
+        "nb-no": "B2B-gjest-sponsorkort med Teams-beredskapssjekk — på din SharePoint-landingsside.",
+        "nl-nl": "B2B-gast-sponsorkaarten met Teams-gereedheidscontrole — op uw SharePoint-landingspagina.",
+        "pl-pl": "Karty sponsorów gości B2B ze sprawdzaniem gotowości Teams — na stronie SharePoint.",
+        "pt-pt": "Cartões sponsor B2B com verificação de prontidão para Teams — na sua página SharePoint.",
+        "ro-ro": "Carduri sponsor B2B cu verificarea pregătirii Teams — pe pagina dvs. de start SharePoint.",
+        "sv-se": "B2B-gäst-sponsorkort med Teams-beredskapskontroll — på din SharePoint-landningssida.",
+        "zh-cn": "B2B 访客保荐人卡片与 Teams 就绪检查 — 在您的 SharePoint 登录页上显示。"
+      },
+      "longDescription": {
+        "default": "Each sponsor card shows profile photo, job title, and live presence. Clicking opens a contact panel with email, phone, office address, optional map preview, and manager overview — every field individually configurable. When a primary sponsor is absent or departed, the next active sponsor steps in automatically; unavailable ones remain visible as read-only tiles. All data flows via a companion Azure Function using Managed Identity and EasyAuth — no Entra directory role required for guests. Invisible to non-guests; page editors see realistic mock cards without live data.",
+        "cs-cz": "Každá sponzorská karta zobrazuje profilfoto, pracovní pozici a živý stav přítomnosti. Klepnutím se otevře kontaktní panel s e-mailem, telefonem, adresou kanceláře, volitelnou mapou a přehledem nadřízeného — každé pole lze samostatně zapnout. Pokud primární sponzor není dostupný, automaticky nastoupí dalšíaktivní sponzor; nedostupní zůstávají viditelní jako dlaždice pro čtení. Data procházejí Azure Function s Managed Identity a EasyAuth — pro hosty není nutná žádná role adresáře Entra. Pro ne-hosty neviditelné; autoři stránek vidí realistické ukázkové karty bez živých dat.",
+        "da-dk": "Hvert sponsorkort viser profilbillede, jobtitel og live tilstedeværelse. Et klik åbner et kontaktpanel med e-mail, telefon, kontoradresse, valgfri kortvisning og lederoversigt — hvert felt kan slås til individuelt. Hvis den primære sponsor ikke er tilgængelig, trer næste aktive sponsor automatisk til; utilgængelige forbliver synlige som skrivebeskyttede fliser. Data flyder via en Azure Function med Managed Identity og EasyAuth — ingen Entra-katalogrolle kræves for gæster. Usynlig for ikke-gæster; sideforfattere ser realistiske prøvekort uden live data.",
+        "de-de": "Jede Sponsorkarte zeigt Profilfoto, Jobtitel und Live-Präsenz. Ein Klick öffnet ein Kontaktpanel mit E-Mail, Telefon, Büroadresse, optionaler Kartenvorschau und Vorgesetztenübersicht — jedes Feld individuell schaltbar. Ist der primäre Sponsor nicht erreichbar, übernimmt der nächste aktive Sponsor automatisch; nicht erreichbare bleiben als schreibgeschützte Kacheln sichtbar. Alle Daten fließen über eine Azure Function mit Managed Identity und EasyAuth — kein Entra-Verzeichnisrolle für Gäste erforderlich. Für Nicht-Gäste unsichtbar; Seitenautoren sehen realistische Platzhalterkarten ohne Live-Daten.",
+        "es-es": "Cada tarjeta sponsor muestra foto, título y presencia en directo. Un clic abre un panel de contacto con correo, teléfono, dirección de oficina, mapa opcional y resumen del responsable — cada campo configurable por separado. Si el sponsor principal no está disponible, el siguiente activo toma el relevo automáticamente; los no disponibles permanecen como tarjetas de solo lectura. Todos los datos fluyen a través de una Azure Function con Managed Identity y EasyAuth — ningún rol de directorio Entra requerido para los invitados. Invisible para no invitados; los autores de páginas ven tarjetas de muestra realistas sin datos en directo.",
+        "fi-fi": "Jokainen sponsorikortti näyttää profiilikuvan, työnimikkeen ja reaaliaikaisen tilan. Napsautus avaa yhteystietopaneelin, jossa on sähköposti, puhelin, toimiston osoite, valinnainen karttaesikatselu ja esimiehen yhteenveto — jokainen kenttä erikseen kytkettävissä. Jos ensisijainen sponsori ei ole tavoitettavissa, seuraava aktiivinen sponsori ottaa paikan automaattisesti; tavoittamattomat jäävät näkyviin vain luku -kortteina. Kaikki tiedot kulkevat Azure Function -lisäosan kautta Managed Identity- ja EasyAuth-tunnistautumisella — vierailta ei vaadita Entra-hakemistoroolia. Piilotettu ei-vierailta; sivun tekijät näkevät realistiset mallikortit ilman live-dataa.",
+        "fr-fr": "Chaque carte sponsor affiche photo, titre et présence en direct. Un clic ouvre un volet de contact avec e-mail, téléphone, adresse de bureau, carte optionnelle et aperçu du responsable — chaque champ configurable individuellement. Si le sponsor principal est indisponible, le suivant prend automatiquement le relais ; les indisponibles restent visibles en lecture seule. Toutes les données transitent par une Azure Function avec Managed Identity et EasyAuth — aucun rôle d'annuaire Entra requis pour les invités. Invisible pour les non-invités ; les auteurs voient des cartes d'aperçu réalistes sans données en direct.",
+        "hu-hu": "Minden szponzorkártya megjeleníti a profilfotót, a beosztást és az élő jelenlétet. Egy kattintással megnyílik egy kapcsolatpanel e-maillel, telefonnal, irodai címmel, opcionális térkép-előnézettel és vezető áttekintéssel — minden mező egyenként kapcsolható. Ha az elsődleges szponzor nem elérhető, a következő aktív szponzor automatikusan átveszi a helyét; a nem elérhetők csak olvasható csempeként maradnak láthatóak. Minden adat egy Azure Function-ön keresztül áramlik Managed Identity és EasyAuth hitelesítéssel — a vendégeknek nincs szükségük Entra-könyvtárszerepre. Nem vendégek számára láthatatlan; szerkesztők valósághű mintakártyákat látnak élő adatok nélkül.",
+        "it-it": "Ogni scheda sponsor mostra foto, qualifica e presenza in tempo reale. Un clic apre un pannello contatti con e-mail, telefono, indirizzo ufficio, mappa opzionale e panoramica del responsabile — ogni campo attivabile singolarmente. Se il sponsor principale non è disponibile, il successivo subentra automaticamente; gli indisponibili rimangono come tessere di sola lettura. Tutti i dati transitano tramite una Azure Function con Managed Identity ed EasyAuth — nessun ruolo Entra richiesto agli ospiti. Invisibile ai non-ospiti; gli autori di pagine vedono schede di anteprima realistiche senza dati live.",
+        "ja-jp": "各スポンサーカードにはプロフィール写真、役職、リアルタイムのプレゼンスが表示されます。クリックするとメール、電話、オフィス住所、任意の地図プレビュー、上司の概要を含む連絡先パネルが開き、各項目は個別に設定できます。プライマリスポンサーが不在の場合、次のアクティブなスポンサーが自動的に引き継ぎ、不在のスポンサーは読み取り専用タイルとして表示されます。すべてのデータは Managed Identity と EasyAuth を使用した Azure Function 経由で流れます。ゲストに Entra ディレクトリ ロールは不要です。非ゲストには表示されません。ページ編集者はライブ データなしのリアルなサンプルカードを確認できます。",
+        "nb-no": "Hvert sponsorkort viser profilbilde, stilling og live tilstedeværelse. Et klikk åpner et kontaktpanel med e-post, telefon, kontoradresse, valgfri kartvisning og ledersammendrag — hvert felt kan slås av og på individuelt. Hvis den primære sponsoren ikke er tilgjengelig, trer neste aktive sponsor automatisk inn; utilgjengelige forblir synlige som skrivebeskyttede fliser. Alle data flyter via en Azure Function med Managed Identity og EasyAuth — ingen Entra-katalogrolle kreves for gjester. Usynlig for ikke-gjester; sideforfattere ser realistiske eksempelkort uten live-data.",
+        "nl-nl": "Elke sponsorkaart toont profielfoto, functietitel en live aanwezigheidsstatus. Een klik opent een contactpaneel met e-mail, telefoon, kantooradres, optionele kaartweergave en leidinggevende-overzicht — elk veld afzonderlijk in te schakelen. Als de primaire sponsor niet beschikbaar is, neemt de volgende actieve sponsor automatisch over; niet-beschikbare sponsors blijven zichtbaar als alleen-lezen tegels. Alle gegevens stromen via een Azure Function met Managed Identity en EasyAuth — geen Entra-directoryrol vereist voor gasten. Onzichtbaar voor niet-gasten; paginaauteurs zien realistische voorbeeldkaarten zonder live data.",
+        "pl-pl": "Każda karta sponsora wyświetla zdjęcie, stanowisko i status obecności na żywo. Kliknięcie otwiera panel kontaktowy z e-mailem, telefonem, adresem biura, opcjonalną mapą i podsumowaniem przełożonego — każde pole można włączyć osobno. Jeśli główny sponsor jest niedostępny, następny aktywny sponsor przejmuje automatycznie jego miejsce; niedostępni pozostają widoczni jako kafelki tylko do odczytu. Wszystkie dane przepływają przez Azure Function z Managed Identity i EasyAuth — goście nie potrzebują roli katalogowej Entra. Niewidoczny dla niegości; autorzy stron widzą realistyczne karty przykładowe bez danych na żywo.",
+        "pt-pt": "Cada cartão sponsor exibe foto, cargo e presença em direto. Um clique abre um painel de contactos com e-mail, telefone, morada do escritório, mapa opcional e resumo do responsável — cada campo configurável individualmente. Se o sponsor principal estiver indisponível, o seguinte toma o lugar automaticamente; os indisponíveis permanecem visíveis como cartões de só leitura. Todos os dados fluem através de uma Azure Function com Managed Identity e EasyAuth — nenhuma função de diretório Entra é exigida aos convidados. Invisível para não convidados; os autores de páginas veem cartões de exemplo realistas sem dados em direto.",
+        "ro-ro": "Fiecare card sponsor afișează fotografie, funcție și prezență live. Un clic deschide un panou de contact cu e-mail, telefon, adresă de birou, hartă opțională și prezentarea managerului — fiecare câmp poate fi activat individual. Dacă sponsorul principal este indisponibil, următorul sponsor activ preia automat locul; cei indisponibili rămân vizibili ca dale doar pentru citire. Toate datele trec printr-un Azure Function cu Managed Identity și EasyAuth — invitații nu necesită niciun rol de director Entra. Invizibil pentru non-invitați; autorii de pagini văd carduri de previzualizare realiste fără date live.",
+        "sv-se": "Varje sponsorkort visar profilfoto, befattning och live-närvaro. Ett klick öppnar ett kontaktpanel med e-post, telefon, kontorsadress, valfri kartförhandsvisning och chefsöversikt — varje fält kan slås på individuellt. Om den primära sponsorn inte är tillgänglig tar nästa aktiva sponsor automatiskt vid; otillgängliga förblir synliga som skrivskyddade paneler. Alla data flödar via en Azure Function med Managed Identity och EasyAuth — ingen Entra-katalogroll krävs för gäster. Osynlig för icke-gäster; sidförfattare ser realistiska exempelkort utan live-data.",
+        "zh-cn": "每张保荐人卡片均显示头像、职位和实时在线状态。点击后展开联系人面板，包含电子邮件、电话、办公室地址、可选地图预览及上级管理者摘要——每个字段可单独开关。若主要保荐人不可用，下一位活跃保荐人将自动接替；不可用的保荐人仍以只读磁贴显示。所有数据通过配套的 Azure Function（采用托管标识和 EasyAuth）传输——无需为访客分配 Entra 目录角色。非访客不可见；页面编辑者可看到逼真的示例卡片，无需实时数据。"
+      },
+      "screenshotPaths": [
+        "images/screenshots/screenshot-1-sponsor-card-full.png",
+        "images/screenshots/screenshot-2-view-variants.png",
+        "images/screenshots/screenshot-3-setup-wizard.png",
+        "images/screenshots/screenshot-4-property-pane.png",
+        "images/screenshots/screenshot-5-editor-preview.png"
+      ],
+      "videoUrl": "",
+      "categories": [
+        "Collaboration",
+        "IT/admin",
+        "Productivity"
+      ]
+    },
+    "features": [
+      {
+        "title": "Guest Sponsor Info for Microsoft Entra B2B",
+        "description": "The feature that activates elements of the Guest Sponsor Info web part.",
+        "id": "b7d00abc-0ce7-45d6-9b8e-ffd7b2139cee",
+        "version": "1.0.0.0"
+      }
+    ]
+  },
+  "paths": {
+    "zippedPackage": "solution/guest-sponsor-info.sppkg"
+  }
+}

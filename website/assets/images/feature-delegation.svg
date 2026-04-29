@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80" fill="none">
+  <!-- Sponsor delegation / fallback illustration -->
+
+  <!-- Sponsor A (top, active — highlighted) -->
+  <g transform="translate(10,6)">
+    <rect width="60" height="28" rx="8" fill="white" stroke="#12B2CD" stroke-width="1.5"/>
+    <circle cx="18" cy="14" r="9" fill="#0A3D4F"/>
+    <circle cx="18" cy="11" r="3.5" fill="white"/>
+    <ellipse cx="18" cy="18" rx="5" ry="3" fill="white"/>
+    <rect x="32" y="9" width="22" height="3.5" rx="1.75" fill="#0A3D4F" opacity="0.7"/>
+    <rect x="32" y="16" width="16" height="2.5" rx="1.25" fill="#12B2CD" opacity="0.5"/>
+    <!-- Priority badge: 1 -->
+    <circle cx="56" cy="6" r="6" fill="#12B2CD"/>
+    <text x="56" y="9.5" text-anchor="middle" font-family="system-ui,sans-serif" font-size="8" font-weight="700" fill="white">1</text>
+  </g>
+
+  <!-- Arrow down -->
+  <g transform="translate(36,36)">
+    <line x1="4" y1="0" x2="4" y2="10" stroke="#0A3D4F" stroke-width="1.5" stroke-dasharray="3 2" opacity="0.4"/>
+    <path d="M0 8 L4 14 L8 8" fill="#0A3D4F" opacity="0.4"/>
+  </g>
+
+  <!-- Sponsor B (bottom, fallback — dimmed) -->
+  <g transform="translate(10,50)">
+    <rect width="60" height="28" rx="8" fill="white" stroke="#e2e8f0" stroke-width="1.5"/>
+    <circle cx="18" cy="14" r="9" fill="#0A3D4F" opacity="0.5"/>
+    <circle cx="18" cy="11" r="3.5" fill="white"/>
+    <ellipse cx="18" cy="18" rx="5" ry="3" fill="white"/>
+    <rect x="32" y="9" width="22" height="3.5" rx="1.75" fill="#0A3D4F" opacity="0.35"/>
+    <rect x="32" y="16" width="16" height="2.5" rx="1.25" fill="#12B2CD" opacity="0.25"/>
+    <!-- Priority badge: 2 -->
+    <circle cx="56" cy="6" r="6" fill="#0A3D4F" opacity="0.4"/>
+    <text x="56" y="9.5" text-anchor="middle" font-family="system-ui,sans-serif" font-size="8" font-weight="700" fill="white">2</text>
+  </g>
+
+  <!-- "Unavailable" X on Sponsor A -->
+  <g transform="translate(60, 12)">
+    <circle cx="8" cy="8" r="7" fill="#ef4444" fill-opacity="0.12"/>
+    <line x1="5" y1="5" x2="11" y2="11" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="11" y1="5" x2="5" y2="11" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
+
+  <!-- Checkmark on Sponsor B (fallback activated) -->
+  <g transform="translate(60, 56)">
+    <circle cx="8" cy="8" r="7" fill="#10b981" fill-opacity="0.15"/>
+    <path d="M4.5 8 L7 10.5 L11.5 5.5" stroke="#10b981" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

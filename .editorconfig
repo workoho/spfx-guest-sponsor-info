@@ -1,0 +1,25 @@
+# EditorConfig: https://editorconfig.org
+# Ensures consistent whitespace and line endings across all editors and OSes.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.md]
+# Trailing whitespace is significant in Markdown (line break = two spaces).
+trim_trailing_whitespace = false
+
+[*.{json,jsonc}]
+indent_size = 2
+
+[*.scss]
+indent_size = 2
+
+[*.{ts,tsx}]
+indent_size = 2

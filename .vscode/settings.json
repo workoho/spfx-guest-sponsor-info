@@ -1,0 +1,119 @@
+// Place your settings in this file to overwrite default and user settings.
+{
+  // ── File Explorer ──────────────────────────────────────────────────────────
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/bower_components": true,
+    "**/coverage": true,
+    "**/jest-output": true,
+    "**/lib-amd": true,
+    "src/**/*.scss.ts": true,
+    "azure-function/dist": true,
+    "azure-function/node_modules": true
+  },
+  // ── TypeScript ─────────────────────────────────────────────────────────────
+  "typescript.tsdk": "./node_modules/typescript/lib",
+  // ── ESLint ─────────────────────────────────────────────────────────────────
+  "eslint.validate": ["typescript", "typescriptreact"],
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  // ── Stylelint ──────────────────────────────────────────────────────────────
+  "stylelint.validate": ["scss"],
+  "css.validate": false,
+  "scss.validate": false,
+  // ── Markdownlint ───────────────────────────────────────────────────────────
+  "markdownlint.config": {
+    "extends": ".markdownlint.json"
+  },
+  // ── Editor defaults ────────────────────────────────────────────────────────
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": false,
+  "editor.formatOnType": false,
+  "editor.rulers": [120],
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  // ── Per-language formatters ────────────────────────────────────────────────
+  // TypeScript and SCSS use ESLint / Stylelint code-actions (see above);
+  // do NOT add Prettier here — it would conflict with ESLint rule set.
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[shellscript]": {
+    "editor.defaultFormatter": "foxundermoon.shell-format"
+  },
+  // Tell shell-format where to find the shfmt binary installed in the Dockerfile.
+  "shellformat.path": "/usr/local/bin/shfmt",
+  // Match shfmt flags used in fix:sh script: 2-space indent, case-indent.
+  "shellformat.flag": "-i 2 -ci",
+  "[bicep]": {
+    "editor.defaultFormatter": "ms-azuretools.vscode-bicep"
+  },
+  "[powershell]": {
+    "editor.defaultFormatter": "ms-vscode.powershell"
+  },
+  // ── GitLens ────────────────────────────────────────────────────────────────
+  // Disable the GitLens rebase editor so that automatic rebases (e.g. during
+  // git push) run through without opening an interactive GUI window.
+  "gitlens.rebaseEditor.enabled": false,
+
+  // ── GitHub Copilot ─────────────────────────────────────────────────────────
+  "github.copilot.chat.commitMessageGeneration.instructions": [
+    {
+      "file": ".github/instructions/commit-message.instructions.md"
+    }
+  ],
+  "azureFunctions.deploySubpath": "azure-function",
+  "azureFunctions.postDeployTask": "npm install (functions)",
+  "azureFunctions.projectLanguage": "TypeScript",
+  "azureFunctions.projectRuntime": "~4",
+  "debug.internalConsoleOptions": "neverOpen",
+  "azureFunctions.projectLanguageModel": 4,
+  "azureFunctions.preDeployTask": "npm prune (functions)",
+  // ── JSON schemas ───────────────────────────────────────────────────────────
+  // Map SPFx config schemas to local copies in node_modules so VS Code does
+  // not try to fetch them from developer.microsoft.com (currently unavailable).
+  "json.schemas": [
+    {
+      "fileMatch": ["**/config/config.json"],
+      "url": "./node_modules/@microsoft/spfx-heft-plugins/lib-commonjs/spfxConfig/schemas/config.2.0.schema.json"
+    },
+    {
+      "fileMatch": ["**/config/deploy-azure-storage.json"],
+      "url": "./node_modules/@microsoft/spfx-heft-plugins/lib-commonjs/plugins/deployAzureStorage/deploy-azure-storage.schema.json"
+    },
+    {
+      "fileMatch": ["**/config/package-solution.json"],
+      "url": "./node_modules/@microsoft/spfx-heft-plugins/lib-commonjs/plugins/packageSolutionPlugin/package-solution.schema.json"
+    },
+    {
+      "fileMatch": ["**/config/rig.json"],
+      "url": "./node_modules/@rushstack/rig-package/lib/schemas/rig.schema.json"
+    },
+    {
+      "fileMatch": ["**/config/serve.json"],
+      "url": "./node_modules/@microsoft/spfx-heft-plugins/lib-commonjs/spfxConfig/schemas/spfx-serve.schema.json"
+    },
+    {
+      "fileMatch": ["**/config/write-manifests.json"],
+      "schema": {
+        "type": "object",
+        "properties": {
+          "$schema": { "type": "string" },
+          "cdnBasePath": {
+            "type": "string",
+            "description": "Base path for the CDN when writing manifests."
+          }
+        }
+      }
+    },
+    {
+      "fileMatch": ["**/*.manifest.json"],
+      "url": "./node_modules/@microsoft/sp-module-interfaces/lib-commonjs/manifestSchemas/jsonSchemas/client-side-web-part-manifest.schema.json"
+    }
+  ]
+}

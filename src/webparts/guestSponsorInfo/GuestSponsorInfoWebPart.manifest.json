@@ -1,0 +1,57 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx/client-side-web-part-manifest.schema.json",
+  "id": "16be4020-0cfb-4b1b-9d50-d3d4af2e90e6",
+  "alias": "GuestSponsorInfoWebPart",
+  "componentType": "WebPart",
+  "version": "*",
+  "manifestVersion": 2,
+  "requiresCustomScript": false,
+  "supportedHosts": ["SharePointWebPart"],
+  "supportsThemeVariants": true,
+  "mobileViewable": true,
+  "preconfiguredEntries": [
+    {
+      "groupId": "1edbd9a8-0bfb-4aa2-9afd-14b8c45dd489",
+      "group": {
+        "default": "Communication"
+      },
+      "title": {
+        "default": "Guest Sponsor Info for Microsoft Entra B2B",
+        "da-dk": "Guest Sponsor Info til Microsoft Entra B2B",
+        "de-de": "Guest Sponsor Info für Microsoft Entra B2B",
+        "es-es": "Guest Sponsor Info para Microsoft Entra B2B",
+        "fi-fi": "Guest Sponsor Info varten Microsoft Entra B2B",
+        "fr-fr": "Guest Sponsor Info pour Microsoft Entra B2B",
+        "it-it": "Guest Sponsor Info per Microsoft Entra B2B",
+        "ja-jp": "Microsoft Entra B2B 向け Guest Sponsor Info",
+        "nb-no": "Guest Sponsor Info for Microsoft Entra B2B",
+        "nl-nl": "Guest Sponsor Info voor Microsoft Entra B2B",
+        "pl-pl": "Guest Sponsor Info dla Microsoft Entra B2B",
+        "pt-pt": "Guest Sponsor Info para Microsoft Entra B2B",
+        "sv-se": "Guest Sponsor Info för Microsoft Entra B2B",
+        "zh-cn": "适用于 Microsoft Entra B2B 的 Guest Sponsor Info"
+      },
+      "description": {
+        "default": "Shows the sponsors of the signed-in Microsoft Entra guest user",
+        "da-dk": "Viser sponsorerne for den aktuelle Microsoft Entra-gæstebruger",
+        "de-de": "Zeigt die Sponsoren des angemeldeten Microsoft Entra-Gastbenutzers",
+        "es-es": "Muestra los patrocinadores del usuario invitado de Microsoft Entra",
+        "fi-fi": "Näyttää kirjautuneen Microsoft Entra -vieraskäyttäjän sponsorit",
+        "fr-fr": "Affiche les sponsors de l'utilisateur invité Microsoft Entra connecté",
+        "it-it": "Mostra gli sponsor dell'utente ospite Microsoft Entra connesso",
+        "ja-jp": "サインイン済み Microsoft Entra ゲスト ユーザーのスポンサーを表示します",
+        "nb-no": "Viser sponsorer for den innloggede Microsoft Entra-gjestebrukeren",
+        "nl-nl": "Toont de sponsors van de aangemelde Microsoft Entra-gastgebruiker",
+        "pl-pl": "Wyświetla sponsorów zalogowanego użytkownika-gościa Microsoft Entra",
+        "pt-pt": "Apresenta os patrocinadores do utilizador convidado do Microsoft Entra com sessão iniciada",
+        "sv-se": "Visar sponsorer för den inloggade Microsoft Entra-gästanvändaren",
+        "zh-cn": "显示已登录的 Microsoft Entra 来宾用户的赞助商"
+      },
+      "officeFabricIconFontName": "People",
+      "properties": {
+        "showTitle": true,
+        "titleSize": "h2"
+      }
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <rect width="32" height="32" rx="7" fill="#12B2CD"/>
+  <g transform="scale(0.333)">
+    <polyline points="35,24 46,48" stroke="#0A3D4F" stroke-width="2" stroke-opacity="0.45" fill="none" stroke-linecap="round"/>
+    <polyline points="35,72 46,48" stroke="#0A3D4F" stroke-width="2" stroke-opacity="0.45" fill="none" stroke-linecap="round"/>
+    <line x1="46" y1="48" x2="56" y2="48" stroke="#0A3D4F" stroke-width="2" stroke-opacity="0.45" stroke-linecap="round"/>
+    <circle cx="22" cy="24" r="14" fill="#0A3D4F"/>
+    <circle cx="22" cy="18.5" r="4.5" fill="white"/>
+    <ellipse cx="22" cy="30" rx="6.5" ry="4" fill="white"/>
+    <circle cx="22" cy="72" r="14" fill="#0A3D4F"/>
+    <circle cx="22" cy="66.5" r="4.5" fill="white"/>
+    <ellipse cx="22" cy="78" rx="6.5" ry="4" fill="white"/>
+    <circle cx="73" cy="48" r="18" fill="#0A3D4F" fill-opacity="0.15" stroke="#0A3D4F" stroke-width="2.5" stroke-dasharray="5 3" stroke-linecap="round"/>
+    <circle cx="73" cy="42.5" r="5.5" fill="#0A3D4F"/>
+    <ellipse cx="73" cy="55" rx="8" ry="4.5" fill="#0A3D4F"/>
+  </g>
+</svg>

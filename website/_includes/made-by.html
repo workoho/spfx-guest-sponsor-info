@@ -1,0 +1,31 @@
+{%- assign strings = site.data[page.lang].strings -%}
+
+<section class="made-by">
+  <div class="container made-by-inner">
+    <div class="made-by-content">
+      <p class="made-by-label">{{ strings.made_by.label }}</p>
+      <a href="{{ site.author_url }}?utm_source=guest-sponsor-info&amp;utm_medium=website&amp;utm_content=made-by"
+        target="_blank" rel="noopener" class="made-by-logo-link">
+        <img src="{{ '/assets/images/workoho-logo.svg' | relative_url }}" alt="Workoho" class="made-by-workoho-logo"
+          width="200" height="48">
+      </a>
+      <p class="made-by-intro">{{ strings.made_by.intro }}</p>
+      <p class="made-by-description">{{ strings.made_by.description }}</p>
+      <a href="{{ site.author_url }}/kontakt/?utm_source=guest-sponsor-info&amp;utm_medium=website&amp;utm_content=made-by-cta"
+        target="_blank" rel="noopener" class="made-by-cta">{{ strings.made_by.cta }}</a>
+    </div>
+    <div class="made-by-easylife">
+      <div class="easylife-card">
+        <a href="https://easylife365.cloud/products/collaboration/?utm_source=guest-sponsor-info&amp;utm_medium=website&amp;utm_content=easylife-logo"
+          target="_blank" rel="noopener" class="no-external-icon">
+          <img src="{{ '/assets/images/easylife365-logo.svg' | relative_url }}" alt="EasyLife 365 Collaboration"
+            class="easylife-logo" width="240" height="33">
+        </a>
+        <span class="easylife-tier">{{ strings.made_by.partner_tier }}</span>
+        <p class="easylife-tagline">{{ strings.made_by.partner_tagline }}</p>
+        <a href="https://wkho.io/easylife365-demo?utm_source=guest-sponsor-info&amp;utm_medium=website&amp;utm_content=easylife-cta"
+          target="_blank" rel="noopener" class="easylife-cta">{{ strings.made_by.partner_cta }}</a>
+      </div>
+    </div>
+  </div>
+</section>

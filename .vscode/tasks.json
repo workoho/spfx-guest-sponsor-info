@@ -1,0 +1,59 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "shell",
+      "label": "Azure Function: Start Host (debug)",
+      "command": "func host start --inspect=9229",
+      "problemMatcher": "$func-node-watch",
+      "isBackground": true,
+      "dependsOn": "Azure Function: Watch TypeScript",
+      "options": {
+        "cwd": "${workspaceFolder}/azure-function"
+      }
+    },
+    {
+      "type": "shell",
+      "label": "Azure Function: Build",
+      "command": "npm run build",
+      "dependsOn": "Azure Function: Install Dependencies",
+      "problemMatcher": "$tsc",
+      "options": {
+        "cwd": "${workspaceFolder}/azure-function"
+      }
+    },
+    {
+      "type": "shell",
+      "label": "Azure Function: Watch TypeScript",
+      "command": "npm run watch",
+      "dependsOn": "Azure Function: Install Dependencies",
+      "problemMatcher": "$tsc-watch",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "isBackground": true,
+      "options": {
+        "cwd": "${workspaceFolder}/azure-function"
+      }
+    },
+    {
+      "type": "shell",
+      "label": "Azure Function: Install Dependencies",
+      "command": "npm install",
+      "options": {
+        "cwd": "${workspaceFolder}/azure-function"
+      }
+    },
+    {
+      "type": "shell",
+      "label": "Azure Function: Prune for Production",
+      "command": "npm prune --production",
+      "dependsOn": "Azure Function: Build",
+      "problemMatcher": [],
+      "options": {
+        "cwd": "${workspaceFolder}/azure-function"
+      }
+    }
+  ]
+}

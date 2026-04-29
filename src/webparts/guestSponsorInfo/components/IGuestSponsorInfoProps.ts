@@ -1,0 +1,207 @@
+// SPDX-FileCopyrightText: 2026 Workoho GmbH <https://workoho.com>
+// SPDX-FileCopyrightText: 2026 Julian Pawlowski <https://github.com/jpawlowski>
+// SPDX-License-Identifier: LicenseRef-PolyForm-Shield-1.0.0
+
+import { AadHttpClient } from '@microsoft/sp-http';
+import { DisplayMode } from '@microsoft/sp-core-library';
+import type { IReadonlyTheme } from '@microsoft/sp-component-base';
+
+/** Payload emitted by WelcomeDialog when the admin completes or skips the wizard. */
+export interface IWelcomeSetupConfig {
+  /** The path the admin chose: configure the API, enable demo mode, or skip entirely. */
+  chosenPath: 'api' | 'demo' | 'skip';
+  /** Azure Function base URL (without `/api/…` suffix). Only present when `chosenPath === 'api'`. */
+  apiUrl?: string;
+  /** App Registration client ID for the Azure Function. Only present when `chosenPath === 'api'`. */
+  clientId?: string;
+}
+
+export interface IGuestSponsorInfoProps {
+  /** SPFx login name (UPN) of the current user - used as a fallback for guest detection. */
+  loginName: string;
+  /**
+   * Direct flag from `pageContext.user.isExternalGuestUser` — the authoritative indicator
+   * that the current user is an Entra B2B guest. More reliable than the `#EXT#` heuristic
+   * when the SharePoint user profile has not yet been initialised (SP.UserProfile 500).
+   */
+  isExternalGuestUser: boolean;
+  /** Current display mode supplied by the SPFx page context. */
+  displayMode: DisplayMode;
+  /**
+   * URL of the Azure Function photo endpoint (`/api/getPhoto`). Derived from the same
+   * Function App base URL as `functionUrl`. Used for lazy manager photo loading.
+   */
+  photoUrl: string | undefined;
+  /** Optional heading shown above the sponsor cards. */
+  title: string;
+  /** Show or hide the heading above the sponsor cards. Default: true. */
+  showTitle?: boolean;
+  /** Size of the title. Defaults to 'h2' (28 px). */
+  titleSize?: 'h2' | 'h3' | 'h4' | 'normal';
+  /**
+   * When true, the web part behaves as if the current user is a guest and
+   * renders fictitious sponsor cards from MockSponsorService instead of
+   * making live Graph calls.
+   */
+  mockMode: boolean;
+  /** Maximum number of sponsors to display on the live page (1-5). Default: 2. */
+  maxSponsorCount: number;
+  /** Number of mock sponsor cards to display in demo mode (1-5). Default: 2. */
+  mockSponsorCount: number;
+  /** Notification to simulate in demo mode. Default: 'none'. */
+  mockSimulatedHint: 'none' | 'teamsAccessPending' | 'versionMismatch' | 'sponsorUnavailable' | 'noSponsors';
+  /** Show the "Teams not set up yet" notice to guest users. Default: true. */
+  showTeamsAccessPendingHint: boolean;
+  /** Show the "Update available" notice when the web part and Azure Function versions differ. Default: true. */
+  showVersionMismatchHint: boolean;
+  /** Show the "Sponsor not available" notice when all assigned sponsors are inactive. Default: true. */
+  showSponsorUnavailableHint: boolean;
+  /** Show the "No sponsors found" notice when no sponsors are assigned. Default: true. */
+  showNoSponsorsHint: boolean;
+  /** Card layout mode: 'full' (136px tiles), 'compact' (horizontal rows), or 'auto' (switches based on count). */
+  cardLayout: 'auto' | 'full' | 'compact';
+  /** Minimum number of sponsors that triggers compact layout in 'auto' mode. Default: 3. */
+  cardLayoutAutoThreshold: number;
+  /**
+   * Entra ID tenant ID of the host tenant (where the sponsors live).
+   * Used to generate Teams deep links that open in the guest-account context.
+   */
+  hostTenantId: string;
+  /** URL of the Azure Function proxy endpoint. Undefined when not configured. */
+  functionUrl: string | undefined;
+  /**
+   * URL of the Azure Function presence endpoint (`/api/getPresence`).  Derived from
+   * the same Function App base URL as `functionUrl`.  When set, presence refresh polls
+   * call this endpoint (application permissions via Managed Identity) instead of Graph
+   * directly (delegated permissions), ensuring reliable results for guest users.
+   */
+  presenceUrl: string | undefined;
+  /**
+   * URL of the Azure Function ping endpoint (`/api/ping`).  Derived from
+   * the same Function App base URL as `functionUrl`.  Used in edit mode to
+   * verify connectivity without triggering sponsor lookups or permission errors.
+   */
+  pingUrl: string | undefined;
+  /** Client ID of the App Registration used by the Azure Function proxy. Undefined when not configured. */
+  webPartClientId: string | undefined;
+  /** Pre-acquired AAD HTTP client scoped to the function App Registration. Undefined when not configured. */
+  aadHttpClient: AadHttpClient | undefined;
+  /** Show business phone numbers in the contact card. */
+  showBusinessPhones: boolean;
+  /** Show the mobile phone number in the contact card. */
+  showMobilePhone: boolean;
+  /** Show the work location field in the contact card. */
+  showWorkLocation: boolean;
+  /** Show the sponsor's city. Default: false. */
+  showCity: boolean;
+  /** Show the sponsor's country or region. Default: false. */
+  showCountry: boolean;
+  /** Show the sponsor's street address. Default: false. */
+  showStreetAddress: boolean;
+  /** Show the sponsor's postal code. Default: false. */
+  showPostalCode: boolean;
+  /** Show the sponsor's state or province. Default: false. */
+  showState: boolean;
+  /**
+   * Sponsor license eligibility filter applied server-side by the Azure Function.
+   *   'any'      — sponsor must have at least one active license (Enabled or Warning)
+   *   'exchange' — sponsor must have an active Exchange Online plan
+   *   'teams'    — sponsor must have an active Microsoft Teams plan (default)
+   */
+  sponsorFilter: 'any' | 'exchange' | 'teams';
+  /**
+   * When true (default), the Function checks mailboxSettings.userPurpose to ensure
+   * the sponsor has a personal user mailbox (not a shared/room/equipment mailbox).
+   * Requires MailboxSettings.Read; falls back to fail-open when not granted.
+   * When false, an active Exchange Online license is used as a mailbox proxy instead.
+   */
+  requireUserMailbox: boolean;
+  /** Session-scoped sponsor cache duration in minutes (2-480). Default: 30. */
+  sessionCacheTtlMinutes: number;
+  /** Optional Azure Maps key used for inline map preview. */
+  azureMapsSubscriptionKey: string | undefined;
+  /** External map provider used for fallback links. */
+  externalMapProvider: 'bing' | 'google' | 'apple' | 'openstreetmap' | 'none';
+  /** Show the manager section in the contact card. */
+  showManager: boolean;
+  /** Show the presence status indicator and label. Default: true. */
+  showPresence: boolean;
+  /** Show the sponsor's job title in the contact card. Default: true. */
+  showSponsorJobTitle: boolean;
+  /** Show the manager's job title in the contact card. Default: true. */
+  showManagerJobTitle: boolean;
+  /** Show the sponsor's department in the Organization section. Default: false. */
+  showSponsorDepartment: boolean;
+  /** Show the manager's department below the manager's job title. Default: false. */
+  showManagerDepartment: boolean;
+  /** Show the sponsor's profile photo. When false, only initials are shown. Default: true. */
+  showSponsorPhoto: boolean;
+  /** Show the manager's profile photo. When false, only initials are shown. Default: true. */
+  showManagerPhoto: boolean;
+  /** Use informal address ("du"/"tu") instead of formal ("Sie"/"vous"). Default: false. */
+  useInformalAddress: boolean;
+  /**
+   * Version string of the web part (from the manifest).
+   * Sent as X-Client-Version on proxy requests so the Azure Function can log
+   * a warning when client and server versions differ.
+   */
+  clientVersion: string;
+  /**
+   * Called whenever the Azure Function proxy connectivity status changes (edit mode only).
+   * Allows the web part class to reflect the status in the property pane without
+   * holding the proxyStatus state in both the component and the web part.
+   */
+  onProxyStatusChange?: (status: 'checking' | 'ok' | 'error') => void;
+  /**
+   * Called when a version mismatch between the web part and Azure Function is detected or
+   * cleared (edit mode only). Allows the web part class to surface the notice in the
+   * property pane near the version number without keeping this state in two places.
+   */
+  onVersionMismatch?: (detected: boolean) => void;
+  /**
+   * Called when the user edits the title inline (edit mode only).
+   * The web part class persists the new value via `this.properties.title = value`
+   * so the change is saved with the page.
+   */
+  onTitleChange?: (newTitle: string) => void;
+  /**
+   * Whether the first-run welcome dialog has already been dismissed for this instance.
+   * Backed by `this.properties.welcomeSeen` in the web part class so the flag is
+   * stored in SharePoint (per-page, per-instance) rather than in the browser —
+   * dismissing it once removes it for all users on all devices.
+   */
+  welcomeSeen: boolean;
+  /**
+   * Called when the admin completes (or deliberately skips) the first-run setup wizard.
+   * The web part class persists `welcomeSeen = true` and optionally writes the chosen
+   * API URL, client ID, and mode into `this.properties` so the page author only needs
+   * to save the page once to apply all settings.
+   */
+  onWelcomeComplete: (config: IWelcomeSetupConfig) => void;
+  /**
+   * Called when the admin skips the wizard via the X button or "Not now".
+   * The web part class should open the property pane so the admin has a direct
+   * path to configure the web part manually.
+   */
+  onWelcomeSkip: () => void;
+  /**
+   * Called when the admin clicks "Let's go" on the Done step (after committing).
+   * The wizard is about to close; the web part class should open the property
+   * pane so the admin can review their settings.
+   */
+  onWelcomeFinish: () => void;
+  /**
+   * Unique prefix derived from the SPFx web part instance ID.
+   * Passed as `id` to every FluentProvider so multiple web part instances
+   * on the same page do not produce conflicting Fluent UI style-tag IDs.
+   */
+  fluentProviderId: string;
+  /**
+   * SPFx host site theme supplied by the ThemeProvider service.
+   * Passed to createV9Theme to produce a matching Fluent UI v9 theme for the
+   * FluentProvider that wraps the entire web part component tree.
+   * When undefined the FluentProvider falls back to webLightTheme.
+   */
+  theme?: IReadonlyTheme;
+}
+

@@ -1,0 +1,26 @@
+{
+  // Extends the SPFx rig's default jest configuration.
+  // The rig already sets: testEnvironment=jsdom, roots=lib-commonjs, collectCoverage=true.
+  "extends": "@microsoft/spfx-web-build-rig/profiles/default/config/jest.config.json",
+  // Disable the transform cache to work around a Node 22 + jest 29 incompatibility where
+  // jest worker processes crash with a uv_fs_close assertion when reading cached transforms.
+  "cache": false,
+  // Run test suites serially in a single worker to prevent parallel fs access issues on
+  // Node 22 and to keep CI output deterministic and easy to read.
+  "maxWorkers": 1,
+  // Polyfills and global stubs for Fluent UI v9 (e.g. ResizeObserver used by MessageBar).
+  "setupFiles": ["<rootDir>/src/__mocks__/jest.setup.js"],
+  // Map modules that jest cannot load natively (AMD-format strings, browser-only SPFx packages).
+  "moduleNameMapper": {
+    // Loc strings: the dist files use AMD define() which jest cannot evaluate.
+    // The CJS shim exports the same key/value pairs in a format jest understands.
+    "^GuestSponsorInfoWebPartStrings$": "<rootDir>/src/__mocks__/stringsMock.js",
+    // @microsoft/sp-core-library accesses browser globals at import time.
+    // This shim provides the subset used by our components (DisplayMode, Version).
+    "^@microsoft/sp-core-library$": "<rootDir>/src/__mocks__/sp-core-library.js",
+    // @microsoft/sp-http loads FetchProvider (ServiceKey.create) at module evaluation
+    // time which fails in the Jest Node environment. This shim provides the subset
+    // used by our services (AadHttpClient.configurations.v1).
+    "^@microsoft/sp-http$": "<rootDir>/src/__mocks__/sp-http.js"
+  }
+}

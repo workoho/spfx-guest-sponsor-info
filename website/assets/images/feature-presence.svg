@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80" fill="none">
+  <!-- Teams presence illustration -->
+  <!-- Three user circles with different presence states -->
+
+  <!-- User 1 — Available (green) -->
+  <circle cx="24" cy="30" r="14" fill="#0A3D4F" fill-opacity="0.1"/>
+  <circle cx="24" cy="26" r="5" fill="#0A3D4F"/>
+  <ellipse cx="24" cy="36" rx="7" ry="4" fill="#0A3D4F"/>
+  <circle cx="34" cy="38" r="5" fill="#10b981" stroke="white" stroke-width="2"/>
+  <!-- Checkmark in green dot -->
+  <path d="M31.5 38 L33.5 40 L37 36.5" stroke="white" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- User 2 — Busy (red) -->
+  <circle cx="56" cy="30" r="14" fill="#0A3D4F" fill-opacity="0.1"/>
+  <circle cx="56" cy="26" r="5" fill="#0A3D4F"/>
+  <ellipse cx="56" cy="36" rx="7" ry="4" fill="#0A3D4F"/>
+  <circle cx="66" cy="38" r="5" fill="#ef4444" stroke="white" stroke-width="2"/>
+  <!-- Minus in red dot -->
+  <line x1="63.5" y1="38" x2="68.5" y2="38" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- User 3 — Away (yellow) -->
+  <circle cx="40" cy="56" r="14" fill="#0A3D4F" fill-opacity="0.1"/>
+  <circle cx="40" cy="52" r="5" fill="#0A3D4F"/>
+  <ellipse cx="40" cy="62" rx="7" ry="4" fill="#0A3D4F"/>
+  <circle cx="50" cy="64" r="5" fill="#f59e0b" stroke="white" stroke-width="2"/>
+  <!-- Clock hand in yellow dot -->
+  <line x1="50" y1="64" x2="50" y2="61.5" stroke="white" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="50" y1="64" x2="52" y2="65" stroke="white" stroke-width="1.2" stroke-linecap="round"/>
+
+  <!-- Pulse rings around green dot -->
+  <circle cx="34" cy="38" r="8" stroke="#10b981" stroke-width="0.8" opacity="0.3"/>
+  <circle cx="34" cy="38" r="12" stroke="#10b981" stroke-width="0.5" opacity="0.15"/>
+</svg>

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80" fill="none">
+  <!-- Multilingual / Globe illustration -->
+
+  <!-- Globe -->
+  <circle cx="40" cy="38" r="26" fill="#12B2CD" fill-opacity="0.08" stroke="#12B2CD" stroke-width="1.5"/>
+  <!-- Latitude lines -->
+  <ellipse cx="40" cy="38" rx="26" ry="10" fill="none" stroke="#12B2CD" stroke-width="0.8" opacity="0.3"/>
+  <ellipse cx="40" cy="38" rx="26" ry="20" fill="none" stroke="#12B2CD" stroke-width="0.8" opacity="0.3"/>
+  <!-- Longitude lines -->
+  <ellipse cx="40" cy="38" rx="10" ry="26" fill="none" stroke="#12B2CD" stroke-width="0.8" opacity="0.3"/>
+  <!-- Meridian -->
+  <line x1="40" y1="12" x2="40" y2="64" stroke="#12B2CD" stroke-width="0.8" opacity="0.3"/>
+  <line x1="14" y1="38" x2="66" y2="38" stroke="#12B2CD" stroke-width="0.8" opacity="0.3"/>
+
+  <!-- Speech bubble 1 (top-right) — EN -->
+  <g transform="translate(52,6)">
+    <rect width="24" height="16" rx="5" fill="#0A3D4F"/>
+    <path d="M8 16 L4 22 L14 16" fill="#0A3D4F"/>
+    <text x="12" y="12" text-anchor="middle" font-family="system-ui,sans-serif" font-size="8" font-weight="700" fill="white">EN</text>
+  </g>
+
+  <!-- Speech bubble 2 (bottom-left) — DE -->
+  <g transform="translate(2,52)">
+    <rect width="24" height="16" rx="5" fill="#12B2CD"/>
+    <path d="M16 16 L20 22 L10 16" fill="#12B2CD"/>
+    <text x="12" y="12" text-anchor="middle" font-family="system-ui,sans-serif" font-size="8" font-weight="700" fill="white">DE</text>
+  </g>
+
+  <!-- Speech bubble 3 (top-left) — FR -->
+  <g transform="translate(4,8)">
+    <rect width="20" height="14" rx="4" fill="#0A3D4F" fill-opacity="0.15"/>
+    <text x="10" y="10.5" text-anchor="middle" font-family="system-ui,sans-serif" font-size="7" font-weight="600" fill="#0A3D4F">FR</text>
+  </g>
+
+  <!-- Badge: 14 -->
+  <g transform="translate(55,56)">
+    <rect width="22" height="18" rx="9" fill="#0A3D4F"/>
+    <text x="11" y="13" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" font-weight="800" fill="white">14</text>
+  </g>
+</svg>

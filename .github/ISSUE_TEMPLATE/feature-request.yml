@@ -1,0 +1,56 @@
+name: Feature Request
+description: Suggest a new feature or improvement.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting an improvement!
+        Feature requests are evaluated against the project goals described in
+        [docs/architecture.md](https://github.com/workoho/spfx-guest-sponsor-info/blob/main/docs/architecture.md).
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / use case
+      description: >
+        What problem does this solve? Who would benefit and in what scenario?
+        A clear use case helps us evaluate the request in context.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: >
+        Describe the behaviour or UI change you would like to see.
+        Screenshots or mockups are welcome.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected area
+      options:
+        - SPFx web part (src/)
+        - Azure Function (azure-function/src/)
+        - Azure infrastructure / Bicep (azure-function/infra/)
+        - Scripts (scripts/)
+        - Documentation
+        - Other / unsure
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any other approaches you have thought about and why you ruled them out.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Links, references, or anything else that supports the request.

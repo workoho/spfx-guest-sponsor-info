@@ -1,0 +1,98 @@
+name: Bug Report
+description: Report a reproducible bug in the web part, Azure Function, or infrastructure.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to report a bug.
+        Please fill in as much detail as possible so we can reproduce and investigate the issue.
+
+        > **Security vulnerability?** Do not use this form.
+        > Report it privately via [Security Advisories](https://github.com/workoho/spfx-guest-sponsor-info/security/advisories/new).
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected component
+      options:
+        - SPFx web part (src/)
+        - Azure Function (azure-function/src/)
+        - Azure infrastructure / Bicep (azure-function/infra/)
+        - Scripts (scripts/)
+        - Documentation
+        - Other / unsure
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Release version or git commit SHA you tested against.
+      placeholder: "e.g. v1.2.3 or abc1234"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Step-by-step instructions to reproduce the behaviour.
+      placeholder: |
+        1. Open the web part in edit mode
+        2. Set property X to Y
+        3. Save and view the page
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: What actually happens? Include any error messages.
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser
+      placeholder: "e.g. Edge 123, Chrome 124"
+
+  - type: input
+    id: region
+    attributes:
+      label: SharePoint Online region / cloud
+      description: Worldwide, GCC, GCC High, DoD, Germany, China, etc.
+      placeholder: "e.g. Worldwide"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console errors / logs
+      description: Paste any relevant output from the browser console or Azure Function logs.
+      render: text
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Screenshots, links, or anything else that might help.

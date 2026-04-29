@@ -1,0 +1,18 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/config.2.0.schema.json",
+  "version": "2.0",
+  "bundles": {
+    "guest-sponsor-info-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/guestSponsorInfo/GuestSponsorInfoWebPart.js",
+          "manifest": "./src/webparts/guestSponsorInfo/GuestSponsorInfoWebPart.manifest.json"
+        }
+      ]
+    }
+  },
+  "externals": {},
+  "localizedResources": {
+    "GuestSponsorInfoWebPartStrings": "lib/webparts/guestSponsorInfo/loc/{locale}.js"
+  }
+}

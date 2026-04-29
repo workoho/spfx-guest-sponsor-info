@@ -1,0 +1,33 @@
+---
+layout: default
+---
+{%- assign strings = site.data[page.lang].strings -%}
+{%- assign intro_text = page.lead | default: page.description -%}
+
+{%- if intro_text != blank -%}
+{%- include content-intro.html variant="doc" text=intro_text badges=page.intro_badges actions=page.intro_actions -%}
+{%- endif -%}
+
+<article class="doc-page{% if intro_text != blank %} doc-page--with-intro{% endif %}">
+    <div class="container doc-layout">
+        <div class="doc-content">
+            {% if intro_text == blank %}
+            <h1>{{ page.title }}</h1>
+            {% if page.lead %}<p class="doc-lead">{{ page.lead }}</p>{% endif %}
+            {% endif %}
+            {{ content }}
+            {% if page.github_doc %}
+            <p class="doc-source" id="full-documentation-on-github">
+                <a href="https://github.com/{{ site.repository }}/blob/main/docs/{{ page.github_doc }}" target="_blank"
+                    rel="noopener">
+                    {{ strings.doc.view_on_github | default: "View full documentation on GitHub" }} &rarr;
+                </a>
+            </p>
+            {% endif %}
+        </div>
+        {%- include toc-sidebar.html -%}
+    </div>
+</article>
+
+{%- include mermaid-script.html -%}
+{%- include toc-script.html -%}

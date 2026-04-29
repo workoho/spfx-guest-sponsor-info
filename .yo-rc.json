@@ -1,0 +1,23 @@
+{
+  "@microsoft/generator-sharepoint": {
+    "whichFolder": "subdir",
+    "solutionName": "Guest Sponsor Info",
+    "environment": "spo",
+    "packageManager": "npm",
+    "skipFeatureDeployment": false,
+    "useGulp": false,
+    "componentType": "webpart",
+    "template": "react",
+    "componentName": "GuestSponsorInfo",
+    "componentDescription": "Shows the sponsors of the signed-in Microsoft Entra guest user",
+    "plusBeta": false,
+    "isCreatingSolution": true,
+    "nodeVersion": "22.14.0",
+    "sdksVersions": {},
+    "version": "1.22.2",
+    "libraryName": "guest-sponsor-info",
+    "libraryId": "6cdf9494-9c67-40af-8ac8-7b36be245848",
+    "solutionShortDescription": "guest-sponsor-info description",
+    "isDomainIsolated": false
+  }
+}

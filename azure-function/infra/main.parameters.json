@@ -1,0 +1,54 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "tenantId": {
+      "value": "${AZURE_TENANT_ID}"
+    },
+    "tenantName": {
+      "value": "${AZURE_SHAREPOINT_TENANT_NAME}"
+    },
+    "environment": {
+      "value": "${AZURE_TAG_ENVIRONMENT}"
+    },
+    "criticality": {
+      "value": "${AZURE_TAG_CRITICALITY}"
+    },
+    "alwaysReadyInstances": {
+      "value": "${AZURE_ALWAYS_READY_INSTANCES}"
+    },
+    "maximumFlexInstances": {
+      "value": "${AZURE_MAXIMUM_FLEX_INSTANCES}"
+    },
+    "instanceMemoryMB": {
+      "value": "${AZURE_INSTANCE_MEMORY_MB}"
+    },
+    "enableMonitoring": {
+      "value": "${AZURE_ENABLE_MONITORING}"
+    },
+    "deployAzureMaps": {
+      "value": "${AZURE_DEPLOY_AZURE_MAPS}"
+    },
+    "azureMapsAccountName": {
+      "value": ""
+    },
+    "defaultAlertNotificationEmail": {
+      "value": ""
+    },
+    "enableFailureAnomaliesAlert": {
+      "value": "${AZURE_ENABLE_FAILURE_ANOMALIES_ALERT}"
+    },
+    "defaultOperationalActionGroupShortName": {
+      "value": "GSIOps"
+    },
+    "defaultInfoActionGroupShortName": {
+      "value": "GSIInfo"
+    },
+    "hostingPlan": {
+      "value": "${AZURE_HOSTING_PLAN}"
+    },
+    "appVersion": {
+      "value": "${AZURE_APP_VERSION}"
+    }
+  }
+}

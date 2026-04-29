@@ -1,0 +1,71 @@
+{%- assign strings = site.data[page.lang].strings -%}
+
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <div class="footer-brand">
+      <img src="{{ '/assets/images/logo.svg' | relative_url }}" alt="{{ site.title }}" class="footer-logo" width="180"
+        height="32">
+      <p class="footer-tagline">{{ strings.footer.tagline }}</p>
+    </div>
+
+    <div class="footer-links">
+      <div class="footer-col">
+        <h4>{{ strings.footer.product }}</h4>
+        <ul>
+          <li><a href="{{ '/' | append: page.lang | append: '/why/' | relative_url }}">{%- include
+              icon-chevron-right.html -%}{{ strings.footer.why }}</a></li>
+          <li><a href="{{ '/' | append: page.lang | append: '/features/' | relative_url }}">{%- include
+              icon-chevron-right.html -%}{{ strings.nav.features
+              }}</a></li>
+          <li><a href="https://github.com/{{ site.repository }}/releases" target="_blank" rel="noopener">{%- include
+              icon-github.html -%}{{ strings.footer.releases }}</a></li>
+          <li><a href="https://github.com/{{ site.repository }}" target="_blank" rel="noopener">{%- include
+              icon-github.html -%}{{ strings.footer.source_code }}</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>{{ strings.footer.docs }}</h4>
+        <ul>
+          <li><a href="{{ '/' | append: page.lang | append: '/setup/' | relative_url }}">{%- include
+              icon-chevron-right.html -%}{{
+              strings.footer.deployment }}</a></li>
+          <li><a href="{{ '/' | append: page.lang | append: '/landing-page-ideas/' | relative_url }}">{%- include
+              icon-chevron-right.html -%}{{
+              strings.footer.landing_page }}</a></li>
+          <li><a href="{{ '/' | append: page.lang | append: '/sponsor-vs-inviter/' | relative_url }}">{%- include
+              icon-chevron-right.html -%}{{
+              strings.footer.sponsor_vs_inviter }}</a></li>
+          <li><a href="{{ '/' | append: page.lang | append: '/support/' | relative_url }}">{%- include
+              icon-chevron-right.html -%}{{
+              strings.footer.support }}</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>{{ strings.footer.legal }}</h4>
+        <ul>
+          <li><a href="{{ '/' | append: page.lang | append: '/security/' | relative_url }}">{%- include
+              icon-chevron-right.html -%}{{ strings.footer.security
+              }}</a></li>
+          <li><a href="{{ '/' | append: page.lang | append: '/privacy/' | relative_url }}">{%- include
+              icon-chevron-right.html -%}{{ strings.footer.privacy
+              }}</a></li>
+          <li><a href="{{ '/' | append: page.lang | append: '/terms/' | relative_url }}">{%- include
+              icon-chevron-right.html -%}{{ strings.footer.terms }}</a>
+          </li>
+          <li><a href="{{ '/' | append: page.lang | append: '/imprint/' | relative_url }}">{%- include
+              icon-chevron-right.html -%}{{ strings.footer.imprint
+              }}</a>
+          </li>
+          <li><a href="{{ '/' | append: page.lang | append: '/telemetry/' | relative_url }}">{%- include
+              icon-chevron-right.html -%}{{ strings.footer.telemetry
+              }}</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>&copy; {{ "now" | date: "%Y" }} <a href="{{ site.author_url }}" target="_blank" rel="noopener"
+          class="no-external-icon">{{ site.author }}</a>. {{ strings.footer.license }}</p>
+    </div>
+  </div>
+</footer>

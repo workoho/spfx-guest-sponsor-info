@@ -1,0 +1,106 @@
+name: Release
+
+# Triggered by SemVer tags, e.g. v1.2.3
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+# The GITHUB_TOKEN needs write access to create the release and upload assets.
+permissions:
+  contents: write
+
+# Each tag is unique, so cancellation is not needed.
+# The group guard still prevents two releases from running in parallel.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # Single job: validate, build, package, and publish in one pass.
+  # build.sh already compiles, bundles, tests, and packages — no separate
+  # test job needed. Running everything once avoids a double npm ci + double
+  # test execution that the previous two-job layout produced.
+  release:
+    name: Build, package & publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0 # Full git history required by git-cliff
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          # Pin to the major version required by the engines field in package.json.
+          node-version: "22"
+          cache: "npm"
+
+      # Extract the semver string from the tag (strip the leading "v").
+      - name: Extract version
+        id: ver
+        run: echo "semver=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      # Generate structured release notes from Conventional Commit history.
+      # The script reads GIT_CLIFF_VERSION from scripts/release-notes.sh and
+      # auto-installs the git-cliff binary on first run — no separate action needed.
+      - name: Generate release notes
+        env:
+          FORCE_COLOR_IN_CI: "1"
+        run: ./scripts/release-notes.sh --latest > RELEASE_NOTES.md
+
+      # Stamp the version into package.json and config/package-solution.json.
+      - name: Stamp version
+        env:
+          FORCE_COLOR_IN_CI: "1"
+        run: ./scripts/set-version.sh "${{ github.ref_name }}"
+
+      # Full production build: npm ci × 2 (web part + function), compile,
+      # bundle, test, and package .sppkg. Tests run here — no separate job needed.
+      - name: Build and package
+        env:
+          FORCE_COLOR_IN_CI: "1"
+        run: ./scripts/build.sh
+
+      # build.sh already ran npm ci + build for the Azure Function.
+      # Only the ZIP packaging step needs to run here.
+      - name: Package Azure Function as ZIP
+        working-directory: azure-function
+        run: npm run package
+
+      # Bundle the infra package: everything needed to run deploy-azure.ps1
+      # locally without cloning the repository. The install.ps1 wrapper
+      # downloads this ZIP and runs deploy-azure.ps1 automatically.
+      # All files are zipped from within azure-function/infra/ so they land
+      # flat at the ZIP root — no azure-function/infra/ path prefix inside.
+      - name: Package infra bundle as ZIP
+        run: |
+          rm -f guest-sponsor-info-infra.zip
+          cd azure-function/infra
+          zip -r ../../guest-sponsor-info-infra.zip \
+            azure.yaml \
+            bicepconfig.json \
+            main.bicep \
+            main.parameters.json \
+            modules \
+            hooks \
+            deploy-azure.ps1 \
+            install.sh \
+            setup-graph-permissions.ps1 \
+            assets
+
+      # Create or update the GitHub Release and attach build artifacts.
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: v${{ steps.ver.outputs.semver }}
+          body_path: RELEASE_NOTES.md
+          files: |
+            sharepoint/solution/guest-sponsor-info.sppkg
+            azure-function/guest-sponsor-info-function.zip
+            guest-sponsor-info-infra.zip
+            azure-function/infra/install.ps1
+            azure-function/infra/install.sh
+            azure-function/infra/setup-graph-permissions.ps1

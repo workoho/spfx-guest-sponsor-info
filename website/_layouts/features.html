@@ -1,0 +1,162 @@
+---
+layout: default
+---
+{%- assign strings = site.data[page.lang].strings -%}
+{%- assign f = strings.features_page -%}
+{%- if page.lang == 'de' -%}
+{%- assign screenshot_alt = 'Screenshot des Guest Sponsor Info Web Parts mit geöffneter Sponsor-Detailansicht.' -%}
+{%- assign screenshot_caption = 'Echte Sponsor-Detailansicht mit Kontakt- und Manager-Kontext.' -%}
+{%- assign onboarding_screenshot_alt = 'Screenshot des Guest Sponsor Info Web Parts mit Warnhinweis, dass Microsoft
+Teams für den Gast noch nicht eingerichtet ist.' -%}
+{%- assign onboarding_screenshot_caption = 'Echter Warnhinweis, wenn Teams im Zielmandanten für den Gast noch nicht
+bereit ist.' -%}
+{%- else -%}
+{%- assign screenshot_alt = 'Screenshot of the Guest Sponsor Info web part with an opened sponsor detail view.' -%}
+{%- assign screenshot_caption = 'Actual sponsor detail view with contact and manager context.' -%}
+{%- assign onboarding_screenshot_alt = 'Screenshot of the Guest Sponsor Info web part showing that Microsoft Teams is
+not set up yet for the guest.' -%}
+{%- assign onboarding_screenshot_caption = 'Actual warning state when Teams is not ready yet for the guest in the
+resource tenant.' -%}
+{%- endif -%}
+
+{%- include content-intro.html variant="feature" text=f.subtitle -%}
+
+<div class="fp-features">
+    <div class="container doc-layout">
+        <div class="doc-content">
+
+            <div class="fp-row">
+                <div class="fp-icon">
+                    <img src="{{ '/assets/images/feature-cards.svg' | relative_url }}" alt="" width="80" height="80">
+                </div>
+                <div class="fp-text">
+                    <h2 id="sponsor-cards">{{ f.cards.title }}</h2>
+                    <p>{{ f.cards.description }}</p>
+                    <ul class="fp-highlights">
+                        {%- for item in f.cards.highlights %}
+                        <li>{{ item }}</li>
+                        {%- endfor %}
+                    </ul>
+                </div>
+            </div>
+
+            <div class="fp-row fp-row--reverse">
+                <div class="fp-media">
+                    <a href="{{ '/assets/images/my-sponsors-card-example.jpg' | relative_url }}" class="fp-shot-link">
+                        <img src="{{ '/assets/images/my-sponsors-card-example.jpg' | relative_url }}"
+                            alt="{{ screenshot_alt }}" class="fp-shot" width="1136" height="1279">
+                    </a>
+                    <p class="fp-media-caption">{{ screenshot_caption }}</p>
+                </div>
+                <div class="fp-text">
+                    <h2 id="contact-panel">{{ f.contact_panel.title }}</h2>
+                    <p>{{ f.contact_panel.description }}</p>
+                    <ul class="fp-highlights">
+                        {%- for item in f.contact_panel.highlights %}
+                        <li>{{ item }}</li>
+                        {%- endfor %}
+                    </ul>
+                </div>
+            </div>
+
+            <div class="fp-row">
+                <div class="fp-icon">
+                    <img src="{{ '/assets/images/feature-presence.svg' | relative_url }}" alt="" width="80" height="80">
+                </div>
+                <div class="fp-text">
+                    <h2 id="presence">{{ f.presence.title }}</h2>
+                    <p>{{ f.presence.description }}</p>
+                    <div class="fp-statuses">
+                        {%- for status in f.presence.statuses %}
+                        <span class="fp-status-pill">{{ status }}</span>
+                        {%- endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="fp-row fp-row--reverse">
+                <div class="fp-icon">
+                    <img src="{{ '/assets/images/feature-teams.svg' | relative_url }}" alt="" width="80" height="80">
+                </div>
+                <div class="fp-text">
+                    <h2 id="teams">{{ f.teams.title }}</h2>
+                    <p>{{ f.teams.description }}</p>
+                </div>
+            </div>
+
+            <div class="fp-row">
+                <div class="fp-media fp-media--wide">
+                    <img src="{{ '/assets/images/my-sponsors-noteams-example.jpg' | relative_url }}"
+                        alt="{{ onboarding_screenshot_alt }}" class="fp-shot" width="1100" height="650">
+                    <p class="fp-media-caption">{{ onboarding_screenshot_caption }}</p>
+                </div>
+                <div class="fp-text">
+                    <h2 id="onboarding">{{ f.onboarding.title }}</h2>
+                    <p>{{ f.onboarding.description }}</p>
+                </div>
+            </div>
+
+            <div class="fp-row fp-row--reverse">
+                <div class="fp-icon">
+                    <img src="{{ '/assets/images/feature-delegation.svg' | relative_url }}" alt="" width="80"
+                        height="80">
+                </div>
+                <div class="fp-text">
+                    <h2 id="delegation">{{ f.delegation.title }}</h2>
+                    <p>{{ f.delegation.description }}</p>
+                    <p class="fp-detail">{{ f.delegation.detail }}</p>
+                </div>
+            </div>
+
+            <div class="fp-row">
+                <div class="fp-icon">
+                    <img src="{{ '/assets/images/feature-privacy.svg' | relative_url }}" alt="" width="80" height="80">
+                </div>
+                <div class="fp-text">
+                    <h2 id="privacy">{{ f.privacy.title }}</h2>
+                    <p>{{ f.privacy.description }}</p>
+                    <a href="https://github.com/{{ site.repository }}/blob/main/docs/privacy-policy.md" class="fp-link"
+                        target="_blank" rel="noopener">{{
+                        f.privacy.link }} &rarr;</a>
+                </div>
+            </div>
+
+        </div>
+        {%- include toc-sidebar.html -%}
+    </div>
+</div>
+
+<section class="fp-extras">
+    <div class="container">
+        <h2 class="fp-extras-title">{{ f.more.title }}</h2>
+        <div class="fp-extras-grid">
+            <div class="fp-extra-card">
+                <h3>{{ f.more.languages.title }}</h3>
+                <p>{{ f.more.languages.description }}</p>
+            </div>
+            <div class="fp-extra-card">
+                <h3>{{ f.more.api.title }}</h3>
+                <p>{{ f.more.api.description }}</p>
+            </div>
+            <div class="fp-extra-card">
+                <h3>{{ f.more.editor.title }}</h3>
+                <p>{{ f.more.editor.description }}</p>
+            </div>
+            <div class="fp-extra-card">
+                <h3>{{ f.more.resilience.title }}</h3>
+                <p>{{ f.more.resilience.description }}</p>
+            </div>
+            <div class="fp-extra-card">
+                <h3>{{ f.more.permissions.title }}</h3>
+                <p>{{ f.more.permissions.description }}</p>
+            </div>
+            <div class="fp-extra-card">
+                <h3>{{ f.more.guest_only.title }}</h3>
+                <p>{{ f.more.guest_only.description }}</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+{%- include cta-section.html -%}
+{%- include toc-script.html -%}

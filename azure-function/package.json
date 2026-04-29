@@ -1,0 +1,39 @@
+{
+  "name": "guest-sponsor-info-function",
+  "version": "1.0.0",
+  "description": "Azure Function proxy for /me/sponsors — serves guest sponsor data to the SPFx web part.",
+  "homepage": "https://github.com/workoho/spfx-guest-sponsor-info",
+  "private": true,
+  "license": "LicenseRef-PolyForm-Shield-1.0.0",
+  "author": {
+    "name": "Workoho GmbH",
+    "url": "https://workoho.com"
+  },
+  "contributors": [
+    {
+      "name": "Julian Pawlowski",
+      "url": "https://github.com/jpawlowski"
+    }
+  ],
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "build:production": "npm run build && node -e \"const fs=require('fs'),pkg=JSON.parse(fs.readFileSync('package.json','utf8'));fs.cpSync('host.json','dist/host.json');pkg.main='src/getGuestSponsors.js';delete pkg.devDependencies;delete pkg.scripts;fs.writeFileSync('dist/package.json',JSON.stringify(pkg,null,2));\" && npm install --omit=dev --prefix dist",
+    "prestart": "tsc",
+    "start": "func start",
+    "package": "npm run build:production && cd dist && zip -r ../guest-sponsor-info-function.zip ."
+  },
+  "main": "dist/src/*.js",
+  "dependencies": {
+    "@azure/functions": "^4.14.0",
+    "@azure/identity": "^4.13.1",
+    "@microsoft/microsoft-graph-client": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.x",
+    "typescript": "~6.0.3"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}

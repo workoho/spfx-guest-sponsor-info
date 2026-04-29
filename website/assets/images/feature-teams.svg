@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80" fill="none">
+  <!-- Teams integration illustration -->
+
+  <!-- Teams-style chat bubble -->
+  <rect x="8" y="12" width="44" height="36" rx="8" fill="#12B2CD" fill-opacity="0.12"/>
+  <rect x="14" y="20" width="24" height="3" rx="1.5" fill="#12B2CD" opacity="0.6"/>
+  <rect x="14" y="27" width="32" height="3" rx="1.5" fill="#12B2CD" opacity="0.4"/>
+  <rect x="14" y="34" width="18" height="3" rx="1.5" fill="#12B2CD" opacity="0.3"/>
+  <!-- Chat bubble tail -->
+  <path d="M16 48 L8 56 L24 48" fill="#12B2CD" fill-opacity="0.12"/>
+
+  <!-- Phone icon (call button) -->
+  <g transform="translate(56,14)">
+    <rect width="20" height="20" rx="6" fill="#10b981" fill-opacity="0.15"/>
+    <path d="M62 20 Q60 26 64 30 Q68 26 66 20 Z" transform="translate(-56,-14) scale(1)" fill="none"/>
+    <path d="M6 6 C6 6 4 8 6 12 C8 16 12 14 14 14 C14 14 16 12 14 10 C12 8 10 10 8 8 C6 6 8 4 6 6 Z" fill="#10b981" stroke="#10b981" stroke-width="0.5"/>
+  </g>
+
+  <!-- Video icon (call button) -->
+  <g transform="translate(56,42)">
+    <rect width="20" height="20" rx="6" fill="#12B2CD" fill-opacity="0.15"/>
+    <rect x="4" y="6" width="9" height="8" rx="1.5" fill="#12B2CD"/>
+    <path d="M13 8 L17 6 L17 14 L13 12 Z" fill="#12B2CD"/>
+  </g>
+
+  <!-- Connection line -->
+  <path d="M52 30 L56 24" stroke="#0A3D4F" stroke-width="1" stroke-dasharray="2 2" opacity="0.3"/>
+  <path d="M52 30 L56 52" stroke="#0A3D4F" stroke-width="1" stroke-dasharray="2 2" opacity="0.3"/>
+
+  <!-- Deep link indicator -->
+  <rect x="10" y="62" width="60" height="14" rx="7" fill="#0A3D4F" fill-opacity="0.08"/>
+  <text x="40" y="72" text-anchor="middle" font-family="system-ui,sans-serif" font-size="7" font-weight="600" fill="#0A3D4F" opacity="0.5">teams.microsoft.com</text>
+</svg>

@@ -1,0 +1,23 @@
+{%- assign strings = site.data[page.lang].strings -%}
+
+<section class="problem-strip">
+    <div class="container">
+        <h2 class="problem-strip-title">{{ strings.problem.title }}</h2>
+        <p class="problem-strip-body">{{ strings.problem.body }}</p>
+
+        <div class="problem-cards">
+            {%- for item in strings.problem.items %}
+            <div class="problem-card">
+                <h3 class="problem-card-title">{{ item.title }}</h3>
+                <p class="problem-card-body">{{ item.body }}</p>
+            </div>
+            {%- endfor %}
+        </div>
+
+        <div class="problem-strip-cta">
+            <a href="{{ '/' | append: page.lang | append: '/why/' | relative_url }}" class="btn btn-outline-light">
+                {{ strings.problem.cta }}
+            </a>
+        </div>
+    </div>
+</section>

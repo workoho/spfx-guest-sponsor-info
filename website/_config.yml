@@ -1,0 +1,48 @@
+title: Guest Sponsor Info
+description: >-
+  A SharePoint Framework web part that shows Microsoft Entra sponsors
+  to guest users — live contact cards with Teams presence.
+
+url: "https://guest-sponsor-info.workoho.cloud"
+baseurl: ""
+
+repository: workoho/spfx-guest-sponsor-info
+
+# i18n: default language
+default_lang: en
+languages:
+  - en
+  - de
+
+# Metadata
+author: Workoho GmbH
+author_url: https://workoho.com
+
+# Defaults — set lang per folder
+defaults:
+  - scope:
+      path: "en"
+    values:
+      lang: en
+  - scope:
+      path: "de"
+    values:
+      lang: de
+
+# Build
+markdown: kramdown
+kramdown:
+  input: GFM
+  auto_ids: true
+
+# Exclude from build
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - vendor
+  - README.md
+  - .jekyll-cache
+
+# Include CNAME in output
+include:
+  - CNAME

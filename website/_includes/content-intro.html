@@ -1,0 +1,25 @@
+{%- assign intro_badges = include.badges | default: page.intro_badges -%}
+{%- assign intro_actions = include.actions | default: page.intro_actions -%}
+
+<section class="fp-hero content-intro{% if include.variant %} content-intro--{{ include.variant }}{% endif %}">
+    <div class="container">
+        <h1>{{ page.title }}</h1>
+        {% if include.text %}<p class="fp-hero-subtitle">{{ include.text }}</p>{% endif %}
+        {% if intro_badges %}
+        <ul class="fp-highlights content-intro-highlights">
+            {% for badge in intro_badges %}
+            <li>{{ badge }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% if intro_actions %}
+        <div class="content-intro-actions">
+            {% for action in intro_actions %}
+            <a href="{{ action.href }}"
+                class="btn {{ action.style | default: 'btn-secondary' }}{% if action.external %} external-link{% endif %}"
+                {% if action.external %}target="_blank" rel="noopener" {% endif %}>{{ action.label }}</a>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</section>
