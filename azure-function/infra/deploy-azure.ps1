@@ -152,6 +152,12 @@ $script:CachedDeployParameters = [System.Collections.Generic.HashSet[string]]::n
 $script:ExplicitDeployParameters = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 $script:UsedDeploySessionCache = $false
 $script:ReconfigureMode = $false
+$script:AzureSessionRoot = $null
+$script:AzureCliConfigDir = $null
+$script:AzdConfigDir = $null
+$script:AzureAuthIsolationMode = ''
+$script:AzureSessionRootPrefix = 'gsi-azure-session'
+$script:AzdUsesAzureCliAuth = $false
 foreach ($_parameterName in $PSBoundParameters.Keys) {
   $null = $script:ExplicitDeployParameters.Add($_parameterName)
 }
@@ -500,6 +506,7 @@ function Invoke-Azd {
 function Show-PreflightOverview {
   Write-Hint @(
     'Before deployment this wizard checks the local tools and signs in to Azure.'
+    'Azure auth is isolated to this PowerShell console so older az/azd logins do not leak into this run.'
     ''
     'It can install missing tools when needed:'
     '  PowerShell bootstrapper (install.sh): PowerShell 7+'
@@ -541,7 +548,99 @@ function Show-ToolVersion {
   Write-Host "  $_chk PowerShell            : $pwshVersion" -ForegroundColor Green
   Write-Host "  $_chk Azure CLI (az)       : $azVersion" -ForegroundColor Green
   Write-Host "  $_chk Azure Developer CLI  : $azdVersion" -ForegroundColor Green
+  if ($script:AzureAuthIsolationMode -eq 'isolated') {
+    Write-Host "  $_chk Azure auth session   : isolated to this PowerShell console" -ForegroundColor Green
+    Write-Host '       Existing logins in ~/.azure and ~/.azd are ignored for this console.' -ForegroundColor DarkGray
+    Write-Host '       Close the console to drop this isolated login context.' -ForegroundColor DarkGray
+  }
+  elseif ($script:AzureAuthIsolationMode -eq 'caller-supplied') {
+    Write-Host "  $_chk Azure auth session   : using caller-provided config dirs" -ForegroundColor Green
+  }
+  if ($script:AzdUsesAzureCliAuth) {
+    Write-Host "  $_chk azd auth mode        : reuses the active Azure CLI login" -ForegroundColor Green
+    Write-Host '       azd does not keep an independent tenant login for this script run.' -ForegroundColor DarkGray
+  }
   Write-Host '       azd uses its own scoped Bicep CLI during azd provision.' -ForegroundColor DarkGray
+}
+
+function Initialize-AzureSessionRoot {
+  if ($Global:GsiDeploy_AzureSessionRoot) {
+    $_existingRoot = [string]$Global:GsiDeploy_AzureSessionRoot
+    if ($_existingRoot -and (Test-Path $_existingRoot)) {
+      return $_existingRoot
+    }
+  }
+
+  $_tempRoot = [System.IO.Path]::GetTempPath()
+  $_cutoffUtc = [System.DateTime]::UtcNow.AddDays(-7)
+  foreach ($_staleDir in Get-ChildItem -Path $_tempRoot -Directory -Filter "$($script:AzureSessionRootPrefix)-*" -ErrorAction SilentlyContinue) {
+    try {
+      if ($_staleDir.LastWriteTimeUtc -lt $_cutoffUtc) {
+        Remove-Item -Path $_staleDir.FullName -Recurse -Force -ErrorAction Stop
+      }
+    }
+    catch {
+      Write-Verbose "Could not remove stale Azure session directory '$($_staleDir.FullName)': $_"
+    }
+  }
+
+  $_sessionRoot = Join-Path $_tempRoot "$($script:AzureSessionRootPrefix)-$PID-$([System.Guid]::NewGuid().ToString('n'))"
+  $null = New-Item -Path $_sessionRoot -ItemType Directory -Force
+  $Global:GsiDeploy_AzureSessionRoot = $_sessionRoot
+
+  return $_sessionRoot
+}
+
+function Initialize-AzureAuthIsolation {
+  if ($script:AzureCliConfigDir -and $script:AzdConfigDir) {
+    return
+  }
+
+  $_managedRoot = if ($Global:GsiDeploy_AzureSessionRoot) { [string]$Global:GsiDeploy_AzureSessionRoot } else { '' }
+  $_managedAzureConfigDir = if ($_managedRoot) { Join-Path $_managedRoot '.azure' } else { '' }
+  $_managedAzdConfigDir = if ($_managedRoot) { Join-Path $_managedRoot '.azd' } else { '' }
+  $_hasAzureConfigDir = -not [string]::IsNullOrWhiteSpace($env:AZURE_CONFIG_DIR)
+  $_hasAzdConfigDir = -not [string]::IsNullOrWhiteSpace($env:AZD_CONFIG_DIR)
+  $_reusingManagedDirs = (
+    $_managedRoot -and
+    $_hasAzureConfigDir -and
+    $_hasAzdConfigDir -and
+    $env:AZURE_CONFIG_DIR -eq $_managedAzureConfigDir -and
+    $env:AZD_CONFIG_DIR -eq $_managedAzdConfigDir
+  )
+
+  if ($_reusingManagedDirs) {
+    $script:AzureSessionRoot = $_managedRoot
+    $script:AzureAuthIsolationMode = 'isolated'
+  }
+  elseif ($_hasAzureConfigDir -and $_hasAzdConfigDir) {
+    $script:AzureAuthIsolationMode = 'caller-supplied'
+  }
+  else {
+    $script:AzureSessionRoot = Initialize-AzureSessionRoot
+    $env:AZURE_CONFIG_DIR = Join-Path $script:AzureSessionRoot '.azure'
+    $env:AZD_CONFIG_DIR = Join-Path $script:AzureSessionRoot '.azd'
+    $script:AzureAuthIsolationMode = 'isolated'
+  }
+
+  foreach ($_configDir in @($env:AZURE_CONFIG_DIR, $env:AZD_CONFIG_DIR)) {
+    $null = New-Item -Path $_configDir -ItemType Directory -Force
+  }
+
+  $script:AzureCliConfigDir = $env:AZURE_CONFIG_DIR
+  $script:AzdConfigDir = $env:AZD_CONFIG_DIR
+}
+
+function Enable-AzdAzureCliAuth {
+  foreach ($_configKey in @('auth.useAzCliAuth', 'auth.useAzureCliCredentials')) {
+    & $script:AzdPath 'config' 'set' $_configKey 'true' | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+      $script:AzdUsesAzureCliAuth = $true
+      return
+    }
+  }
+
+  throw 'Azure Developer CLI could not be configured to reuse the Azure CLI login for this session.'
 }
 
 function Install-AzureCliIfNeeded {
@@ -742,7 +841,7 @@ function Install-AzdIfNeeded {
 
 function Connect-AzureCliIfNeeded {
   if (-not (Test-AzureCliAccountAvailable)) {
-    Write-Host "  $_arr No active Azure CLI session found. Starting az login..." -ForegroundColor Cyan
+    Write-Host "  $_arr No active Azure CLI session found for this PowerShell console. Starting az login..." -ForegroundColor Cyan
 
     $_loginTenantId = ''
     if ($AzureTenantId) {
@@ -787,6 +886,18 @@ function Connect-AzureCliIfNeeded {
   $script:SubscriptionName = (Invoke-AzureCli -Arguments @('account', 'show', '--query', 'name', '-o', 'tsv')).Trim()
   $script:SubscriptionId = (Invoke-AzureCli -Arguments @('account', 'show', '--query', 'id', '-o', 'tsv')).Trim()
   $script:TenantId = (Invoke-AzureCli -Arguments @('account', 'show', '--query', 'tenantId', '-o', 'tsv')).Trim()
+
+  if ($AzureTenantId) {
+    $_expectedTenantId = $AzureTenantId.Trim()
+    if ($_expectedTenantId -and $script:TenantId -and $_expectedTenantId -ne $script:TenantId) {
+      throw "Azure CLI signed in to tenant '$($script:TenantId)', but -AzureTenantId requested '$($_expectedTenantId)'. Re-run and pick the correct tenant before continuing."
+    }
+  }
+
+  if ($script:AzdUsesAzureCliAuth) {
+    Write-Host "  $_chk Azure tenant         : $($script:TenantId)" -ForegroundColor Green
+    Write-Host '       azd will reuse this Azure CLI tenant for all deployment commands.' -ForegroundColor DarkGray
+  }
 
   # Publish the tenant ID into the shared session cache so downstream scripts
   # (e.g. setup-graph-permissions.ps1) can skip their own login prompts.
@@ -1357,7 +1468,7 @@ function Invoke-AzdProvision {
 
   # Tell azd to reuse the Azure CLI token so the user is not prompted to
   # log in a second time via a separate azd browser window.
-  Invoke-Azd -Arguments @('config', 'set', 'auth.useAzureCliCredentials', 'true')
+  Enable-AzdAzureCliAuth
 
   # Create or select the azd environment, then pre-populate all required env
   # vars so azd does not open any additional interactive prompts during provision.
@@ -1453,8 +1564,10 @@ try {
   Show-PreflightOverview
 
   # ── Install tools and connect to Azure ────────────────────────────────────
+  Initialize-AzureAuthIsolation
   Install-AzureCliIfNeeded
   Install-AzdIfNeeded
+  Enable-AzdAzureCliAuth
   Show-ToolVersion
   Connect-AzureCliIfNeeded
   # Allow the operator to confirm or switch the target subscription before any
