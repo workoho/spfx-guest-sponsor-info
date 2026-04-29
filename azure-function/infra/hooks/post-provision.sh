@@ -5,8 +5,8 @@
 #
 # Post-provision hook for Azure Developer CLI (azd).
 # Runs after Bicep deployment to:
-#   - Restart the Function App so the Managed Identity token cache picks up
-#     the Graph application permissions that Bicep just assigned.
+#   - Restart the Function App when this deployment run managed Microsoft Graph
+#     permissions and the Managed Identity token cache should be refreshed.
 #   - Print the web part configuration values.
 #
 # The Entra App Registration and all Microsoft Graph application role
@@ -98,12 +98,17 @@ if [[ -n "${FUNCTION_APP_NAME:-}" ]]; then
 fi
 
 # ── Restart Function App ──────────────────────────────────────────────────────
-# Bicep assigns Graph app roles as part of the deployment.  A restart ensures
-# the Managed Identity token cache is cleared and the new permissions are
-# activated immediately.  Without this, the first invocations after a
-# fresh deployment may fail until the token naturally expires.
+# When Microsoft Graph permissions are managed as part of this deployment run,
+# a restart ensures the Managed Identity token cache is cleared and fresh roles
+# are picked up immediately. In deferred mode the permissions are managed
+# separately, so an automatic restart here would be unnecessary.
+SKIP_ROLE_ASSIGNMENTS="${AZURE_SKIP_GRAPH_ROLE_ASSIGNMENTS:-false}"
 RESTART_STATUS="restart manually if needed"
-if [ -n "${FUNCTION_APP_NAME:-}" ] && [ -n "${AZURE_RESOURCE_GROUP:-}" ]; then
+if [ "${SKIP_ROLE_ASSIGNMENTS}" = "true" ]; then
+  RESTART_STATUS="not run in this deployment mode"
+  echo ""
+  echo "Skipping automatic Function App restart because Microsoft Graph permissions are managed separately in this deployment mode."
+elif [ -n "${FUNCTION_APP_NAME:-}" ] && [ -n "${AZURE_RESOURCE_GROUP:-}" ]; then
   echo ""
   echo "Restarting Function App '${FUNCTION_APP_NAME}' to activate Graph permissions..."
   az functionapp restart \
@@ -129,16 +134,17 @@ print_summary_line "Guest Sponsor API Client ID" "${WEB_PART_CLIENT_ID}"
 # parameter skipGraphRoleAssignments=true was passed and
 # AZURE_SKIP_GRAPH_ROLE_ASSIGNMENTS was written to the azd env.
 # Remind the operator to run the follow-up script.
-if [ "${AZURE_SKIP_GRAPH_ROLE_ASSIGNMENTS:-false}" = "true" ]; then
-  print_summary_line "Microsoft Graph permissions" "one more admin step is needed"
+if [ "${SKIP_ROLE_ASSIGNMENTS}" = "true" ]; then
+  print_summary_line "Microsoft Graph permissions" "managed separately in this mode"
   print_summary_line "Managed identity object ID" "${MANAGED_IDENTITY_OBJECT_ID}"
   print_summary_line "TenantId" "${AZURE_TENANT_ID:-}"
-  print_summary_line "Next step" "run setup-graph-permissions.ps1 to finish Microsoft Graph permissions"
+  print_summary_line "If needed, run this script" "setup-graph-permissions.ps1"
+  print_summary_line "When to run it" "if the web part shows permission errors"
 fi
 echo ""
 echo "Note: Storage role assignment propagation can take 1-2 minutes."
-if [ "${AZURE_SKIP_GRAPH_ROLE_ASSIGNMENTS:-false}" = "true" ]; then
-  echo "The web part may show errors until you finish the Microsoft Graph permissions step."
+if [ "${SKIP_ROLE_ASSIGNMENTS}" = "true" ]; then
+  echo "If the web part shows permission errors, run setup-graph-permissions.ps1 and then restart the Function App once."
 else
   echo "If you see errors right after deployment, wait a moment and try again."
 fi

@@ -2300,8 +2300,8 @@ try {
     $_ns.Add('')
     $_ns.Add(('  {0,-28}: {1}' -f 'Application registration', 'created or updated'))
     $_ns.Add(('  {0,-28}: {1}' -f 'Azure resources', 'created or updated'))
-    $_ns.Add(('  {0,-28}: {1}' -f 'Microsoft Graph permissions', $(if ($SkipGraphRoleAssignments) { 'one more admin step is needed' } else { 'ready to use' })))
-    $_ns.Add(('  {0,-28}: {1}' -f 'Function app restart', 'completed automatically'))
+    $_ns.Add(('  {0,-28}: {1}' -f 'Microsoft Graph permissions', $(if ($SkipGraphRoleAssignments) { 'managed separately in this mode' } else { 'ready to use' })))
+    $_ns.Add(('  {0,-28}: {1}' -f 'Function app restart', $(if ($SkipGraphRoleAssignments) { 'not run automatically in this mode' } else { 'completed automatically' })))
     $_ns.Add('')
     $_ns.Add('Web part configuration (SharePoint property pane → Guest Sponsor API):')
   }
@@ -2327,11 +2327,12 @@ try {
     }
     if ($SkipGraphRoleAssignments) {
       $_ns.Add('')
-      $_ns.Add('Microsoft Graph permissions: one more admin step')
+      $_ns.Add('Microsoft Graph permissions: separate management path')
       $_miDisplay = if ($_azdMiOid) { $_azdMiOid } else { 'see Azure portal -> Function App -> Identity' }
       $_ns.Add(('  {0,-28}: {1}' -f 'Managed identity object ID', $_miDisplay))
       $_ns.Add(('  {0,-28}: {1}' -f 'TenantId', $script:TenantId))
-      $_ns.Add(('  {0,-28}: {1}' -f 'Run this script', (Get-SetupGraphPermissionsScriptReference)))
+      $_ns.Add(('  {0,-28}: {1}' -f 'If needed, run this script', (Get-SetupGraphPermissionsScriptReference)))
+      $_ns.Add(('  {0,-28}: {1}' -f 'When to run it', 'if the web part shows permission errors'))
     }
     $_ns.Add('')
     $_ns.Add('Finish in SharePoint:')
