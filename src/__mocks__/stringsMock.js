@@ -110,4 +110,6 @@ module.exports = {
   VersionMismatchMessage: 'A web part update is available. Ask your administrator to ensure the web part and the Azure Function are running the same version.',
   InsufficientPermissionsTitle: 'Permission required',
   InsufficientPermissionsMessage: 'Could not load sponsor information — a required service permission has not been granted. Please contact your IT administrator.',
+  ServiceAuthorizationIssueTitle: 'Temporary service issue',
+  ServiceAuthorizationIssueMessage: 'Could not load sponsor information because the sponsor service could not complete an internal authorization step. Please try again in a moment. If the problem continues, contact your IT administrator.',
 };

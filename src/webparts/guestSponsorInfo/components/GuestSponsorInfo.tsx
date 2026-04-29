@@ -623,7 +623,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
   // can call setLoading(true).
   const [loading, setLoading] = React.useState(!isEditMode && (mockMode || (isGuest && !initialSponsorCache)));
   const [error, setError] = React.useState<string | undefined>(undefined);
-  const [isPermissionError, setIsPermissionError] = React.useState(false);
+  const [errorKind, setErrorKind] = React.useState<'generic' | 'permission' | 'authorization'>('generic');
   const [retryCount, setRetryCount] = React.useState(0);
   const [hasActiveCard, setHasActiveCard] = React.useState(false);
   const [guestHasTeamsAccess, setGuestHasTeamsAccess] = React.useState<boolean | undefined>(
@@ -853,7 +853,7 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
 
     let cancelled = false;
     setError(undefined);
-    setIsPermissionError(false);
+    setErrorKind('generic');
 
     const applyCachedSponsors = (cachedSponsors: ICachedSponsorsPayload): void => {
       sponsorCacheDisabledRef.current = false;
@@ -986,9 +986,13 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
           // Permanent error (e.g. 401, 403) or retry limit reached:
           // stop retrying and show the error message so the shimmer disappears.
           if (reasonCode === 'GRAPH_PERMISSION_DENIED') {
-            setIsPermissionError(true);
+            setErrorKind('permission');
             setError(strings.InsufficientPermissionsMessage);
+          } else if (reasonCode === 'GRAPH_AUTHORIZATION_FAILED') {
+            setErrorKind('authorization');
+            setError(strings.ServiceAuthorizationIssueMessage);
           } else {
+            setErrorKind('generic');
             const supportRef = referenceId ? ` (Ref: ${referenceId})` : '';
             setError(`${fstr('ErrorMessage')}${supportRef}`);
           }
@@ -1286,18 +1290,14 @@ const GuestSponsorInfo: React.FC<IGuestSponsorInfoProps> = ({
           </h2>
         )}
         {loading && <SponsorGridSkeleton compact={cardLayout === 'compact'} />}
-        {!loading && error && !isPermissionError && (
+        {!loading && error && (
           <MessageBar intent="error">
             <MessageBarBody>
-              <b>{strings.ErrorMessageTitle}</b><br />
-              {error}
-            </MessageBarBody>
-          </MessageBar>
-        )}
-        {!loading && isPermissionError && error && (
-          <MessageBar intent="error">
-            <MessageBarBody>
-              <b>{strings.InsufficientPermissionsTitle}</b><br />
+              <b>{errorKind === 'permission'
+                ? strings.InsufficientPermissionsTitle
+                : errorKind === 'authorization'
+                  ? strings.ServiceAuthorizationIssueTitle
+                  : strings.ErrorMessageTitle}</b><br />
               {error}
             </MessageBarBody>
           </MessageBar>

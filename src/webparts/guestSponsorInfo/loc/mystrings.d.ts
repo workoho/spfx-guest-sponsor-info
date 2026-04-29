@@ -234,6 +234,10 @@ declare interface IGuestSponsorInfoWebPartStrings {
   InsufficientPermissionsTitle: string;
   InsufficientPermissionsMessage: string;
 
+  // Shown when the sponsor service hits a temporary internal authorization/token state issue
+  ServiceAuthorizationIssueTitle: string;
+  ServiceAuthorizationIssueMessage: string;
+
   // First-run welcome dialog (shown once per instance in edit mode)
   WelcomeDialogTitle: string;
   WelcomeDialogBody: string;

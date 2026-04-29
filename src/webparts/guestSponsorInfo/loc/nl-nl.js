@@ -89,6 +89,9 @@ define([], function () {
     InsufficientPermissionsTitle: "Onvoldoende rechten",
     InsufficientPermissionsMessage:
       "Kan sponsorinformatie niet laden — een vereiste servicemachtiging is niet verleend. Neem contact op met uw IT-beheerder.",
+    ServiceAuthorizationIssueTitle: "Tijdelijk serviceprobleem",
+    ServiceAuthorizationIssueMessage:
+      "Kan sponsorinformatie niet laden omdat de sponsorservice een interne autorisatiestap niet kon voltooien. Probeer het zo opnieuw. Neem contact op met uw IT-beheerder als het probleem blijft bestaan.",
     GuestNotificationsGroupName: "Meldingen voor gasten",
     GuestNotificationsGroupHint: "Beheer welke informatieve meldingen worden weergegeven aan gastgebruikers.",
     ShowTeamsAccessPendingHintLabel: "Melding «Microsoft Teams nog niet ingesteld» weergeven",

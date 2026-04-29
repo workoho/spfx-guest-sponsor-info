@@ -92,6 +92,9 @@ define([], function () {
     InsufficientPermissionsTitle: "Permissão insuficiente",
     InsufficientPermissionsMessage:
       "Não foi possível carregar as informações do patrocinador — uma permissão de serviço necessária não foi concedida. Contacte o seu administrador de TI.",
+    ServiceAuthorizationIssueTitle: "Problema temporário do serviço",
+    ServiceAuthorizationIssueMessage:
+      "Não foi possível carregar as informações do patrocinador porque o serviço de patrocinadores não conseguiu concluir uma etapa de autorização interna. Tente novamente dentro de instantes. Se o problema persistir, contacte o seu administrador de TI.",
     GuestNotificationsGroupName: "Notificações para convidados",
     GuestNotificationsGroupHint: "Controle quais notificações informativas são apresentadas a utilizadores convidados.",
     ShowTeamsAccessPendingHintLabel: "Mostrar aviso «Microsoft Teams ainda não configurado»",

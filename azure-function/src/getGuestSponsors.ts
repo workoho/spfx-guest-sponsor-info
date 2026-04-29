@@ -182,13 +182,19 @@ function verifyPresenceToken(token: string, callerOid: string): Set<string> | un
 }
 
 /** Cached optional-permission flags for MailboxSettings.Read, Presence.Read.All, and TeamMember.Read.All. */
+type RequiredReadPermissionState = 'present' | 'missing' | 'unknown';
+
 interface IOptionalPermissions {
+  requiredReadPermissionState: RequiredReadPermissionState;
+  grantedRoles: string[];
   hasMailboxSettings: boolean;
   hasPresenceReadAll: boolean;
   hasTeamMemberReadAll: boolean;
 }
 
+const GRAPH_PERMISSION_SNAPSHOT_TTL_MS = 5 * 60 * 1000;
 let cachedOptionalPermissions: Promise<IOptionalPermissions> | undefined;
+let cachedOptionalPermissionsAt = 0;
 
 /**
  * Inspects the JWT access token obtained by the credential to determine
@@ -208,7 +214,9 @@ async function detectOptionalPermissions(
   context: InvocationContext
 ): Promise<IOptionalPermissions> {
   // Assign synchronously before any await so concurrent callers share one promise.
-  if (!cachedOptionalPermissions) {
+  const now = Date.now();
+  if (!cachedOptionalPermissions || (now - cachedOptionalPermissionsAt) >= GRAPH_PERMISSION_SNAPSHOT_TTL_MS) {
+    cachedOptionalPermissionsAt = now;
     cachedOptionalPermissions = (async (): Promise<IOptionalPermissions> => {
       try {
         const token = await credential.getToken('https://graph.microsoft.com/.default');
@@ -222,6 +230,10 @@ async function detectOptionalPermissions(
         const hasDirectoryReadAll = roles.includes('Directory.Read.All');
         const hasMailboxSettings = roles.includes('MailboxSettings.Read');
         const hasTeamMemberReadAll = roles.includes('TeamMember.Read.All');
+        const requiredReadPermissionState: RequiredReadPermissionState =
+          hasUserReadBasicAll || hasUserReadAll || hasDirectoryReadAll
+            ? 'present'
+            : 'missing';
         context.log(
           `Graph app roles: User.Read.All=${hasUserReadAll}, ` +
           `User.ReadBasic.All=${hasUserReadBasicAll}, Presence.Read.All=${hasPresenceReadAll}, ` +
@@ -250,15 +262,101 @@ async function detectOptionalPermissions(
             }
           );
         }
-        return { hasMailboxSettings, hasPresenceReadAll, hasTeamMemberReadAll };
+        return {
+          requiredReadPermissionState,
+          grantedRoles: roles,
+          hasMailboxSettings,
+          hasPresenceReadAll,
+          hasTeamMemberReadAll,
+        };
       } catch (error) {
         // If token inspection fails for any reason, degrade gracefully.
-        context.warn('Could not inspect token roles — optional features disabled.', error);
-        return { hasMailboxSettings: false, hasPresenceReadAll: false, hasTeamMemberReadAll: false };
+        context.warn('Could not inspect token roles — permission classification degraded and optional features disabled.', error);
+        return {
+          requiredReadPermissionState: 'unknown',
+          grantedRoles: [],
+          hasMailboxSettings: false,
+          hasPresenceReadAll: false,
+          hasTeamMemberReadAll: false,
+        };
       }
     })();
   }
   return cachedOptionalPermissions;
+}
+
+interface IGraph403Classification {
+  reasonCode: 'GRAPH_PERMISSION_DENIED' | 'GRAPH_AUTHORIZATION_FAILED';
+  clientMessage: string;
+  logMessage: string;
+  logProperties: Record<string, unknown>;
+}
+
+function classifySponsorGraph403(
+  permissionSnapshot: IOptionalPermissions | undefined,
+  correlationId: string,
+  error: GraphError
+): IGraph403Classification {
+  const grantedRoles = permissionSnapshot?.grantedRoles ?? [];
+  const requiredReadPermissionState = permissionSnapshot?.requiredReadPermissionState ?? 'unknown';
+  const requiredPermissions = ['User.ReadBasic.All', 'User.Read.All', 'Directory.Read.All'];
+  const logProperties: Record<string, unknown> = {
+    statusCode: error.statusCode,
+    code: error.code,
+    requestId: error.requestId,
+    correlationId,
+    grantedRoles,
+  };
+
+  if (requiredReadPermissionState === 'missing') {
+    return {
+      reasonCode: 'GRAPH_PERMISSION_DENIED',
+      clientMessage:
+        'The function managed identity is missing required Microsoft Graph permissions. ' +
+        'Contact your administrator to run setup-graph-permissions.ps1.',
+      logMessage:
+        'GRAPH_PERMISSION_DENIED: Microsoft Graph returned HTTP 403 Forbidden.\n' +
+        'CAUSE: The managed identity token does not contain any required Microsoft Graph read role.\n' +
+        'REQUIRED (at least one of):\n' +
+        '  • User.ReadBasic.All  — read basic profile of any user (displayName, mail, photo)\n' +
+        '  • User.Read.All       — read full profile of any user\n' +
+        '  • Directory.Read.All  — read all directory data\n' +
+        'OPTIONAL (for additional features):\n' +
+        '  • Presence.Read.All   — real-time Teams presence indicators\n' +
+        '  • MailboxSettings.Read — filter shared/room mailboxes out of sponsor list\n' +
+        '  • TeamMember.Read.All — detect Teams provisioning for guests\n' +
+        'FIX: Run infra/setup-graph-permissions.ps1 as Global Administrator or\n' +
+        '     Privileged Role Administrator. The script grants all roles above.\n' +
+        '     Then restart the Function App to pick up the new token.',
+      logProperties: {
+        ...logProperties,
+        requiredPermissions,
+        fixAction: 'Run infra/setup-graph-permissions.ps1 and restart the Function App',
+      },
+    };
+  }
+
+  const tokenState = requiredReadPermissionState === 'present'
+    ? `TOKEN STATE: The current token already contains a required Graph read role (${grantedRoles.filter(role => requiredPermissions.includes(role)).join(', ')}).`
+    : 'TOKEN STATE: The function could not verify the current Managed Identity token roles before Graph returned 403.';
+
+  return {
+    reasonCode: 'GRAPH_AUTHORIZATION_FAILED',
+    clientMessage:
+      'The function could not complete a Microsoft Graph request. Restart the Function App and try again once. ' +
+      'If the error continues, verify the current Managed Identity object ID and its app-role assignments.',
+    logMessage:
+      'GRAPH_AUTHORIZATION_FAILED: Microsoft Graph returned HTTP 403 Forbidden for sponsor lookup.\n' +
+      `${tokenState}\n` +
+      'CAUSE: This is not consistent with a simple missing-permission configuration alone. ' +
+      'It usually indicates a stale token, an authorization propagation delay, or app-role assignments on a different Managed Identity object.\n' +
+      'ACTION: Restart the Function App once to refresh its Managed Identity token. ' +
+      'If the error persists, verify the app-role assignments on the current Managed Identity object ID.',
+    logProperties: {
+      ...logProperties,
+      fixAction: 'Restart the Function App once, then verify app-role assignments on the current Managed Identity object ID',
+    },
+  };
 }
 
 /**
@@ -1172,9 +1270,11 @@ export async function getGuestSponsors(
   context.log(`Fetching sponsors for caller ${redactGuid(callerOid)}`
     + ` [sponsorFilter=${sponsorFilter}, requireUserMailbox=${requireUserMailbox}]`);
 
+  let permissionSnapshot: IOptionalPermissions | undefined;
   try {
     const credential = new DefaultAzureCredential();
-    const { hasMailboxSettings, hasPresenceReadAll, hasTeamMemberReadAll } = await detectOptionalPermissions(credential, context);
+    permissionSnapshot = await detectOptionalPermissions(credential, context);
+    const { hasMailboxSettings, hasPresenceReadAll, hasTeamMemberReadAll } = permissionSnapshot;
     const authProvider = new TokenCredentialAuthenticationProvider(credential, {
       scopes: ['https://graph.microsoft.com/.default'],
     });
@@ -1546,41 +1646,15 @@ export async function getGuestSponsors(
   } catch (error) {
     if (error instanceof GraphError) {
       if (error.statusCode === 403) {
-        // HTTP 403 from Graph means the managed identity was never granted the required
-        // application permissions.  Log the exact missing permission so the ops team
-        // knows precisely what to fix without reading Microsoft's generic error messages.
-        context.error(
-          'GRAPH_PERMISSION_DENIED: Microsoft Graph returned HTTP 403 Forbidden.\n' +
-          'CAUSE: The managed identity has not been granted the Microsoft Graph application\n' +
-          '       permission "User.ReadBasic.All" (minimum required for sponsor lookups).\n' +
-          'REQUIRED (at least one of):\n' +
-          '  • User.ReadBasic.All  — read basic profile of any user (displayName, mail, photo)\n' +
-          '  • User.Read.All       — read full profile of any user\n' +
-          '  • Directory.Read.All  — read all directory data\n' +
-          'OPTIONAL (for additional features):\n' +
-          '  • Presence.Read.All   — real-time Teams presence indicators\n' +
-          '  • MailboxSettings.Read — filter shared/room mailboxes out of sponsor list\n' +
-          '  • TeamMember.Read.All — detect Teams provisioning for guests\n' +
-          'FIX: Run infra/setup-graph-permissions.ps1 as Global Administrator or\n' +
-          '     Privileged Role Administrator. The script grants all roles above.\n' +
-          '     Then restart the Function App to pick up the new token.',
-          {
-            statusCode: error.statusCode,
-            code: error.code,
-            requestId: error.requestId,
-            correlationId,
-            requiredPermissions: ['User.ReadBasic.All', 'User.Read.All', 'Directory.Read.All'],
-            fixAction: 'Run infra/setup-graph-permissions.ps1 and restart the Function App',
-          }
-        );
+        const classification = classifySponsorGraph403(permissionSnapshot, correlationId, error);
+        context.error(classification.logMessage, classification.logProperties);
         return jsonErrorResponse(
           request,
           403,
           correlationId,
           'Forbidden',
-          'GRAPH_PERMISSION_DENIED',
-          'The function managed identity is missing required Microsoft Graph permissions. ' +
-          'Contact your administrator to run setup-graph-permissions.ps1.',
+          classification.reasonCode,
+          classification.clientMessage,
           false
         );
       }
@@ -1877,9 +1951,11 @@ export async function getPresence(
 
   context.log(`Fetching presence for ${ids.length} id(s) on behalf of ${redactGuid(callerOid)}`);
 
+  let permissionSnapshot: IOptionalPermissions | undefined;
   try {
     const credential = new DefaultAzureCredential();
-    const { hasPresenceReadAll } = await detectOptionalPermissions(credential, context);
+    permissionSnapshot = await detectOptionalPermissions(credential, context);
+    const { hasPresenceReadAll } = permissionSnapshot;
 
     if (!hasPresenceReadAll) {
       context.warn(
@@ -1976,9 +2052,17 @@ export async function getPresence(
   } catch (error) {
     if (error instanceof GraphError && error.statusCode === 403) {
       context.error(
-        'GRAPH_PERMISSION_DENIED: Microsoft Graph returned HTTP 403 for presence lookup.\n' +
-        'CAUSE: Presence.Read.All application permission not granted to the managed identity.\n' +
-        'FIX: Run infra/setup-graph-permissions.ps1 and restart the Function App.'
+        'GRAPH_AUTHORIZATION_FAILED: Microsoft Graph returned HTTP 403 for presence lookup.\n' +
+        'TOKEN STATE: The current token already passed the Presence.Read.All check before the request.\n' +
+        'CAUSE: This usually indicates a stale token or another authorization-state issue rather than a simple missing permission.\n' +
+        'ACTION: Restart the Function App once and retry. If the error persists, verify the current Managed Identity object ID and its app-role assignments.',
+        {
+          statusCode: error.statusCode,
+          code: error.code,
+          requestId: error.requestId,
+          correlationId,
+          fixAction: 'Restart the Function App once, then verify app-role assignments on the current Managed Identity object ID',
+        }
       );
       return jsonResponse({ presences: [] }, 200, request, correlationId);
     }

@@ -89,6 +89,9 @@ define([], function () {
     InsufficientPermissionsTitle: "Lupa puuttuu",
     InsufficientPermissionsMessage:
       "Sponsoritietoja ei voitu ladata — vaadittua palvelulupaa ei ole myönnetty. Ota yhteyttä IT-järjestelmänvalvojaasi.",
+    ServiceAuthorizationIssueTitle: "Tilapäinen palveluongelma",
+    ServiceAuthorizationIssueMessage:
+      "Sponsoritietoja ei voitu ladata, koska sponsoripalvelu ei pystynyt suorittamaan sisäistä valtuutusvaihetta loppuun. Yritä hetken kuluttua uudelleen. Jos ongelma jatkuu, ota yhteyttä IT-järjestelmänvalvojaasi.",
     GuestNotificationsGroupName: "Vierailijailmoitukset",
     GuestNotificationsGroupHint: "Hallinnoi, mitkä tiedottavat ilmoitukset näytetään vierailukäyttäjille.",
     ShowTeamsAccessPendingHintLabel: 'Näytä ilmoitus "Microsoft Teams ei ole vielä määritetty"',

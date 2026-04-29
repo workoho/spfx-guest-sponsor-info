@@ -91,6 +91,9 @@ define([], function () {
     InsufficientPermissionsTitle: "Vyžadováno oprávnění",
     InsufficientPermissionsMessage:
       "Nepodařilo se načíst informace o sponzorovi — požadované oprávnění služby nebylo uděleno. Obraťte se prosím na správce IT.",
+    ServiceAuthorizationIssueTitle: "Dočasný problém služby",
+    ServiceAuthorizationIssueMessage:
+      "Informace o sponzorovi se nepodařilo načíst, protože služba sponzorů nedokázala dokončit interní krok autorizace. Zkuste to prosím za chvíli znovu. Pokud problém přetrvá, obraťte se na správce IT.",
     GuestNotificationsGroupName: "Oznámení pro hosty",
     GuestNotificationsGroupHint: "Nastavte, která informační oznámení se zobrazují hostujícím uživatelům.",
     ShowTeamsAccessPendingHintLabel: 'Zobrazit oznámení "Teams ještě není nastaveno"',

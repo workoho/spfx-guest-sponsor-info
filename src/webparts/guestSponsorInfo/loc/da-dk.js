@@ -89,6 +89,9 @@ define([], function () {
     InsufficientPermissionsTitle: "Manglende tilladelse",
     InsufficientPermissionsMessage:
       "Det var ikke muligt at indlæse sponsoroplysninger — en påkrævet servicetilladelse er ikke tildelt. Kontakt din IT-administrator.",
+    ServiceAuthorizationIssueTitle: "Midlertidigt tjenesteproblem",
+    ServiceAuthorizationIssueMessage:
+      "Det var ikke muligt at indlæse sponsoroplysningerne, fordi sponsortjenesten ikke kunne fuldføre et internt godkendelsestrin. Prøv igen om et øjeblik. Kontakt din IT-administrator, hvis problemet fortsætter.",
     GuestNotificationsGroupName: "Notifikationer til gæster",
     GuestNotificationsGroupHint: "Styr hvilke informationsmeddelelser der vises til gæstebrugere.",
     ShowTeamsAccessPendingHintLabel: 'Vis notifikation "Microsoft Teams ikke konfigureret endnu"',

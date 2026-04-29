@@ -92,6 +92,9 @@ define([], function () {
     InsufficientPermissionsTitle: "Brak uprawnień",
     InsufficientPermissionsMessage:
       "Nie można załadować informacji o sponsorze — wymagane uprawnienie usługi nie zostało przyznane. Skontaktuj się z administratorem IT.",
+    ServiceAuthorizationIssueTitle: "Tymczasowy problem z usługą",
+    ServiceAuthorizationIssueMessage:
+      "Nie można załadować informacji o sponsorze, ponieważ usługa sponsorów nie mogła ukończyć wewnętrznego kroku autoryzacji. Spróbuj ponownie za chwilę. Jeśli problem będzie się powtarzał, skontaktuj się z administratorem IT.",
     GuestNotificationsGroupName: "Powiadomienia dla gości",
     GuestNotificationsGroupHint: "Kontroluj, które powiadomienia informacyjne są wyświetlane użytkownikiem-gościom.",
     ShowTeamsAccessPendingHintLabel: "Pokaż powiadomienie «Microsoft Teams nie zostało jeszcze skonfigurowane»",

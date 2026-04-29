@@ -98,6 +98,9 @@ define([], function () {
     InsufficientPermissionsTitle: "Permission required",
     InsufficientPermissionsMessage:
       "Could not load sponsor information — a required service permission has not been granted. Please contact your IT administrator.",
+    ServiceAuthorizationIssueTitle: "Temporary service issue",
+    ServiceAuthorizationIssueMessage:
+      "Could not load sponsor information because the sponsor service could not complete an internal authorization step. Please try again in a moment. If the problem continues, contact your IT administrator.",
     GuestNotificationsGroupName: "Guest Notifications",
     GuestNotificationsGroupHint: "Control which informational notices are shown to guest users.",
     ShowTeamsAccessPendingHintLabel: 'Show "Teams not set up yet" notice',

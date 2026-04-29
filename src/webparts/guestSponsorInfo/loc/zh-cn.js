@@ -85,6 +85,9 @@ define([], function () {
     VersionMismatchMessage: "此 Web 部件有可用更新。请联系管理员确保 Web 部件和 Guest Sponsor API 运行相同版本。",
     InsufficientPermissionsTitle: "权限不足",
     InsufficientPermissionsMessage: "无法加载赞助商信息 — 尚未授予所需的服务权限。请联系您的 IT 管理员。",
+    ServiceAuthorizationIssueTitle: "服务暂时出现问题",
+    ServiceAuthorizationIssueMessage:
+      "无法加载赞助商信息，因为赞助商服务无法完成内部授权步骤。请稍后重试。如果问题持续存在，请联系您的 IT 管理员。",
     GuestNotificationsGroupName: "访客通知",
     GuestNotificationsGroupHint: "控制向访客用户显示哪些信息通知。",
     ShowTeamsAccessPendingHintLabel: "显示「Microsoft Teams 尚未设置」通知",

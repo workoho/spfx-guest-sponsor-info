@@ -90,6 +90,9 @@ define([], function () {
     InsufficientPermissionsTitle: "権限が不足しています",
     InsufficientPermissionsMessage:
       "スポンサー情報を読み込めませんでした — 必要なサービスのアクセス許可が付与されていません。IT 管理者にお問い合わせください。",
+    ServiceAuthorizationIssueTitle: "一時的なサービスの問題",
+    ServiceAuthorizationIssueMessage:
+      "スポンサー情報を読み込めませんでした。スポンサー サービスが内部の認可手順を完了できませんでした。しばらくしてからもう一度お試しください。問題が続く場合は、IT 管理者にお問い合わせください。",
     GuestNotificationsGroupName: "ゲストへの通知",
     GuestNotificationsGroupHint: "ゲストユーザーに表示する情報通知を管理します。",
     ShowTeamsAccessPendingHintLabel: "「Microsoft Teams はまだ設定されていません」通知を表示",

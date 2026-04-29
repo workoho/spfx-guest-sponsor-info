@@ -400,5 +400,17 @@ describe('GuestSponsorInfo', () => {
       await flushAsync();
       expect(container.textContent).toContain('Could not load sponsor information');
     });
+
+    it('shows the temporary service issue message for GRAPH_AUTHORIZATION_FAILED', async () => {
+      const err = Object.assign(new Error('Forbidden'), {
+        statusCode: 403,
+        reasonCode: 'GRAPH_AUTHORIZATION_FAILED',
+      });
+      mockGetSponsors.mockRejectedValue(err);
+      act(() => { renderWebPart({}); });
+      await flushAsync();
+      expect(container.textContent).toContain('Temporary service issue');
+      expect(container.textContent).toContain('internal authorization step');
+    });
   });
 });

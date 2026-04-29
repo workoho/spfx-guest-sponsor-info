@@ -91,6 +91,9 @@ define([], function () {
     InsufficientPermissionsTitle: "Autorizzazione necessaria",
     InsufficientPermissionsMessage:
       "Impossibile caricare le informazioni sugli sponsor — un'autorizzazione di servizio richiesta non è stata concessa. Contattare l'amministratore IT.",
+    ServiceAuthorizationIssueTitle: "Problema temporaneo del servizio",
+    ServiceAuthorizationIssueMessage:
+      "Impossibile caricare le informazioni sugli sponsor perché il servizio sponsor non è riuscito a completare un passaggio di autorizzazione interno. Riprovare tra un momento. Se il problema persiste, contattare l'amministratore IT.",
     GuestNotificationsGroupName: "Notifiche per gli ospiti",
     GuestNotificationsGroupHint: "Controlla quali notifiche informative vengono mostrate agli utenti ospiti.",
     ShowTeamsAccessPendingHintLabel: "Mostra l'avviso «Microsoft Teams non ancora configurato»",

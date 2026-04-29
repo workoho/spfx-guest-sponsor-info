@@ -95,6 +95,9 @@ define([], function () {
     InsufficientPermissionsTitle: "Permisiune necesară",
     InsufficientPermissionsMessage:
       "Nu s-au putut încărca informațiile despre sponsor — o permisiune de serviciu necesară nu a fost acordată. Vă rugăm să contactați administratorul IT.",
+    ServiceAuthorizationIssueTitle: "Problemă temporară a serviciului",
+    ServiceAuthorizationIssueMessage:
+      "Nu s-au putut încărca informațiile despre sponsor deoarece serviciul sponsorilor nu a putut finaliza un pas intern de autorizare. Încercați din nou peste câteva momente. Dacă problema persistă, contactați administratorul IT.",
     GuestNotificationsGroupName: "Notificări pentru invitați",
     GuestNotificationsGroupHint: "Controlați ce notificări informative sunt afișate utilizatorilor invitați.",
     ShowTeamsAccessPendingHintLabel: 'Afișați notificarea "Teams nu a fost configurat încă"',

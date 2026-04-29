@@ -93,6 +93,9 @@ define([], function () {
     InsufficientPermissionsTitle: "Jogosultság szükséges",
     InsufficientPermissionsMessage:
       "Nem sikerült betölteni a szponzor adatait — egy szükséges szolgáltatásengedély nem lett megadva. Kérjük, lépjen kapcsolatba az informatikai rendszergazdájával.",
+    ServiceAuthorizationIssueTitle: "Átmeneti szolgáltatási probléma",
+    ServiceAuthorizationIssueMessage:
+      "Nem sikerült betölteni a szponzor adatait, mert a szponzorszolgáltatás nem tudott befejezni egy belső jogosultság-ellenőrzési lépést. Próbálja meg újra rövidesen. Ha a probléma továbbra is fennáll, lépjen kapcsolatba az informatikai rendszergazdájával.",
     GuestNotificationsGroupName: "Vendégértesítések",
     GuestNotificationsGroupHint:
       "Szabályozza, hogy mely tájékoztató értesítések jelenjenek meg a vendégfelhasználóknak.",
