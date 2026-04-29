@@ -367,7 +367,9 @@ if [[ "${DO_COMMIT}" == "true" ]]; then
       # The tag already exists on the remote — force-push it to its new position.
       git push --force origin "refs/tags/${VTAG}"
     else
-      git push --tags
+      # Push only the release tag. GitHub does not create push workflow events
+      # for tags when more than three tags are pushed at once.
+      git push origin "refs/tags/${VTAG}"
     fi
     echo "${C_GRN}✓${C_RST} Pushed. The release workflow will start automatically."
   else
@@ -376,7 +378,7 @@ if [[ "${DO_COMMIT}" == "true" ]]; then
         "  ${C_BLD}git push && git push --force origin refs/tags/${VTAG}${C_RST}"
     else
       next_steps "Push with:" \
-        "  ${C_BLD}git push && git push --tags${C_RST}"
+        "  ${C_BLD}git push && git push origin refs/tags/${VTAG}${C_RST}"
     fi
   fi
 fi
