@@ -72,7 +72,7 @@ RUN npm install --global azure-functions-core-tools@4 \
 
 # APM CLI — reproducible agent package management for shared skills,
 # instructions, and MCP dependencies across similar repositories.
-ARG APM_VERSION=0.9.2
+ARG APM_VERSION=0.10.0
 RUN python3 -m venv /opt/apm \
   && /opt/apm/bin/pip install --no-cache-dir --upgrade pip \
   && /opt/apm/bin/pip install --no-cache-dir "apm-cli==${APM_VERSION}" \

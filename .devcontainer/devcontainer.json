@@ -101,16 +101,16 @@
               "-y",
               "@playwright/mcp@latest",
               "--config",
-              "/workspaces/spfx-guestSponsorInfo-webpart/.devcontainer/playwright-mcp.config.json",
+              "/workspaces/spfx-guest-sponsor-info/.devcontainer/playwright-mcp.config.json",
               "--headless",
               "--no-sandbox",
               "--caps",
               "vision",
               "--save-session",
               "--user-data-dir",
-              "/workspaces/spfx-guestSponsorInfo-webpart/.cache/playwright-mcp/profile",
+              "/workspaces/spfx-guest-sponsor-info/.cache/playwright-mcp/profile",
               "--output-dir",
-              "/workspaces/spfx-guestSponsorInfo-webpart/.cache/playwright-mcp/output"
+              "/workspaces/spfx-guest-sponsor-info/.cache/playwright-mcp/output"
             ]
           },
           // Microsoft Learn MCP server — gives Copilot current official
