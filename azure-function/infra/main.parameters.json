@@ -29,6 +29,9 @@
     "deployAzureMaps": {
       "value": "${AZURE_DEPLOY_AZURE_MAPS}"
     },
+    "skipGraphRoleAssignments": {
+      "value": "${AZURE_SKIP_GRAPH_ROLE_ASSIGNMENTS}"
+    },
     "azureMapsAccountName": {
       "value": ""
     },
