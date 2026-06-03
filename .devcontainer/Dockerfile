@@ -1,6 +1,6 @@
 FROM mcr.microsoft.com/devcontainers/base:trixie
 
-ARG NODE_VERSION=22.14.0
+ARG NODE_VERSION=22.22.3
 ARG TARGETARCH
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -31,7 +31,7 @@ RUN apt-get update \
 
 # yq (mikefarah/yq v4) — the apt package is a Python wrapper with different
 # syntax. Install the official Go binary directly for `yq eval` compatibility.
-ARG YQ_VERSION=v4.44.6
+ARG YQ_VERSION=v4.53.2
 RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
   && case "${arch}" in \
   amd64|x86_64) yq_arch="amd64" ;; \
@@ -72,7 +72,7 @@ RUN npm install --global azure-functions-core-tools@4 \
 
 # APM CLI — reproducible agent package management for shared skills,
 # instructions, and MCP dependencies across similar repositories.
-ARG APM_VERSION=0.10.0
+ARG APM_VERSION=0.16.1
 RUN python3 -m venv /opt/apm \
   && /opt/apm/bin/pip install --no-cache-dir --upgrade pip \
   && /opt/apm/bin/pip install --no-cache-dir "apm-cli==${APM_VERSION}" \
@@ -91,7 +91,7 @@ RUN mkdir -p "${PLAYWRIGHT_BROWSERS_PATH}" \
 # delta — syntax-highlighting git diff pager (https://github.com/dandavison/delta).
 # Installed as a static binary; makes `git diff` and `git show` output readable
 # with colour and line numbers in the terminal — useful for both developers and agents.
-ARG DELTA_VERSION=0.19.1
+ARG DELTA_VERSION=0.19.2
 RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
   && case "${arch}" in \
   # x86_64 has a musl (fully static) build; arm64 ships gnu only
@@ -109,7 +109,7 @@ RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
 
 # shfmt — shell script formatter (https://github.com/mvdan/sh).
 # Installed as a static binary; no Go toolchain required at runtime.
-ARG SHFMT_VERSION=v3.10.0
+ARG SHFMT_VERSION=v3.13.1
 RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
   && case "${arch}" in \
   amd64|x86_64) shfmt_arch="amd64" ;; \
@@ -124,7 +124,7 @@ RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
 # actionlint — GitHub Actions workflow linter (https://github.com/rhysd/actionlint).
 # Validates action names, expression types, job/step schema, and permission scopes —
 # catches semantic errors in workflow files that YAML formatting tools cannot detect.
-ARG ACTIONLINT_VERSION=1.7.7
+ARG ACTIONLINT_VERSION=1.7.12
 RUN arch="${TARGETARCH:-$(dpkg --print-architecture)}" \
   && case "${arch}" in \
   amd64|x86_64) al_arch="amd64" ;; \
