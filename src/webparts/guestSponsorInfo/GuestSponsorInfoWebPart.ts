@@ -894,6 +894,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
   ): IPropertyPaneField<unknown> {
     return PropertyPaneCustomField({
       key,
+      isInternal: false,
       onRender: (el: HTMLElement | undefined) => this._renderInfoBox(el, key, text, intent),
       onDispose: (el: HTMLElement | undefined) => { if (el) this._unmountReactTree(el); },
     }) as unknown as IPropertyPaneField<unknown>;
@@ -903,6 +904,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
   private _descriptionField(key: string, text: string): IPropertyPaneField<unknown> {
     return PropertyPaneCustomField({
       key,
+      isInternal: false,
       onRender: (el: HTMLElement | undefined) => this._renderDescriptionText(el, text),
       onDispose: (el: HTMLElement | undefined) => { if (el) el.innerHTML = ''; },
     }) as unknown as IPropertyPaneField<unknown>;
@@ -912,6 +914,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
   private _sectionHeaderField(key: string, label: string): IPropertyPaneField<unknown> {
     return PropertyPaneCustomField({
       key,
+      isInternal: false,
       onRender: (el: HTMLElement | undefined) => this._renderSectionHeader(el, label),
       onDispose: (el: HTMLElement | undefined) => { if (el) el.innerHTML = ''; },
     }) as unknown as IPropertyPaneField<unknown>;
@@ -921,6 +924,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
   private _labelWithInlineInfoField(key: string, label: string, tooltipText: string): IPropertyPaneField<unknown> {
     return PropertyPaneCustomField({
       key,
+      isInternal: false,
       onRender: (el: HTMLElement | undefined) => this._renderLabelWithInlineInfo(el, key, label, tooltipText),
       onDispose: (el: HTMLElement | undefined) => { if (el) this._unmountReactTree(el); },
     }) as unknown as IPropertyPaneField<unknown>;
@@ -1589,6 +1593,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                 // the Function App URL in the Azure portal.
                 PropertyPaneCustomField({
                   key: 'functionUrlHintField',
+                  isInternal: false,
                   onRender: (element: HTMLElement | undefined) => {
                     if (!element) return;
                     element.innerHTML = '';
@@ -1661,6 +1666,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                 // portal link, so admins can find the Client ID easily.
                 PropertyPaneCustomField({
                   key: 'clientIdEntraHintField',
+                  isInternal: false,
                   onRender: (element: HTMLElement | undefined) => {
                     if (!element) return;
                     element.innerHTML = '';
@@ -1749,6 +1755,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                 }) as unknown as IPropertyPaneField<unknown>,
                 PropertyPaneCustomField({
                   key: 'functionSetupLinksField',
+                  isInternal: false,
                   onRender: (element: HTMLElement | undefined) => {
                     if (!element) return;
                     element.innerHTML = '';
@@ -1819,6 +1826,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                 ...(this.properties.functionUrl && this.properties.webPartClientId ? [
                   PropertyPaneCustomField({
                     key: 'proxyStatusField',
+                    isInternal: false,
                     onRender: (element: HTMLElement | undefined) => {
                       if (!element) return;
                       const status = this._proxyStatus;
@@ -1857,6 +1865,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                 this._descriptionField('diagnosticsGroupHint', strings.DiagnosticsGroupHint),
                 PropertyPaneCustomField({
                   key: 'diagRetryButtonField',
+                  isInternal: false,
                   onRender: (element: HTMLElement | undefined) => {
                     this._diagRetryButtonEl = element;
                     this._renderDiagnosticsRetryButton(element);
@@ -1869,6 +1878,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                 // ── Check 1: Asset source / bundle delivery ─────────────────
                 PropertyPaneCustomField({
                   key: 'diagAssetSourceField',
+                  isInternal: false,
                   onRender: (element: HTMLElement | undefined) => {
                     this._diagAssetSourceEl = element;
                     this._renderDiagAssetSourceField(element);
@@ -1881,6 +1891,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
                 // ── Check 2: Site Everyone access ───────────────────────────
                 PropertyPaneCustomField({
                   key: 'diagSiteEveryoneField',
+                  isInternal: false,
                   onRender: (element: HTMLElement | undefined) => {
                     this._diagSiteEveryoneEl = element;
                     this._renderDiagSiteEveryoneField(element);
@@ -1898,6 +1909,7 @@ export default class GuestSponsorInfoWebPart extends BaseClientSideWebPart<IGues
               groupFields: [
                 PropertyPaneCustomField({
                   key: 'authorSectionCustomField',
+                  isInternal: false,
                   onRender: (element: HTMLElement | undefined) => {
                     this._renderAuthorSection(element);
                   },
