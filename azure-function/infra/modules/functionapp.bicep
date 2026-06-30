@@ -178,6 +178,15 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
     }
     siteConfig: {
       appSettings: effectiveSharedAppSettings
+      http20Enabled: true
+      minTlsVersion: '1.2'
+      // Require ECDHE (forward secrecy) + AES-GCM (AEAD). Drops legacy RSA
+      // key-exchange and CBC-mode suites. Safe because all clients are modern
+      // browsers via SharePoint; HTTP/2 (RFC 7540) also mandates GCM suites.
+      minTlsCipherSuite: 'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256'
+      scmMinTlsVersion: '1.2'
+      // Deployment runs via native OneDeploy — FTP is never used.
+      ftpsState: 'Disabled'
       cors: {
         allowedOrigins: ['https://${tenantName}.sharepoint.com']
         supportCredentials: false
