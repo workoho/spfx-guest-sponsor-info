@@ -39,7 +39,9 @@
 .PARAMETER AzureLoginMode
   Forwarded to deploy-azure.ps1. Overrides automatic Azure CLI login-mode
   detection. Supported values: "auto", "browser", "device-code". In Azure
-  Cloud Shell, "auto" first reuses the existing login context.
+  Cloud Shell and on remote or headless terminals, "auto" selects device code.
+  That flow must be permitted for your account, and PAW-restricted admin
+  accounts have to confirm the code on their Privileged Access Workstation.
 
 .PARAMETER TenantName
     Forwarded to deploy-azure.ps1.

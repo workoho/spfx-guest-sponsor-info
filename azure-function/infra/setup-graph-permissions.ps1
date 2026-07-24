@@ -239,8 +239,40 @@ function Sync-GraphPermissionAssignmentMarker {
 #endregion
 
 #region Error handler
+# Turn a raw error message into printable box lines. Graph errors arrive as a
+# single long JSON blob, so hard-wrap them and cap the output instead of
+# flooding the console.
+function Format-ErrorDetailLine {
+  param(
+    [AllowEmptyString()][string]$Message,
+    [int]$MaxLineLength = 96,
+    [int]$MaxLineCount = 16
+  )
+
+  if ([string]::IsNullOrWhiteSpace($Message)) { return @() }
+
+  $_detail = [System.Collections.Generic.List[string]]::new()
+  foreach ($_rawLine in ($Message -split "`r?`n")) {
+    $_line = $_rawLine.Trim()
+    if (-not $_line) { continue }
+    while ($_line.Length -gt $MaxLineLength) {
+      $_detail.Add("  $($_line.Substring(0, $MaxLineLength))")
+      $_line = $_line.Substring($MaxLineLength)
+    }
+    $_detail.Add("  $_line")
+  }
+
+  if ($_detail.Count -gt $MaxLineCount) {
+    $_omitted = $_detail.Count - $MaxLineCount
+    return @($_detail[0..($MaxLineCount - 1)]) + @("  ... ($_omitted more line(s) omitted)")
+  }
+
+  return @($_detail)
+}
+
 # Script-level trap: on Graph authorization errors (401/403), print role
-# guidance instead of a raw HTTP exception. Other errors re-throw normally.
+# guidance instead of a raw HTTP exception, keeping the original message
+# visible for diagnosis. Other errors re-throw normally.
 trap {
   $_httpCode = $null
   if ($_.Exception -and $null -ne $_.Exception.Response) {
@@ -270,6 +302,9 @@ trap {
       ''
       'If your roles are eligible (PIM): activate them, then re-run.'
       'If you do not have the roles yet: request them from your admin.'
+      ''
+      'Original error:'
+      (Format-ErrorDetailLine -Message $_errMsg)
     )
     Write-Link -Url 'https://entra.microsoft.com/#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/aadRoles' `
       -Text 'PIM → My roles → Entra roles  (activate eligible roles)'

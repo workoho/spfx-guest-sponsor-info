@@ -357,8 +357,8 @@ powered by the
 > installation, no Azure CLI, no `azd`, no `curl`, and no Homebrew.
 >
 > The deployment wizard detects [Azure Cloud Shell](https://shell.azure.com/)
-> automatically, reuses the active Azure sign-in, and can install `azd` into
-> the Cloud Shell home directory when needed.
+> automatically and can install `azd` into the Cloud Shell home directory when
+> needed.
 >
 > If you want a quick preview of the current first-run experience, see
 > [Get started with Azure Cloud Shell](https://learn.microsoft.com/en-us/azure/cloud-shell/get-started/ephemeral).
@@ -375,6 +375,24 @@ powered by the
 
 This keeps the full Azure deployment flow inside the browser session. Your
 local machine stays untouched.
+
+> [!IMPORTANT]
+> **Cloud Shell requires a device code sign-in.**
+>
+> The wizard signs in with the Azure CLI instead of reusing the Cloud Shell
+> identity, which is not permitted to create the Entra app registration. It
+> prints a code and a URL for you to confirm in a browser. Check two things
+> before you choose this path:
+>
+> - **Device code sign-in must be allowed for your account.** Some
+>   organizations block this flow via Conditional Access. If yours does, run
+>   the installer from a local PowerShell console instead — that path uses a
+>   normal browser sign-in — or ask your Entra administrator to permit the flow
+>   for the deploying account.
+> - **PAW-restricted admin accounts must confirm the code on their PAW.** If
+>   your admin account may only sign in from a Privileged Access Workstation,
+>   open the device code URL on that workstation. Confirming it on any other
+>   device will be rejected, regardless of where Cloud Shell is open.
 
 <details markdown="1">
 <summary>Optional: review the scripts before you run them</summary>

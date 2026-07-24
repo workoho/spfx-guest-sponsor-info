@@ -38,9 +38,11 @@
 
 .PARAMETER AzureLoginMode
   Azure CLI login mode. "auto" (default) chooses browser login for local
-  consoles, reuses the existing login in Azure Cloud Shell, and falls back to
-  device code for other remote/headless terminals. Use "browser" or
-  "device-code" to override that detection explicitly.
+  consoles and falls back to device code in Azure Cloud Shell and other
+  remote/headless terminals. Use "browser" or "device-code" to override that
+  detection explicitly. Device code sign-in must be permitted for the account,
+  and an admin account restricted to a Privileged Access Workstation has to
+  confirm the code on that workstation.
 
 .PARAMETER TenantName
     SharePoint tenant short name — the part before .sharepoint.com
@@ -166,6 +168,10 @@ $script:AzureCliConfigDir = $null
 $script:AzdConfigDir = $null
 $script:AzureAuthIsolationMode = ''
 $script:AzureSessionRootPrefix = 'gsi-azure-session'
+# Well-known first-party application ID of the Azure CLI. Microsoft Graph
+# tokens must be issued to this application for the Entra bootstrap to have
+# the delegated scopes it needs.
+$script:AzureCliApplicationId = '04b07795-8ddb-461a-bbee-02f9e1bf7b46'
 $script:AzdUsesAzureCliAuth = $false
 $script:CanRepairGraphPermissionsInThisRun = $false
 foreach ($_parameterName in $PSBoundParameters.Keys) {
@@ -317,11 +323,53 @@ function Test-FunctionAppNameLength {
 }
 
 #region Error handler
-# Script-level trap: on Azure CLI authorization errors (403), print role
-# guidance instead of a raw exception. Other errors re-throw normally.
+# Turn a raw error message into printable box lines. Azure CLI reports failed
+# deployments as a single long JSON blob, so hard-wrap it and cap the output
+# instead of flooding the console.
+function Format-ErrorDetailLine {
+  param(
+    [AllowEmptyString()][string]$Message,
+    [int]$MaxLineLength = 96,
+    [int]$MaxLineCount = 16
+  )
+
+  if ([string]::IsNullOrWhiteSpace($Message)) { return @() }
+
+  $_detail = [System.Collections.Generic.List[string]]::new()
+  foreach ($_rawLine in ($Message -split "`r?`n")) {
+    $_line = $_rawLine.Trim()
+    if (-not $_line) { continue }
+    while ($_line.Length -gt $MaxLineLength) {
+      $_detail.Add("  $($_line.Substring(0, $MaxLineLength))")
+      $_line = $_line.Substring($MaxLineLength)
+    }
+    $_detail.Add("  $_line")
+  }
+
+  if ($_detail.Count -gt $MaxLineCount) {
+    $_omitted = $_detail.Count - $MaxLineCount
+    return @($_detail[0..($MaxLineCount - 1)]) + @("  ... ($_omitted more line(s) omitted)")
+  }
+
+  return @($_detail)
+}
+
+# Script-level trap: on authorization errors, print role guidance instead of a
+# raw exception — but always keep the original message visible, so a
+# misclassified error can still be diagnosed. Other errors fall through to
+# PowerShell's own error output.
 trap {
   $_errMsg = if ($_.Exception -and $_.Exception.Message) { $_.Exception.Message } else { [string]$_ }
-  if ($_errMsg -match '(?i)Authorization_RequestDenied|insufficient.privilege|graph\.microsoft\.com|Microsoft\.Graph|appRoleAssignments?|appRoleAssignedTo|microsoft\.directory/') {
+
+  # A denial signal must be present before any role guidance is printed.
+  # Matching on a Graph resource type alone is not enough: Bicep compile
+  # errors and ARM validation failures name 'Microsoft.Graph/...' too, and
+  # were previously reported as missing permissions.
+  $_deniedSignal = $_errMsg -match '(?i)\bAuthorization_RequestDenied\b|insufficient\s+privileges|\bForbidden\b|\b403\b'
+  $_graphContext = $_errMsg -match '(?i)\bAuthorization_RequestDenied\b|graph\.microsoft\.com|Microsoft\.Graph/|appRoleAssignments?|appRoleAssignedTo|microsoft\.directory/'
+  $_azureContext = $_errMsg -match '(?i)AuthorizationFailed|LinkedAuthorizationFailed|does not have authorization'
+
+  if ($_deniedSignal -and $_graphContext) {
     Write-Failure -Lines @(
       'The request was denied — your account lacks the required permissions.'
       ''
@@ -332,6 +380,9 @@ trap {
       ''
       'If your roles are eligible (PIM): activate them, then re-run.'
       'If you do not have the roles yet: request them from your admin.'
+      ''
+      'Original error:'
+      (Format-ErrorDetailLine -Message $_errMsg)
     )
     Write-Link -Url 'https://entra.microsoft.com/#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/aadRoles' `
       -Text 'PIM → My roles → Entra roles  (activate eligible roles)'
@@ -339,7 +390,7 @@ trap {
       -Text 'Entra admin center → Roles and administrators'
     return
   }
-  if ($_errMsg -match '(?i)AuthorizationFailed|does not have authorization|403|Forbidden') {
+  if ($_azureContext -or $_deniedSignal) {
     Write-Failure -Lines @(
       'The request was denied — your account lacks the required permissions.'
       ''
@@ -348,6 +399,9 @@ trap {
       ''
       'If your role is eligible (PIM): activate it, then re-run.'
       'If you do not have the role yet: request it from your Azure admin.'
+      ''
+      'Original error:'
+      (Format-ErrorDetailLine -Message $_errMsg)
     )
     Write-Link -Url 'https://portal.azure.com/#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/azurerbac' `
       -Text 'PIM → My roles → Azure resources  (activate eligible role)'
@@ -545,7 +599,7 @@ function Invoke-Azd {
 
 function Show-PreflightOverview {
   $_authSessionBehavior = if (Test-AzureCloudShell) {
-    'In Azure Cloud Shell the wizard reuses the current Azure CLI session instead of isolating a new one.'
+    'Azure auth is isolated to this run, so the wizard signs in with the Azure CLI instead of reusing the Cloud Shell identity.'
   }
   else {
     'Azure auth is isolated to this PowerShell console so older az/azd logins do not leak into this run.'
@@ -574,22 +628,6 @@ function Test-AzureCloudShell {
   ) -as [bool]
 }
 
-function Get-DefaultAzureCliConfigDirectory {
-  if (-not [string]::IsNullOrWhiteSpace($env:AZURE_CONFIG_DIR)) {
-    return $env:AZURE_CONFIG_DIR
-  }
-
-  return Join-Path $HOME '.azure'
-}
-
-function Get-DefaultAzdConfigDirectory {
-  if (-not [string]::IsNullOrWhiteSpace($env:AZD_CONFIG_DIR)) {
-    return $env:AZD_CONFIG_DIR
-  }
-
-  return Join-Path $HOME '.azd'
-}
-
 function Get-AzureCliLoginPreference {
   if ($AzureLoginMode -eq 'browser') {
     return [pscustomobject]@{
@@ -611,10 +649,10 @@ function Get-AzureCliLoginPreference {
 
   if (Test-AzureCloudShell) {
     return [pscustomobject]@{
-      Mode       = 'browser'
-      StatusText = 'browser if re-login is required (auto for Azure Cloud Shell)'
-      DetailText = 'The script first reuses the active Cloud Shell Azure CLI session.'
-      StartText  = 'Starting az login in your browser...'
+      Mode       = 'device-code'
+      StatusText = 'device code (auto for Azure Cloud Shell)'
+      DetailText = 'The Cloud Shell container has no browser of its own.'
+      StartText  = 'Starting az login with device code...'
     }
   }
 
@@ -703,9 +741,35 @@ function Get-AzureCliBicepVersionText {
   return $_cleanVersionLine
 }
 
+function Update-AzureCliBicep {
+  [CmdletBinding(SupportsShouldProcess)]
+  param()
+
+  # 'az bicep install' pins whatever version was current at install time and is
+  # never refreshed afterwards. entra-auth.bicep needs a release that
+  # understands the 'extension' keyword and the 'extensions' block in
+  # bicepconfig.json, so refresh a pre-existing backend rather than trusting a
+  # binary cached in $AZURE_CONFIG_DIR by an earlier run.
+  if (-not $PSCmdlet.ShouldProcess('Azure CLI Bicep backend', 'Upgrade to the latest release')) {
+    return
+  }
+
+  try {
+    Invoke-AzureCliQuiet -Arguments @('bicep', 'upgrade') | Out-Null
+  }
+  catch {
+    # Non-fatal: an outdated backend still compiles most templates, and a
+    # template it cannot compile now reports the real Bicep error.
+    Write-Verbose "Could not upgrade the Azure CLI Bicep backend: $_"
+    Write-Host "  $_wrn Could not check for a newer Azure CLI Bicep version; continuing with the installed one." -ForegroundColor Yellow
+    Write-Host '       Run ''az bicep upgrade'' manually if a template fails to compile.' -ForegroundColor DarkGray
+  }
+}
+
 function Install-AzureCliBicepIfNeeded {
   $_bicepVersion = Get-AzureCliBicepVersionText
   if ($_bicepVersion) {
+    Update-AzureCliBicep
     return
   }
 
@@ -776,16 +840,27 @@ function Write-PreflightStatus {
 }
 
 function Show-CloudShellSessionBanner {
-  if ($script:AzureAuthIsolationMode -ne 'cloud-shell') {
+  if (-not (Test-AzureCloudShell)) {
     return
   }
 
   Write-Hint @(
     'Azure Cloud Shell detected.'
-    'This run reuses the current Cloud Shell Azure CLI login and shared ~/.azure and ~/.azd directories.'
-    'If azd is missing, the wizard can install it into your Cloud Shell home directory without sudo.'
-    'Persisted Cloud Shell storage usually keeps that azd install for later sessions.'
-    'Use -AzureLoginMode browser if you want to force a fresh browser sign-in.'
+    ''
+    'A device code sign-in follows. This run signs in with the Azure CLI instead'
+    'of reusing the Cloud Shell identity, which is not permitted to create the'
+    'Entra App Registration. Your existing Cloud Shell login stays intact: this'
+    'run keeps its own config directories and does not touch ~/.azure.'
+    ''
+    'Two things have to be in place for that sign-in:'
+    '  - Device code sign-in must be allowed for your account. Some tenants block'
+    '    it via Conditional Access; run the installer from a local console then.'
+    '  - If your admin account is restricted to a Privileged Access Workstation,'
+    '    confirm the device code on that PAW. Other devices will be rejected.'
+    ''
+    'If azd is missing, the wizard can install it into your Cloud Shell home'
+    'directory without sudo. Persisted Cloud Shell storage usually keeps that'
+    'azd install for later sessions.'
   )
 }
 
@@ -811,10 +886,6 @@ function Show-ToolVersion {
     Write-PreflightStatus -Label 'Azure auth session' -Value 'isolated to this PowerShell console'
     Write-Host '       Existing logins in ~/.azure and ~/.azd are ignored for this console.' -ForegroundColor DarkGray
     Write-Host '       Close the console to drop this isolated login context.' -ForegroundColor DarkGray
-  }
-  elseif ($script:AzureAuthIsolationMode -eq 'cloud-shell') {
-    Write-PreflightStatus -Label 'Azure auth session' -Value 'reuses the active Azure Cloud Shell login'
-    Write-Host '       The shared ~/.azure and ~/.azd directories stay in use for this run.' -ForegroundColor DarkGray
   }
   elseif ($script:AzureAuthIsolationMode -eq 'caller-supplied') {
     Write-PreflightStatus -Label 'Azure auth session' -Value 'using caller-provided config dirs'
@@ -861,7 +932,12 @@ function Initialize-AzureAuthIsolation {
     return
   }
 
-  $_isAzureCloudShell = Test-AzureCloudShell
+  # Azure Cloud Shell is deliberately not special-cased here. Reusing its
+  # shared ~/.azure meant reusing a token issued to the Cloud Shell
+  # application, whose Microsoft Graph scopes do not cover creating the EasyAuth
+  # App Registration — see Confirm-AzureCliGraphClient. An isolated config
+  # directory makes the wizard sign in with the Azure CLI itself and leaves the
+  # ambient Cloud Shell login untouched.
   $_managedRoot = if ($Global:GsiDeploy_AzureSessionRoot) { [string]$Global:GsiDeploy_AzureSessionRoot } else { '' }
   $_managedAzureConfigDir = if ($_managedRoot) { Join-Path $_managedRoot '.azure' } else { '' }
   $_managedAzdConfigDir = if ($_managedRoot) { Join-Path $_managedRoot '.azd' } else { '' }
@@ -881,11 +957,6 @@ function Initialize-AzureAuthIsolation {
   }
   elseif ($_hasAzureConfigDir -and $_hasAzdConfigDir) {
     $script:AzureAuthIsolationMode = 'caller-supplied'
-  }
-  elseif ($_isAzureCloudShell) {
-    $env:AZURE_CONFIG_DIR = Get-DefaultAzureCliConfigDirectory
-    $env:AZD_CONFIG_DIR = Get-DefaultAzdConfigDirectory
-    $script:AzureAuthIsolationMode = 'cloud-shell'
   }
   else {
     $script:AzureSessionRoot = Initialize-AzureSessionRoot
@@ -1820,6 +1891,103 @@ function Install-AzdIfNeeded {
   Write-Host "  $_chk Azure Developer CLI is available." -ForegroundColor Green
 }
 
+function Resolve-AzureAccountContext {
+  $script:SubscriptionName = (Invoke-AzureCli -Arguments @('account', 'show', '--query', 'name', '-o', 'tsv')).Trim()
+  $script:SubscriptionId = (Invoke-AzureCli -Arguments @('account', 'show', '--query', 'id', '-o', 'tsv')).Trim()
+  $script:TenantId = (Invoke-AzureCli -Arguments @('account', 'show', '--query', 'tenantId', '-o', 'tsv')).Trim()
+}
+
+function Get-GraphTokenClientId {
+  # Read the client application ID (appid claim) from the Microsoft Graph
+  # access token the current Azure CLI session hands out. Returns an empty
+  # string when no Graph token can be obtained or decoded — callers treat that
+  # as "unknown" and continue rather than blocking the deployment.
+  try {
+    $_token = (Invoke-AzureCliQuiet -Arguments @(
+        'account', 'get-access-token',
+        '--resource', 'https://graph.microsoft.com',
+        '--query', 'accessToken',
+        '-o', 'tsv')).Trim()
+  }
+  catch {
+    Write-Verbose "Could not obtain a Microsoft Graph access token: $_"
+    return ''
+  }
+
+  $_segments = $_token -split '\.'
+  if ($_segments.Count -lt 2) { return '' }
+
+  # JWT payloads use base64url; restore standard base64 padding before decoding.
+  $_payload = $_segments[1].Replace('-', '+').Replace('_', '/')
+  while ($_payload.Length % 4) { $_payload += '=' }
+
+  try {
+    $_claims = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($_payload)) | ConvertFrom-Json
+    return [string]$_claims.appid
+  }
+  catch {
+    Write-Verbose "Could not decode the Microsoft Graph access token payload: $_"
+    return ''
+  }
+}
+
+function Confirm-AzureCliGraphClient {
+  # Microsoft Graph authorizes delegated calls as the intersection of the
+  # signed-in user's directory roles and the scopes granted to the client
+  # application that issued the token. Azure Cloud Shell authenticates through
+  # its own first-party application, whose Graph scopes do not cover creating
+  # the EasyAuth App Registration: entra-auth.bicep then fails with
+  # Authorization_RequestDenied even for a Global Administrator, and the
+  # directory-role preflight above still reports every role as active.
+  # Signing in with the Azure CLI itself mints a token that carries the
+  # required scopes.
+  #
+  # Initialize-AzureAuthIsolation normally prevents this by giving every run
+  # its own AZURE_CONFIG_DIR, so Cloud Shell reaches the regular az login path.
+  # This stays as a safety net for caller-supplied config directories, and
+  # re-authenticates without asking: a session that cannot create the App
+  # Registration has no usable alternative to offer.
+  $_clientId = Get-GraphTokenClientId
+  if (-not $_clientId -or $_clientId -eq $script:AzureCliApplicationId) {
+    return
+  }
+
+  Write-Important @(
+    'The active Azure session was not issued to the Azure CLI.'
+    ''
+    "  Token client application : $_clientId"
+    "  Azure CLI expects        : $($script:AzureCliApplicationId)"
+    ''
+    'Microsoft Graph grants a delegated call only what both your directory roles'
+    'and that application allow. Creating the Entra App Registration therefore'
+    'fails with Authorization_RequestDenied, no matter which roles are active.'
+    ''
+    'Signing in with the Azure CLI now. Your other Azure sessions stay intact.'
+  )
+
+  # Device code, not browser: this situation occurs in hosted shells that have
+  # no browser of their own.
+  $_loginArgs = @('login', '--use-device-code')
+  if ($script:TenantId) {
+    $_loginArgs += @('--tenant', $script:TenantId)
+  }
+
+  Write-Host "  $_arr Starting az login with device code..." -ForegroundColor Cyan
+  & $script:AzPath @_loginArgs | Out-Null
+  if ($LASTEXITCODE -ne 0) {
+    throw "Azure CLI sign-in failed (exit code $LASTEXITCODE). Run 'az logout' followed by 'az login --use-device-code', then re-run this script."
+  }
+
+  $_clientId = Get-GraphTokenClientId
+  if ($_clientId -and $_clientId -ne $script:AzureCliApplicationId) {
+    Write-Host "  $_wrn The Graph token is still issued to application $_clientId." -ForegroundColor Yellow
+    Write-Host '       Run ''az logout'', then ''az login --use-device-code'', and re-run this script.' -ForegroundColor DarkGray
+    return
+  }
+
+  Write-Host "  $_chk Azure CLI sign-in completed; Graph calls now use the Azure CLI application." -ForegroundColor Green
+}
+
 function Connect-AzureCliIfNeeded {
   if (-not (Test-AzureCliAccountAvailable)) {
     $_loginPreference = Get-AzureCliLoginPreference
@@ -1868,9 +2036,7 @@ function Connect-AzureCliIfNeeded {
     Write-Host '     If Azure CLI reported tenant warnings above, they can be ignored as long as your target subscription is listed below.' -ForegroundColor DarkGray
   }
 
-  $script:SubscriptionName = (Invoke-AzureCli -Arguments @('account', 'show', '--query', 'name', '-o', 'tsv')).Trim()
-  $script:SubscriptionId = (Invoke-AzureCli -Arguments @('account', 'show', '--query', 'id', '-o', 'tsv')).Trim()
-  $script:TenantId = (Invoke-AzureCli -Arguments @('account', 'show', '--query', 'tenantId', '-o', 'tsv')).Trim()
+  Resolve-AzureAccountContext
 
   if ($AzureTenantId) {
     $_expectedTenantId = $AzureTenantId.Trim()
@@ -1878,6 +2044,13 @@ function Connect-AzureCliIfNeeded {
       throw "Azure CLI signed in to tenant '$($script:TenantId)', but -AzureTenantId requested '$($_expectedTenantId)'. Re-run and pick the correct tenant before continuing."
     }
   }
+
+  # A reused ambient session — Azure Cloud Shell in particular — can hold a
+  # token issued to a different client application, which Microsoft Graph
+  # authorizes differently from an Azure CLI token.
+  Confirm-AzureCliGraphClient
+  # A re-login can leave a different subscription selected.
+  Resolve-AzureAccountContext
 
   if ($script:AzdUsesAzureCliAuth) {
     Write-Host "  $_chk Azure tenant        : $($script:TenantId)" -ForegroundColor Green
