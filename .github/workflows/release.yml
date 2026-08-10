@@ -149,7 +149,7 @@ jobs:
       # Attestations are stored in GitHub's store, not as release assets.
       # Verify with: gh attestation verify <file> --repo workoho/spfx-guest-sponsor-info
       - name: Attest release artifacts
-        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: |
             sharepoint/solution/guest-sponsor-info.sppkg
@@ -160,7 +160,7 @@ jobs:
       # tree is cryptographically tied to the artifact it describes.
       # actions/attest auto-detects SPDX/CycloneDX format from sbom-path.
       - name: Attest Function SBOM (SPDX 2.2)
-        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: azure-function/released-package.zip
           sbom-path: guest-sponsor-info-function-sbom.spdx.json
