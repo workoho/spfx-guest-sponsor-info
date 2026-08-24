@@ -26,7 +26,7 @@
   "main": "dist/src/*.js",
   "dependencies": {
     "@azure/functions": "^4.16.2",
-    "@azure/identity": "^4.13.1",
+    "@azure/identity": "^4.13.2",
     "@microsoft/microsoft-graph-client": "^3.0.0"
   },
   "devDependencies": {
