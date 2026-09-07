@@ -74,8 +74,8 @@
     "tslib": "2.8.1"
   },
   "devDependencies": {
-    "@commitlint/cli": "20.5.0",
-    "@commitlint/config-conventional": "20.5.0",
+    "@commitlint/cli": "21.2.2",
+    "@commitlint/config-conventional": "21.2.2",
     "@microsoft/eslint-config-spfx": "1.23.0",
     "@microsoft/eslint-plugin-spfx": "1.23.0",
     "@microsoft/sp-module-interfaces": "1.23.0",
@@ -87,13 +87,13 @@
     "@types/react": "17.0.45",
     "@types/react-dom": "17.0.17",
     "@types/webpack-env": "~1.18.8",
-    "@typescript-eslint/parser": "8.58.0",
+    "@typescript-eslint/parser": "8.69.0",
     "css-loader": "~7.1.2",
     "eslint": "8.57.1",
-    "eslint-plugin-react-hooks": "7.0.1",
+    "eslint-plugin-react-hooks": "7.1.1",
     "husky": "9.1.7",
-    "lint-staged": "16.4.0",
-    "markdownlint-cli2": "0.22.1",
+    "lint-staged": "17.4.1",
+    "markdownlint-cli2": "0.23.2",
     "prettier": "3.8.3",
     "typescript": "5.3.3"
   },
