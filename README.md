@@ -230,11 +230,23 @@ Run the following command in PowerShell 7+ to deploy everything in one step:
 ```
 
 In Azure Cloud Shell, prefer this PowerShell entry point instead of
-`install.sh`. The wizard reuses the active Cloud Shell Azure login and only
-falls back to a fresh `az login` when that session is missing or expired.
-For the Azure side of the setup, this is the recommended installation path.
-If `azd` is missing, the wizard can install it into your Cloud Shell user
-profile. With persisted Cloud Shell storage, that is usually a one-time setup.
+`install.sh`. If `azd` is missing, the wizard can install it into your Cloud
+Shell user profile. With persisted Cloud Shell storage, that is usually a
+one-time setup.
+
+The wizard signs in with the Azure CLI via **device code** there — the Cloud
+Shell identity cannot create the Entra app registration. Two prerequisites
+follow from that:
+
+- Device code sign-in must be permitted for your account. Some tenants block
+  the device code flow via Conditional Access; ask your Entra administrator to
+  allow it for this deployment, or run the installer outside Cloud Shell.
+- If your admin account may only sign in from a Privileged Access Workstation,
+  confirm the device code **on that PAW**. Any other device will be rejected at
+  sign-in.
+
+Your existing Cloud Shell login stays untouched; the run keeps its own
+configuration directories.
 
 On macOS or Linux, you can also start from a plain shell. This bootstraps
 PowerShell when needed, then runs the same installer:
@@ -250,9 +262,11 @@ is omitted, release-based `-Version` values also pin the Azure Function package
 to the same release. Treat `-AppVersion` as an expert override, or use it
 alongside `-Version main`.
 
-In Azure Cloud Shell, `auto` reuses the current Cloud Shell login first. Use
-`-AzureLoginMode browser` or `-AzureLoginMode device-code` when a fresh Azure
-CLI login should not rely on automatic environment detection.
+`auto` selects device code in Azure Cloud Shell and on remote or headless
+terminals, and a browser sign-in on local consoles. Use `-AzureLoginMode
+browser` or `-AzureLoginMode device-code` to override that detection. Device
+code sign-in must be permitted for your account, and PAW-restricted admin
+accounts have to confirm the code on their PAW.
 
 The wizard prepares the Microsoft Entra app registration, deploys the Azure-only hosting
 stack, and then assigns Microsoft Graph permissions automatically. No local

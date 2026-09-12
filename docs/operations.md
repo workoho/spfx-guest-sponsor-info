@@ -195,7 +195,11 @@ To pin to a specific published release:
 ```
 
 In Azure Cloud Shell, prefer this PowerShell installer entry point instead of
-`install.sh` so the wizard can reuse the active Cloud Shell Azure login.
+`install.sh`. Expect a device code sign-in: the wizard authenticates with the
+Azure CLI rather than reusing the Cloud Shell identity, whose Microsoft Graph
+scopes cannot create the Entra app registration. Device code sign-in must
+therefore be permitted for the deploying account, and a PAW-restricted admin
+account has to confirm the code on its Privileged Access Workstation.
 
 Use `-AppVersion` only as an expert override when the function package should
 differ from the release selected by `-Version`.

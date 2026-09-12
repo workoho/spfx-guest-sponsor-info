@@ -651,12 +651,29 @@ Run this command in PowerShell 7+:
 ```
 
 In [Azure Cloud Shell](https://shell.azure.com/), prefer this PowerShell entry point instead of
-`install.sh`. The wizard reuses the active Cloud Shell Azure login and keeps
-the shared `~/.azure` and `~/.azd` directories in place for the run. For the
-Azure side of the deployment, this is the recommended installation path. If
-`azd` is missing, the wizard can install it into the Cloud Shell user profile
-without sudo. With persisted Cloud Shell storage, that is usually a one-time
-setup; ephemeral sessions may need the `azd` install again.
+`install.sh`. For the Azure side of the deployment, this is the recommended
+installation path. If `azd` is missing, the wizard can install it into the
+Cloud Shell user profile without sudo. With persisted Cloud Shell storage,
+that is usually a one-time setup; ephemeral sessions may need the `azd`
+install again.
+
+The wizard does not reuse the ambient Cloud Shell login and asks for a device
+code sign-in instead. Cloud Shell authenticates through its own application,
+whose Microsoft Graph scopes do not cover creating the EasyAuth app
+registration — no directory role can compensate for that. The run keeps its
+own `AZURE_CONFIG_DIR` and `AZD_CONFIG_DIR`, so the ambient Cloud Shell
+session stays untouched.
+
+Plan for two constraints before starting:
+
+- **Device code sign-in must be permitted.** Conditional Access can block the
+  device code flow tenant-wide. Where it is blocked, run the installer outside
+  Cloud Shell — a local console uses browser sign-in — or have the policy
+  adjusted for the deploying account.
+- **PAW-restricted accounts must confirm on the PAW.** If the deploying admin
+  account may only sign in from a Privileged Access Workstation, open the
+  device code URL on that workstation. Confirming from any other device fails
+  at sign-in, no matter where Cloud Shell itself is open.
 
 On macOS or Linux, you can start from a plain shell instead. The shell
 bootstrapper installs PowerShell when needed, downloads `install.ps1`, and then

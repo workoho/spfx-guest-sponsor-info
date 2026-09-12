@@ -375,9 +375,8 @@ erforderlichen Microsoft Graph-Berechtigungen zu — gestützt auf die
 > Homebrew.
 >
 > Der Bereitstellungs-Assistent erkennt
-> [Azure Cloud Shell](https://shell.azure.com/) automatisch, verwendet die
-> aktive Azure-Anmeldung weiter und kann `azd` bei Bedarf im
-> Cloud-Shell-Home-Verzeichnis selbst installieren.
+> [Azure Cloud Shell](https://shell.azure.com/) automatisch und kann `azd` bei
+> Bedarf im Cloud-Shell-Home-Verzeichnis selbst installieren.
 >
 > Einen kurzen Überblick über die aktuelle Ersteinrichtung zeigt
 > [Get started with Azure Cloud Shell](https://learn.microsoft.com/en-us/azure/cloud-shell/get-started/ephemeral).
@@ -394,6 +393,26 @@ erforderlichen Microsoft Graph-Berechtigungen zu — gestützt auf die
 
 Damit läuft der gesamte Azure-Teil im Browserfenster. Ihre lokale Maschine
 bleibt unangetastet.
+
+> [!IMPORTANT]
+> **In Cloud Shell ist eine Anmeldung per Gerätecode erforderlich.**
+>
+> Der Assistent meldet sich mit dem Azure CLI an, statt die
+> Cloud-Shell-Identität weiterzuverwenden — diese darf die
+> Entra-App-Registrierung nicht anlegen. Sie erhalten dafür einen Code und eine
+> URL, die Sie in einem Browser bestätigen. Prüfen Sie vorher zwei Punkte:
+>
+> - **Die Anmeldung per Gerätecode muss für Ihr Konto erlaubt sein.** Manche
+>   Organisationen sperren dieses Verfahren per Conditional Access. Ist das bei
+>   Ihnen der Fall, führen Sie den Installer stattdessen in einer lokalen
+>   PowerShell aus — dort erfolgt eine normale Browser-Anmeldung — oder lassen
+>   Sie das Verfahren von Ihrer Entra-Administration für das
+>   Bereitstellungskonto freigeben.
+> - **Admin-Konten mit PAW-Bindung bestätigen den Code auf der PAW.** Darf sich
+>   Ihr Administratorkonto nur von einer Privileged Access Workstation aus
+>   anmelden, öffnen Sie die Gerätecode-URL auf genau diesem Gerät. Eine
+>   Bestätigung von einem anderen Gerät wird abgewiesen — unabhängig davon, wo
+>   Cloud Shell geöffnet ist.
 
 <details markdown="1">
 <summary>Optional: Skripte vor der Ausführung prüfen</summary>
